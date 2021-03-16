@@ -22,13 +22,13 @@ with open(os.path.join(here, 'README.md')) as f:
 
 
 setup(
-    name='gpytGPE',
+    name='GPErks',
     version='1.0.0',
-    url='https://github.com/stelong/gpytGPE',
-    author="Stefano Longobardi",
-    author_email="stefano.longobardi.8@gmail.com",
+    url='https://github.com/stelong/GPErks',
+    author="Stefano Longobardi, Gianvito Taneburgo",
+    author_email="stefano.longobardi.8@gmail.com, taneburgo+shadowtemplate@gmail.com",
     license='MIT',
-    description='A univariate Gaussian Process Emulator (GPE) implementation around GPyTorch (gpyt)',
+    description='A Python library to (bene)fit Gaussian Process Emulators.',
     long_description=readme,
     long_description_content_type="text/markdown",
     python_requires='>=3.6',

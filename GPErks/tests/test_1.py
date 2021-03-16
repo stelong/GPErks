@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import random
 import sys
 from pathlib import Path
@@ -7,10 +8,10 @@ import numpy as np
 import torch
 from sklearn.model_selection import train_test_split
 
-from gpytGPE.gpe import GPEmul
-from gpytGPE.utils.design import read_labels
-from gpytGPE.utils.metrics import R2Score
-from gpytGPE.utils.plotting import plot_dataset
+from GPErks.gpe import GPEmul
+from GPErks.utils.design import read_labels
+from GPErks.utils.metrics import R2Score
+from GPErks.utils.plotting import plot_dataset
 
 SEED = 8
 
