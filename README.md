@@ -1,6 +1,8 @@
-# gpytGPE
+# GPErks
 
-A univariate Gaussian Process Emulator (GPE) implementation around GPyTorch (gpyt).
+A Python library to (bene)fit Gaussian Process Emulators.
+
+# TODO: update
 
 This library contains the tools needed for constructing a univariate Gaussian process emulator (GPE) as a surrogate model of a generic map *X -> y*. The map (e.g. a computer code input/output) is simply described by the (*N x D*) *X* matrix of input parameters and the respective (*N x 1*) *y* vector of one output feature, both provided by the user. GPEs are implemented as the sum of a mean function given by a linear regression model (with first-order degreed polynomials) and a centered (zero-mean) Gaussian process regressor with RBF kernel as covariance function.
 
@@ -25,7 +27,7 @@ The entire code runs on both CPU and GPU. The cross-validation training loop is 
 ## Getting Started
 
 ```
-git clone https://github.com/stelong/gpytGPE.git
+git clone https://github.com/stelong/GPErks.git
 ```
 
 ---
@@ -38,7 +40,7 @@ git clone https://github.com/stelong/gpytGPE.git
 ## Installing
 
 ```
-cd gpytGPE/
+cd GPErks/
 ```
 ```
 # (this block is optional)
@@ -70,7 +72,7 @@ Notice that in our specific case, `/absolute/path/to/input/` is `data/`. After t
 
 The emulator base class is `GPEmul`. An emulator object can be instantiated as follows:
 ```
-from gpytGPE.gpe import GPEmul
+from GPErks.gpe import GPEmul
 
 emulator = GPEmul(X_train, y_train)
 ```
@@ -117,7 +119,7 @@ The returned vectors have shape `(X_test.shape[0],)`.
 
 To check to emulator accuracy, you can evaluate the chosen metric function at the true and predicted values:
 ```
-from gpytGPE.utils.metrics import R2Score
+from GPErks.utils.metrics import R2Score
 
 print( R2Score(emulator.tensorize(y_test), emulator.tensorize(y_predicted_mean)) )
 ```
