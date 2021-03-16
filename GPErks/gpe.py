@@ -7,9 +7,9 @@ import numpy
 import torch
 from gpytorch.kernels import MaternKernel, RBFKernel, ScaleKernel
 
-from gpytGPE.utils.earlystopping import EarlyStopping, analyze_losstruct
-from gpytGPE.utils.metrics import MAPE, MSE, R2Score
-from gpytGPE.utils.preprocessing import StandardScaler, UnitCubeScaler
+from GPErks.utils.earlystopping import EarlyStopping, analyze_losstruct
+from GPErks.utils.metrics import MAPE, MSE, R2Score
+from GPErks.utils.preprocessing import StandardScaler, UnitCubeScaler
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 DEVICE_LOAD = torch.device("cpu")
