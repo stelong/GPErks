@@ -5,24 +5,21 @@ import matplotlib.gridspec as grsp
 import matplotlib.pyplot as plt
 import numpy
 import torch
-from gpytorch.kernels import MaternKernel, RBFKernel, ScaleKernel
 
+from GPErks.data import ScaledData
 from GPErks.utils.earlystopping import EarlyStopping, analyze_losstruct
 from GPErks.utils.metrics import MAPE, MSE, R2Score
-from GPErks.utils.preprocessing import StandardScaler, UnitCubeScaler
+from GPErks.utils.tensor import tensorize
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 DEVICE_LOAD = torch.device("cpu")
 FILENAME = "gpe.pth"
-KERNEL_DCT = {"Matern": MaternKernel, "RBF": RBFKernel}
-KERNEL = "RBF"
 LEARN_NOISE = True
 LEARNING_RATE = 0.1
-LOG_TRANSFORM = False
 MAX_EPOCHS = 1000
 METRICS_DCT = {"MAPE": MAPE, "MSE": MSE, "R2Score": R2Score}
 N_DRAWS = 1000
-N_RESTARTS = 10
+N_RESTARTS = 1
 PATH = "./"
 PATIENCE = 20
 SAVE_LOSSES = False
@@ -30,110 +27,42 @@ SCALE_DATA = True
 WATCH_METRIC = "R2Score"
 
 
-class LinearMean(gpytorch.means.Mean):
-    def __init__(self, input_size, data_mean, batch_shape=torch.Size()):
-        super().__init__()
-        self.register_parameter(
-            name="weights",
-            parameter=torch.nn.Parameter(
-                torch.zeros(*batch_shape, input_size, 1)
-            ),
-        )
-        self.register_parameter(
-            name="bias",
-            parameter=torch.nn.Parameter(
-                data_mean * torch.ones(*batch_shape, 1)
-            ),
-        )
-
-    def forward(self, x):
-        res = self.bias + x.matmul(self.weights).squeeze(-1)
-        return res
-
-
-class ExactGPModel(gpytorch.models.ExactGP):
-    def __init__(
-        self,
-        train_x,
-        train_y,
-        likelihood,
-        linear_model,
-        kernel,
-    ):
-        super(ExactGPModel, self).__init__(train_x, train_y, likelihood)
-        self.mean_module = linear_model
-        self.covar_module = kernel
-
-    def forward(self, x):
-        mean_x = self.mean_module(x)
-        covar_x = self.covar_module(x)
-        return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
-
-
 class GPEmul:
     def __init__(
         self,
-        X_train,
-        y_train,
+        scaled_data: ScaledData,
+        model,
+        optimizer,
+        linear_model,
+        kernel,
+        learning_rate=LEARNING_RATE,
         device=DEVICE,
         learn_noise=LEARN_NOISE,
-        kernel=KERNEL,
-        scale_data=SCALE_DATA,
-        log_transform=LOG_TRANSFORM,
     ):
-        self.scale_data = scale_data
-        self.log_transform = log_transform
-        if self.scale_data:
-            self.scx = UnitCubeScaler()
-            self.scx.fit(X_train)
-            self.X_train = self.tensorize(self.scx.transform(X_train))
-
-            self.scy = StandardScaler(log_transform=self.log_transform)
-            self.scy.fit(y_train)
-            self.y_train = self.tensorize(self.scy.transform(y_train))
-        else:
-            if self.log_transform:
-                print(
-                    "\nWarning: attempting to log-transform with scale_data=False. Data will not be scaled."
-                )
-            self.X_train = self.tensorize(X_train)
-            self.y_train = self.tensorize(y_train)
-
+        self.scaled_data = scaled_data
         self.device = device
-        self.data_mean = 0.0 if self.scale_data else numpy.mean(y_train)
-        self.n_samples = X_train.shape[0]
-        self.input_size = X_train.shape[1] if len(X_train.shape) > 1 else 1
         self.learn_noise = learn_noise
 
-        self.likelihood = gpytorch.likelihoods.GaussianLikelihood()
-        self.linear_model = LinearMean(
-            input_size=self.input_size, data_mean=self.data_mean
-        )
-        self.kernel = ScaleKernel(
-            KERNEL_DCT[kernel](ard_num_dims=self.input_size)
-        )
+        self.linear_model = linear_model
+        self.kernel = kernel
 
         if not self.learn_noise:
-            self.likelihood.noise_covar.register_constraint(
+            self.model.likelihood.noise_covar.register_constraint(
                 "raw_noise", gpytorch.constraints.GreaterThan(1e-6)
             )
-            self.likelihood.noise = 1e-4
-            self.likelihood.noise_covar.raw_noise.requires_grad_(False)
+            self.model.likelihood.noise = 1e-4
+            self.model.likelihood.noise_covar.raw_noise.requires_grad_(False)
 
-        self.model = ExactGPModel(
-            self.X_train,
-            self.y_train,
-            self.likelihood,
-            self.linear_model,
-            self.kernel,
-        )
+        self.model = model
         self.init_state = deepcopy(self.model.state_dict())
+
+        self.optimizer = optimizer
+        self.learning_rate = learning_rate
 
     def train(
         self,
         X_val,
         y_val,
-        learning_rate=LEARNING_RATE,
         max_epochs=MAX_EPOCHS,
         n_restarts=N_RESTARTS,
         patience=PATIENCE,
@@ -146,16 +75,12 @@ class GPEmul:
             y_val, numpy.ndarray
         ):
             self.with_val = True
-            if self.scale_data:
-                X_val = self.scx.transform(X_val)
-                y_val = self.scy.transform(y_val)
-            self.X_val = self.tensorize(X_val)
-            self.y_val = self.tensorize(y_val)
+            self.X_val = tensorize(self.scaled_data.scx.transform(X_val))
+            self.y_val = tensorize(self.scaled_data.scy.transform(y_val))
         else:
             self.with_val = False
 
         self.n_restarts = n_restarts
-        self.learning_rate = learning_rate
         self.max_epochs = max_epochs
         self.patience = patience
         self.savepath = savepath
@@ -227,7 +152,7 @@ class GPEmul:
                 "covar_module.base_kernel.raw_lengthscale": (
                     theta_sup - theta_inf
                 )
-                * torch.rand(self.input_size)
+                * torch.rand(self.scaled_data.input_size)
                 + theta_inf,
                 "covar_module.raw_outputscale": (theta_sup - theta_inf)
                 * torch.rand(1)
@@ -235,18 +160,15 @@ class GPEmul:
             }
             self.model.initialize(**hyperparameters)
             if self.learn_noise:
-                self.likelihood.initialize(
+                self.model.likelihood.initialize(
                     raw_noise=(theta_sup - theta_inf) * torch.rand(1)
                     + theta_inf
                 )
 
         self.model.to(self.device)
 
-        self.optimizer = torch.optim.Adam(
-            self.model.parameters(), lr=self.learning_rate
-        )
         self.criterion = gpytorch.mlls.ExactMarginalLogLikelihood(
-            self.likelihood, self.model
+            self.model.likelihood, self.model
         )
 
         early_stopping = EarlyStopping(
@@ -258,8 +180,10 @@ class GPEmul:
             self.val_loss_list = []
             self.metric_score_list = []
 
+        X_train = self.scaled_data.X_train.to(self.device)
+        y_train = self.scaled_data.y_train.to(self.device)
         for epoch in range(self.max_epochs):
-            train_loss = self.train_step()
+            train_loss = self.train_step(X_train, y_train)
             if self.with_val:
                 val_loss, metric_score = self.val_step()
 
@@ -304,13 +228,10 @@ class GPEmul:
         if self.save_losses:
             self.plot_loss()
 
-    def train_step(self):
+    def train_step(self, X_train, y_train):
         self.model.train()
-        self.X_train = self.X_train.to(self.device)
-        self.y_train = self.y_train.to(self.device)
-
         self.optimizer.zero_grad()
-        train_loss = -self.criterion(self.model(self.X_train), self.y_train)
+        train_loss = -self.criterion(self.model(X_train), y_train)
         train_loss.backward()
         self.optimizer.step()
 
@@ -323,7 +244,7 @@ class GPEmul:
 
         with torch.no_grad(), gpytorch.settings.fast_pred_var():
             val_loss = -self.criterion(self.model(self.X_val), self.y_val)
-            predictions = self.likelihood(self.model(self.X_val))
+            predictions = self.model.likelihood(self.model(self.X_val))
             y_pred = predictions.mean
             metric_score = self.metric(self.y_val, y_pred)
 
@@ -339,39 +260,34 @@ class GPEmul:
             + f"Lengthscales: {self.model.covar_module.base_kernel.lengthscale.data.squeeze()}"
         )
         if self.learn_noise:
-            msg += f"\nLikelihood noise: {self.likelihood.noise_covar.noise.data.squeeze():.4f}"
+            msg += f"\nLikelihood noise: {self.model.likelihood.noise_covar.noise.data.squeeze():.4f}"
         if self.with_val:
             msg += f"\n{self.watch_metric}: {self.metric_score:.4f}"
         print(msg)
 
     def predict(self, X_new):
         self.model.eval()
-        self.likelihood.eval()
+        self.model.likelihood.eval()
 
-        if self.scale_data:
-            X_new = self.scx.transform(X_new)
-        X_new = self.tensorize(X_new).to(self.device)
+        X_new = tensorize(self.scaled_data.scx.transform(X_new)).to(self.device)
 
         with torch.no_grad(), gpytorch.settings.fast_pred_var():
-            predictions = self.likelihood(self.model(X_new))
+            predictions = self.model.likelihood(self.model(X_new))
             y_mean = predictions.mean.cpu().numpy()
             y_std = numpy.sqrt(predictions.variance.cpu().numpy())
 
-        if self.scale_data:
-            y_mean, y_std = self.scy.inverse_transform(y_mean, ystd_=y_std)
+        y_mean, y_std = self.scaled_data.scy.inverse_transform(y_mean, ystd_=y_std)
 
         return y_mean, y_std
 
     def sample(self, X_new, n_draws=N_DRAWS):
         self.model.eval()
-        self.likelihood.eval()
+        self.model.likelihood.eval()
 
-        if self.scale_data:
-            X_new = self.scx.transform(X_new)
-        X_new = self.tensorize(X_new).to(self.device)
+        X_new = tensorize(self.scaled_data.scx.transform(X_new)).to(self.device)
 
         with torch.no_grad(), gpytorch.settings.fast_pred_var():
-            predictions = self.likelihood(self.model(X_new))
+            predictions = self.model.likelihood(self.model(X_new))
             y_std = numpy.sqrt(predictions.variance.cpu().numpy())
             y_samples = (
                 predictions.sample(sample_shape=torch.Size([n_draws]))
@@ -379,11 +295,10 @@ class GPEmul:
                 .numpy()
             )
 
-        if self.scale_data:
-            for i in range(n_draws):
-                y_samples[i] = self.scy.inverse_transform(
-                    y_samples[i], ystd_=y_std
-                )[0]
+        for i in range(n_draws):
+            y_samples[i] = self.scaled_data.scy.inverse_transform(
+                y_samples[i], ystd_=y_std
+            )[0]
 
         return y_samples
 
@@ -424,20 +339,25 @@ class GPEmul:
     @classmethod
     def load(
         cls,
-        X_train,
-        y_train,
+        data_scaler,
+        model,
+        optimizer,
+        linear_model,
+        kernel,
         loadpath=PATH,
         filename=FILENAME,
         device=DEVICE_LOAD,
     ):
         print("\nLoading emulator...")
-        emul = cls(X_train, y_train, device=device)
+        emul = cls(
+            data_scaler, model, optimizer, linear_model, kernel, device=device
+        )
         emul.model.load_state_dict(
             torch.load(loadpath + filename, map_location=device)
         )
         emul.model.to(device)
         emul.learn_noise = not numpy.isclose(
-            emul.likelihood.noise_covar.raw_noise.item(),
+            emul.model.likelihood.noise_covar.raw_noise.item(),
             numpy.log(1e-4),
             rtol=0.0,
             atol=1e-1,
@@ -447,7 +367,3 @@ class GPEmul:
         print("\nDone. The emulator hyperparameters are:")
         emul.print_stats()
         return emul
-
-    @staticmethod
-    def tensorize(X):
-        return torch.from_numpy(X).float()

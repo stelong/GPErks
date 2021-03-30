@@ -3,17 +3,27 @@ import random
 import sys
 from pathlib import Path
 
+import gpytorch
 import matplotlib.pyplot as plt
+import numpy
 import numpy as np
 import torch
+from gpytorch.kernels import ScaleKernel, RBFKernel, MaternKernel
 from sklearn.model_selection import train_test_split
 
-from GPErks.gpe import GPEmul
+from GPErks.data import ScaledData
+from GPErks.gpe import GPEmul, LEARNING_RATE
+from GPErks.models.models import ExactGPModel, LinearMean
 from GPErks.utils.design import read_labels
 from GPErks.utils.metrics import R2Score
 from GPErks.utils.plotting import plot_dataset
+from GPErks.utils.preprocessing import UnitCubeScaler, StandardScaler
+from GPErks.utils.tensor import tensorize
 
 SEED = 8
+KERNEL_DCT = {"Matern": MaternKernel, "RBF": RBFKernel}
+KERNEL = "RBF"
+LOG_TRANSFORM = False
 
 
 def main():
@@ -59,7 +69,35 @@ def main():
     np.savetxt(savepath + "X_val.txt", X_val, fmt="%.6f")
     np.savetxt(savepath + "y_val.txt", y_val, fmt="%.6f")
 
-    emul = GPEmul(X_train, y_train)
+    X_scaler = UnitCubeScaler()
+    y_scaler = StandardScaler(log_transform=LOG_TRANSFORM)
+    data_scaler = ScaledData(X_train, y_train, X_scaler, y_scaler)
+
+    likelihood = gpytorch.likelihoods.GaussianLikelihood()
+
+    linear_model = LinearMean(
+        input_size=data_scaler.input_size, data_mean=0.0
+    )
+    kernel = ScaleKernel(
+        KERNEL_DCT[KERNEL](ard_num_dims=data_scaler.input_size)
+    )
+
+    model = ExactGPModel(
+        data_scaler.X_train,
+        data_scaler.y_train,
+        likelihood,
+        linear_model,
+        kernel,
+    )
+
+    optimizer = torch.optim.Adam(
+        model.parameters(),
+        lr=LEARNING_RATE
+    )
+
+    emul = GPEmul(
+        data_scaler, model, optimizer, linear_model, kernel
+    )
     emul.train([], [], save_losses=True, savepath=savepath)
 
     # ================================================================
@@ -73,7 +111,14 @@ def main():
     # NOTE: you need exactly the same training dataset used in (3)
     # ================================================================
     loadpath = savepath
-    emul = GPEmul.load(X_train, y_train, loadpath)
+    emul = GPEmul.load(
+        data_scaler,
+        model,
+        optimizer,
+        linear_model,
+        kernel,
+        loadpath
+    )
 
     # ================================================================
     # (6) Testing trained GPE at new input points (inference)
@@ -84,7 +129,7 @@ def main():
     y_test = y_val
 
     y_pred_mean, y_pred_std = emul.predict(X_test)
-    r2s = R2Score(emul.tensorize(y_test), emul.tensorize(y_pred_mean))
+    r2s = R2Score(tensorize(y_test), tensorize(y_pred_mean))
     print(f"\nAccuracy on testing dataset: R2Score = {r2s:.6f}")
 
     # ================================================================
