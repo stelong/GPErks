@@ -33,8 +33,6 @@ class GPEmul:
         scaled_data: ScaledData,
         model,
         optimizer,
-        linear_model,
-        kernel,
         learning_rate=LEARNING_RATE,
         device=DEVICE,
         learn_noise=LEARN_NOISE,
@@ -42,9 +40,6 @@ class GPEmul:
         self.scaled_data = scaled_data
         self.device = device
         self.learn_noise = learn_noise
-
-        self.linear_model = linear_model
-        self.kernel = kernel
 
         if not self.learn_noise:
             self.model.likelihood.noise_covar.register_constraint(
@@ -61,8 +56,6 @@ class GPEmul:
 
     def train(
         self,
-        X_val,
-        y_val,
         max_epochs=MAX_EPOCHS,
         n_restarts=N_RESTARTS,
         patience=PATIENCE,
@@ -71,15 +64,6 @@ class GPEmul:
         watch_metric=WATCH_METRIC,
     ):
         print("\nTraining emulator...")
-        if isinstance(X_val, numpy.ndarray) and isinstance(
-            y_val, numpy.ndarray
-        ):
-            self.with_val = True
-            self.X_val = tensorize(self.scaled_data.scx.transform(X_val))
-            self.y_val = tensorize(self.scaled_data.scy.transform(y_val))
-        else:
-            self.with_val = False
-
         self.n_restarts = n_restarts
         self.max_epochs = max_epochs
         self.patience = patience
@@ -90,12 +74,23 @@ class GPEmul:
 
         train_loss_list = []
         model_state_list = []
-        if self.with_val:
+        if self.scaled_data.with_val:
             val_loss_list = []
             metric_score_list = []
 
         self.idx_best_list = []
         i = 0
+
+        X_train = self.scaled_data.X_train.to(self.device)
+        y_train = self.scaled_data.y_train.to(self.device)
+
+        if self.scaled_data.with_val:
+            X_val = self.scaled_data.X_val.to(self.device)
+            y_val = self.scaled_data.y_val.to(self.device)
+        else:  # missing validation data: no need to move anything to device
+            X_val = self.scaled_data.X_val
+            y_val = self.scaled_data.y_val
+
         while i < n_restarts + 1:
             self.restart_idx = i
             if self.restart_idx == 0:
@@ -108,7 +103,7 @@ class GPEmul:
                 self.print_msg = True
 
             try:
-                self.train_once()
+                self.train_once(X_train, y_train, X_val, y_val)
             except RuntimeError as err:
                 print(
                     f"Repeating restart {self.restart_idx} because of RuntimeError: {err.args[0]}"
@@ -120,13 +115,13 @@ class GPEmul:
                     self.idx_best_list.append(self.idx_best)
                     train_loss_list.append(self.train_loss_list[self.idx_best])
                     model_state_list.append(self.best_model)
-                    if self.with_val:
+                    if self.scaled_data.with_val:
                         val_loss_list.append(self.val_loss_list[self.idx_best])
                         metric_score_list.append(
                             self.metric_score_list[self.idx_best]
                         )
 
-        if self.with_val:
+        if self.scaled_data.with_val:
             idx_min = numpy.argmin(val_loss_list)
             self.metric_score = metric_score_list[idx_min]
         else:
@@ -143,7 +138,7 @@ class GPEmul:
         print("\nThe fitted emulator hyperparameters are:")
         self.print_stats()
 
-    def train_once(self):
+    def train_once(self, X_train, y_train, X_val, y_val):
         self.model.load_state_dict(self.init_state)
 
         if self.restart_idx > 0:
@@ -176,22 +171,20 @@ class GPEmul:
         )
 
         self.train_loss_list = []
-        if self.with_val:
+        if self.scaled_data.with_val:
             self.val_loss_list = []
             self.metric_score_list = []
 
-        X_train = self.scaled_data.X_train.to(self.device)
-        y_train = self.scaled_data.y_train.to(self.device)
         for epoch in range(self.max_epochs):
             train_loss = self.train_step(X_train, y_train)
-            if self.with_val:
-                val_loss, metric_score = self.val_step()
+            if self.scaled_data.with_val:
+                val_loss, metric_score = self.val_step(X_val, y_val)
 
             msg = (
                 f"[{epoch+1:>{len(str(self.max_epochs))}}/{self.max_epochs:>{len(str(self.max_epochs))}}] "
                 + f"Training Loss: {train_loss:.4f}"
             )
-            if self.with_val:
+            if self.scaled_data.with_val:
                 msg += (
                     f" - Validation Loss: {val_loss:.4f}"
                     + f" - {self.watch_metric}: {metric_score:.4f}"
@@ -200,12 +193,12 @@ class GPEmul:
                 print(msg)
 
             self.train_loss_list.append(train_loss)
-            if self.with_val:
+            if self.scaled_data.with_val:
                 self.val_loss_list.append(val_loss)
                 self.metric_score_list.append(metric_score)
 
             if epoch >= self.bellepoque:
-                if self.with_val:
+                if self.scaled_data.with_val:
                     early_stopping(val_loss, self.model)
                 else:
                     early_stopping(train_loss, self.model)
@@ -214,7 +207,7 @@ class GPEmul:
                 break
 
         self.best_model = torch.load(self.savepath + "checkpoint.pth")
-        if self.with_val:
+        if self.scaled_data.with_val:
             self.idx_best = numpy.argmin(self.val_loss_list)
         else:
             self.idx_best = numpy.argmin(self.train_loss_list)
@@ -237,16 +230,13 @@ class GPEmul:
 
         return train_loss.item()
 
-    def val_step(self):
+    def val_step(self, X_val, y_val):
         self.model.eval()
-        self.X_val = self.X_val.to(self.device)
-        self.y_val = self.y_val.to(self.device)
-
         with torch.no_grad(), gpytorch.settings.fast_pred_var():
-            val_loss = -self.criterion(self.model(self.X_val), self.y_val)
-            predictions = self.model.likelihood(self.model(self.X_val))
+            val_loss = -self.criterion(self.model(X_val), y_val)
+            predictions = self.model.likelihood(self.model(X_val))
             y_pred = predictions.mean
-            metric_score = self.metric(self.y_val, y_pred)
+            metric_score = self.metric(y_val, y_pred)
 
         return val_loss.item(), metric_score
 
@@ -261,7 +251,7 @@ class GPEmul:
         )
         if self.learn_noise:
             msg += f"\nLikelihood noise: {self.model.likelihood.noise_covar.noise.data.squeeze():.4f}"
-        if self.with_val:
+        if self.scaled_data.with_val:
             msg += f"\n{self.watch_metric}: {self.metric_score:.4f}"
         print(msg)
 
@@ -305,7 +295,7 @@ class GPEmul:
     def plot_loss(self):
         ylabels = ["Training loss"]
         vectors = [self.train_loss_list]
-        if self.with_val:
+        if self.scaled_data.with_val:
             vectors.append(self.val_loss_list)
             ylabels.append("Validation loss")
             vectors.append(self.metric_score_list)
@@ -342,15 +332,13 @@ class GPEmul:
         data_scaler,
         model,
         optimizer,
-        linear_model,
-        kernel,
         loadpath=PATH,
         filename=FILENAME,
         device=DEVICE_LOAD,
     ):
         print("\nLoading emulator...")
         emul = cls(
-            data_scaler, model, optimizer, linear_model, kernel, device=device
+            data_scaler, model, optimizer, device=device
         )
         emul.model.load_state_dict(
             torch.load(loadpath + filename, map_location=device)

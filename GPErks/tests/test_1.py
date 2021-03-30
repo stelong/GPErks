@@ -71,20 +71,23 @@ def main():
 
     X_scaler = UnitCubeScaler()
     y_scaler = StandardScaler(log_transform=LOG_TRANSFORM)
-    data_scaler = ScaledData(X_train, y_train, X_scaler, y_scaler)
+    train_scaled_data = ScaledData(
+        # X_train, y_train, X_scaler, y_scaler, X_val, y_val  # TODO
+        X_train, y_train, X_scaler, y_scaler,
+    )
 
     likelihood = gpytorch.likelihoods.GaussianLikelihood()
 
     linear_model = LinearMean(
-        input_size=data_scaler.input_size, data_mean=0.0
+        input_size=train_scaled_data.input_size, data_mean=0.0
     )
     kernel = ScaleKernel(
-        KERNEL_DCT[KERNEL](ard_num_dims=data_scaler.input_size)
+        KERNEL_DCT[KERNEL](ard_num_dims=train_scaled_data.input_size)
     )
 
     model = ExactGPModel(
-        data_scaler.X_train,
-        data_scaler.y_train,
+        train_scaled_data.X_train,
+        train_scaled_data.y_train,
         likelihood,
         linear_model,
         kernel,
@@ -95,10 +98,8 @@ def main():
         lr=LEARNING_RATE
     )
 
-    emul = GPEmul(
-        data_scaler, model, optimizer, linear_model, kernel
-    )
-    emul.train([], [], save_losses=True, savepath=savepath)
+    emul = GPEmul(train_scaled_data, model, optimizer)
+    emul.train(save_losses=True, savepath=savepath)
 
     # ================================================================
     # (4) Saving trained GPE
@@ -111,14 +112,7 @@ def main():
     # NOTE: you need exactly the same training dataset used in (3)
     # ================================================================
     loadpath = savepath
-    emul = GPEmul.load(
-        data_scaler,
-        model,
-        optimizer,
-        linear_model,
-        kernel,
-        loadpath
-    )
+    emul = GPEmul.load(train_scaled_data, model, optimizer, loadpath)
 
     # ================================================================
     # (6) Testing trained GPE at new input points (inference)
