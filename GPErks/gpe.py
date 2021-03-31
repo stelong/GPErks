@@ -213,9 +213,14 @@ class GPEmul:
             self.idx_best = numpy.argmin(self.train_loss_list)
 
         if self.restart_idx == 0:
-            self.bellepoque, self.delta = analyze_losstruct(
-                numpy.array(self.train_loss_list)
-            )
+            if self.scaled_data.with_val:
+                self.bellepoque, self.delta = analyze_losstruct(
+                    numpy.array(self.val_loss_list)
+                )
+            else:
+                self.bellepoque, self.delta = analyze_losstruct(
+                    numpy.array(self.train_loss_list)
+                )
             print("\nDone. Now the training starts...")
 
         if self.save_losses:
@@ -350,7 +355,7 @@ class GPEmul:
             rtol=0.0,
             atol=1e-1,
         )
-        emul.with_val = False
+        emul.scaled_data.with_val = False
 
         print("\nDone. The emulator hyperparameters are:")
         emul.print_stats()
