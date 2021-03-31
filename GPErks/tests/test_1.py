@@ -15,7 +15,7 @@ from GPErks.data import ScaledData
 from GPErks.gpe import GPEmul, LEARNING_RATE
 from GPErks.models.models import ExactGPModel, LinearMean
 from GPErks.utils.design import read_labels
-from GPErks.utils.metrics import R2Score
+from GPErks.utils.metrics import R2Score, IndependentStandardError as ISE
 from GPErks.utils.plotting import plot_dataset
 from GPErks.utils.preprocessing import UnitCubeScaler, StandardScaler
 from GPErks.utils.tensor import tensorize
@@ -44,7 +44,7 @@ def main():
 
     xlabels = read_labels(loadpath + "xlabels.txt")
     ylabels = read_labels(loadpath + "ylabels.txt")
-    plot_dataset(X, Y, xlabels, ylabels)
+    # plot_dataset(X, Y, xlabels, ylabels)
 
     # ================================================================
     # (2) Building example training and validation datasets
@@ -54,8 +54,11 @@ def main():
 
     y = np.copy(Y[:, int(idx_feature)])
 
-    X_train, X_val, y_train, y_val = train_test_split(
+    X_, X_test, y_, y_test = train_test_split(
         X, y, test_size=0.2, random_state=seed
+    )
+    X_train, X_val, y_train, y_val = train_test_split(
+        X_, y_, test_size=0.2, random_state=seed
     )
 
     # ================================================================
@@ -99,7 +102,7 @@ def main():
     )
 
     emul = GPEmul(train_scaled_data, model, optimizer)
-    emul.train(save_losses=True, savepath=savepath)
+    emul.train(savepath=savepath)
 
     # ================================================================
     # (4) Saving trained GPE
@@ -117,14 +120,20 @@ def main():
     # ================================================================
     # (6) Testing trained GPE at new input points (inference)
     # ================================================================
-    # NOTE: we will use the validation dataset used in (3) as an example
-    # ================================================================
-    X_test = X_val
-    y_test = y_val
-
     y_pred_mean, y_pred_std = emul.predict(X_test)
-    r2s = R2Score(tensorize(y_test), tensorize(y_pred_mean))
-    print(f"\nAccuracy on testing dataset: R2Score = {r2s:.6f}")
+    
+    r2s = R2Score(
+    	tensorize(y_test),
+    	tensorize(y_pred_mean)
+    )
+    ise = ISE(
+    	tensorize(y_test),
+    	tensorize(y_pred_mean),
+    	tensorize(y_pred_std)
+    )
+    print(f"\nStatistics on test set:")
+    print(f"  R2Score = {r2s:.4f}")
+    print(f"  ISE = {ise:.2f} %\n")
 
     # ================================================================
     # (7) Plotting predictions vs observations
@@ -136,7 +145,8 @@ def main():
     l = np.argsort(
         y_pred_mean
     )  # let's sort predicted values for a better visualisation
-    ci = 3
+    
+    ci = 2  # ~95% confidance interval
 
     axis.scatter(
         np.arange(len(l)),
@@ -165,7 +175,7 @@ def main():
     axis.set_xticks([])
     axis.set_xticklabels([])
     axis.set_ylabel(ylabels[int(idx_feature)], fontsize=12)
-    axis.set_title(f"R2Score = {r2s:.6f}", fontsize=12)
+    axis.set_title(f"R2Score = {r2s:.4f} | ISE = {ise:.2f} %", fontsize=12)
     axis.legend(loc="upper left")
 
     fig.tight_layout()
