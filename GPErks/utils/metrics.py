@@ -1,6 +1,11 @@
 import torch
 
 
+def IndependentStandardError(y_true, y_pred_mean, y_pred_std):
+    ise = torch.abs(y_true - y_pred_mean) / y_pred_std
+    return 100.0 * len(torch.where(ise < 2.0)[0]) / len(ise)
+
+
 def R2Score(y, y_pred):
     n_samples = y.size()[0]
     sum_of_sq_errors = torch.sum(torch.pow(y - y_pred, 2)).item()
