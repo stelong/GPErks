@@ -6,8 +6,6 @@
 #
 cycler==0.10.0
     # via matplotlib
-diversipy==0.8
-    # via -r requirements.in
 future==0.18.2
     # via torch
 gpytorch==1.1.1
@@ -24,7 +22,6 @@ matplotlib==3.3.4
 numpy==1.20.0
     # via
     #   -r requirements.in
-    #   diversipy
     #   matplotlib
     #   pandas
     #   salib
@@ -57,7 +54,6 @@ scikit-learn==0.24.1
 scipy==1.6.0
     # via
     #   -r requirements.in
-    #   diversipy
     #   salib
     #   scikit-learn
     #   seaborn
@@ -72,7 +68,9 @@ threadpoolctl==2.1.0
 torch==1.5.0
     # via
     #   -r requirements.in
-    #   gpytorch
+    #   torchmetrics
     #   torchvision
+torchmetrics==0.2.0
+    # via -r requirements.in
 torchvision==0.6.0
     # via -r requirements.in

@@ -8,7 +8,7 @@ import torch
 
 from GPErks.data import ScaledData
 from GPErks.utils.earlystopping import EarlyStopping, analyze_losstruct
-from GPErks.utils.metrics import MAPE, MSE, R2Score
+from GPErks.utils.metrics import get_metric_name
 from GPErks.utils.tensor import tensorize
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -17,7 +17,6 @@ FILENAME = "gpe.pth"
 LEARN_NOISE = True
 LEARNING_RATE = 0.1
 MAX_EPOCHS = 1000
-METRICS_DCT = {"MAPE": MAPE, "MSE": MSE, "R2Score": R2Score}
 N_DRAWS = 1000
 N_RESTARTS = 1
 PATH = "./"
@@ -33,6 +32,7 @@ class GPEmul:
         scaled_data: ScaledData,
         model,
         optimizer,
+        metrics,
         learning_rate=LEARNING_RATE,
         device=DEVICE,
         learn_noise=LEARN_NOISE,
@@ -53,6 +53,7 @@ class GPEmul:
 
         self.optimizer = optimizer
         self.learning_rate = learning_rate
+        self.metrics = metrics  # TODO manage multiple metrics
 
     def train(
         self,
@@ -69,14 +70,13 @@ class GPEmul:
         self.patience = patience
         self.savepath = savepath
         self.save_losses = save_losses
-        self.watch_metric = watch_metric
-        self.metric = METRICS_DCT[self.watch_metric]
+        self.watch_metric = get_metric_name(self.metrics)
 
         train_loss_list = []
         model_state_list = []
         if self.scaled_data.with_val:
             val_loss_list = []
-            metric_score_list = []
+            metric_score_list = {get_metric_name(m): [] for m in self.metrics}
 
         self.idx_best_list = []
         i = 0
@@ -117,13 +117,19 @@ class GPEmul:
                     model_state_list.append(self.best_model)
                     if self.scaled_data.with_val:
                         val_loss_list.append(self.val_loss_list[self.idx_best])
-                        metric_score_list.append(
-                            self.metric_score_list[self.idx_best]
-                        )
+                        for metric_name in self.metric_score_list.keys():
+                            metric_score_list[metric_name].append(
+                                self.metric_score_list[metric_name][
+                                    self.idx_best
+                                ]
+                            )
 
         if self.scaled_data.with_val:
             idx_min = numpy.argmin(val_loss_list)
-            self.metric_score = metric_score_list[idx_min]
+            self.best_metric_score = [
+                metric_score_list[m][idx_min]
+                for m in self.metric_score_list.keys()
+            ]
         else:
             idx_min = numpy.argmin(train_loss_list)
         self.best_restart = idx_min + 1
@@ -173,29 +179,33 @@ class GPEmul:
         self.train_loss_list = []
         if self.scaled_data.with_val:
             self.val_loss_list = []
-            self.metric_score_list = []
+            self.metric_score_list = {
+                get_metric_name(m): [] for m in self.metrics
+            }
 
         for epoch in range(self.max_epochs):
             train_loss = self.train_step(X_train, y_train)
             if self.scaled_data.with_val:
-                val_loss, metric_score = self.val_step(X_val, y_val)
+                val_loss, metric_scores = self.val_step(X_val, y_val)
 
             msg = (
                 f"[{epoch+1:>{len(str(self.max_epochs))}}/{self.max_epochs:>{len(str(self.max_epochs))}}] "
                 + f"Training Loss: {train_loss:.4f}"
             )
             if self.scaled_data.with_val:
-                msg += (
-                    f" - Validation Loss: {val_loss:.4f}"
-                    + f" - {self.watch_metric}: {metric_score:.4f}"
-                )
+                msg += f" - Validation Loss: {val_loss:.4f}"
+                for metric, metric_score in zip(self.metrics, metric_scores):
+                    msg += f" - {get_metric_name(metric)}: {metric_score:.4f}"
             if self.print_msg:
                 print(msg)
 
             self.train_loss_list.append(train_loss)
             if self.scaled_data.with_val:
                 self.val_loss_list.append(val_loss)
-                self.metric_score_list.append(metric_score)
+                for metric_name, metric_score in zip(
+                    self.metric_score_list.keys(), metric_scores
+                ):
+                    self.metric_score_list[metric_name].append(metric_score)
 
             if epoch >= self.bellepoque:
                 if self.scaled_data.with_val:
@@ -241,9 +251,9 @@ class GPEmul:
             val_loss = -self.criterion(self.model(X_val), y_val)
             predictions = self.model.likelihood(self.model(X_val))
             y_pred = predictions.mean
-            metric_score = self.metric(y_val, y_pred)
+            metric_scores = [m(y_pred, y_val).cpu() for m in self.metrics]
 
-        return val_loss.item(), metric_score
+        return val_loss.item(), metric_scores
 
     def print_stats(self):
         torch.set_printoptions(sci_mode=False)
@@ -257,21 +267,28 @@ class GPEmul:
         if self.learn_noise:
             msg += f"\nLikelihood noise: {self.model.likelihood.noise_covar.noise.data.squeeze():.4f}"
         if self.scaled_data.with_val:
-            msg += f"\n{self.watch_metric}: {self.metric_score:.4f}"
+            for metric, best_metric_score in zip(
+                self.metrics, self.best_metric_score
+            ):
+                msg += f"\n{get_metric_name(metric)}: {best_metric_score:.4f}"
         print(msg)
 
     def predict(self, X_new):
         self.model.eval()
         self.model.likelihood.eval()
 
-        X_new = tensorize(self.scaled_data.scx.transform(X_new)).to(self.device)
+        X_new = tensorize(self.scaled_data.scx.transform(X_new)).to(
+            self.device
+        )
 
         with torch.no_grad(), gpytorch.settings.fast_pred_var():
             predictions = self.model.likelihood(self.model(X_new))
             y_mean = predictions.mean.cpu().numpy()
             y_std = numpy.sqrt(predictions.variance.cpu().numpy())
 
-        y_mean, y_std = self.scaled_data.scy.inverse_transform(y_mean, ystd_=y_std)
+        y_mean, y_std = self.scaled_data.scy.inverse_transform(
+            y_mean, ystd_=y_std
+        )
 
         return y_mean, y_std
 
@@ -279,7 +296,9 @@ class GPEmul:
         self.model.eval()
         self.model.likelihood.eval()
 
-        X_new = tensorize(self.scaled_data.scx.transform(X_new)).to(self.device)
+        X_new = tensorize(self.scaled_data.scx.transform(X_new)).to(
+            self.device
+        )
 
         with torch.no_grad(), gpytorch.settings.fast_pred_var():
             predictions = self.model.likelihood(self.model(X_new))
@@ -303,13 +322,15 @@ class GPEmul:
         if self.scaled_data.with_val:
             vectors.append(self.val_loss_list)
             ylabels.append("Validation loss")
-            vectors.append(self.metric_score_list)
-            ylabels.append(self.watch_metric)
+            for metric in self.metrics:
+                vectors.append(self.metric_score_list[get_metric_name(metric)])
+                ylabels.append(get_metric_name(metric))
         n = len(vectors)
 
-        height = 9.36111
-        width = 5.91667
-        fig = plt.figure(figsize=(2 * width / (4 - n), 2 * height / 3))
+        # height = 9.36111
+        # width = 5.91667
+        # fig = plt.figure(figsize=(2 * width / (4 - n), 2 * height / 3))
+        fig = plt.figure()
         gs = grsp.GridSpec(1, n)
 
         for i, v in enumerate(vectors):
@@ -337,14 +358,13 @@ class GPEmul:
         data_scaler,
         model,
         optimizer,
+        metrics,
         loadpath=PATH,
         filename=FILENAME,
         device=DEVICE_LOAD,
     ):
         print("\nLoading emulator...")
-        emul = cls(
-            data_scaler, model, optimizer, device=device
-        )
+        emul = cls(data_scaler, model, optimizer, metrics, device=device)
         emul.model.load_state_dict(
             torch.load(loadpath + filename, map_location=device)
         )

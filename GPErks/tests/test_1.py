@@ -5,25 +5,27 @@ from pathlib import Path
 
 import gpytorch
 import matplotlib.pyplot as plt
-import numpy
 import numpy as np
 import torch
-from gpytorch.kernels import ScaleKernel, RBFKernel, MaternKernel
+from gpytorch.kernels import MaternKernel, RBFKernel, ScaleKernel
 from sklearn.model_selection import train_test_split
+from torchmetrics import ExplainedVariance, MeanSquaredError, R2Score
 
 from GPErks.data import ScaledData
-from GPErks.gpe import GPEmul, LEARNING_RATE
+from GPErks.gpe import LEARNING_RATE, GPEmul
 from GPErks.models.models import ExactGPModel, LinearMean
 from GPErks.utils.design import read_labels
-from GPErks.utils.metrics import R2Score, IndependentStandardError as ISE
-from GPErks.utils.plotting import plot_dataset
-from GPErks.utils.preprocessing import UnitCubeScaler, StandardScaler
+from GPErks.utils.log import get_logger
+from GPErks.utils.metrics import IndependentStandardError as ISE
+from GPErks.utils.preprocessing import StandardScaler, UnitCubeScaler
 from GPErks.utils.tensor import tensorize
 
 SEED = 8
 KERNEL_DCT = {"Matern": MaternKernel, "RBF": RBFKernel}
 KERNEL = "RBF"
 LOG_TRANSFORM = False
+
+log = get_logger()
 
 
 def main():
@@ -42,7 +44,7 @@ def main():
     X = np.loadtxt(loadpath + "X.txt", dtype=float)
     Y = np.loadtxt(loadpath + "Y.txt", dtype=float)
 
-    xlabels = read_labels(loadpath + "xlabels.txt")
+    # xlabels = read_labels(loadpath + "xlabels.txt")
     ylabels = read_labels(loadpath + "ylabels.txt")
     # plot_dataset(X, Y, xlabels, ylabels)
 
@@ -74,10 +76,18 @@ def main():
 
     X_scaler = UnitCubeScaler()
     y_scaler = StandardScaler(log_transform=LOG_TRANSFORM)
-    train_scaled_data = ScaledData(
-        # X_train, y_train, X_scaler, y_scaler, X_val, y_val  # TODO
-        X_train, y_train, X_scaler, y_scaler,
-    )
+    with_val = True
+    if with_val:
+        train_scaled_data = ScaledData(
+            X_train, y_train, X_scaler, y_scaler, X_val, y_val
+        )
+    else:
+        train_scaled_data = ScaledData(
+            X_train,
+            y_train,
+            X_scaler,
+            y_scaler,
+        )
 
     likelihood = gpytorch.likelihoods.GaussianLikelihood()
 
@@ -88,6 +98,11 @@ def main():
         KERNEL_DCT[KERNEL](ard_num_dims=train_scaled_data.input_size)
     )
 
+    metrics = [ExplainedVariance(), MeanSquaredError(), R2Score()]
+    for _ in metrics:
+        pass
+    metrics = [R2Score()]
+
     model = ExactGPModel(
         train_scaled_data.X_train,
         train_scaled_data.y_train,
@@ -96,13 +111,11 @@ def main():
         kernel,
     )
 
-    optimizer = torch.optim.Adam(
-        model.parameters(),
-        lr=LEARNING_RATE
-    )
+    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
-    emul = GPEmul(train_scaled_data, model, optimizer)
-    emul.train(savepath=savepath)
+    # device=torch.device('cpu')
+    emul = GPEmul(train_scaled_data, model, optimizer, metrics)
+    emul.train(savepath=savepath, save_losses=True)
 
     # ================================================================
     # (4) Saving trained GPE
@@ -115,25 +128,26 @@ def main():
     # NOTE: you need exactly the same training dataset used in (3)
     # ================================================================
     loadpath = savepath
-    emul = GPEmul.load(train_scaled_data, model, optimizer, loadpath)
+    emul = GPEmul.load(train_scaled_data, model, optimizer, metrics, loadpath)
 
     # ================================================================
     # (6) Testing trained GPE at new input points (inference)
     # ================================================================
     y_pred_mean, y_pred_std = emul.predict(X_test)
-    
-    r2s = R2Score(
-    	tensorize(y_test),
-    	tensorize(y_pred_mean)
+
+    r2s = R2Score()(
+        tensorize(y_pred_mean),
+        tensorize(y_test),
     )
-    ise = ISE(
-    	tensorize(y_test),
-    	tensorize(y_pred_mean),
-    	tensorize(y_pred_std)
-    )
-    print(f"\nStatistics on test set:")
-    print(f"  R2Score = {r2s:.4f}")
+    ise = ISE(tensorize(y_test), tensorize(y_pred_mean), tensorize(y_pred_std))
+    print("\nStatistics on test set:")
+    print(f"  R2Score = {r2s:.8f}")
     print(f"  ISE = {ise:.2f} %\n")
+
+    if with_val and not np.isclose(r2s, 0.92854369, rtol=1.0e-5):
+        log.error("INCORRECT R2Score")
+    if not with_val and not np.isclose(r2s, 0.92921608, rtol=1.0e-5):
+        log.error("INCORRECT R2Score")
 
     # ================================================================
     # (7) Plotting predictions vs observations
@@ -145,7 +159,7 @@ def main():
     l = np.argsort(
         y_pred_mean
     )  # let's sort predicted values for a better visualisation
-    
+
     ci = 2  # ~95% confidance interval
 
     axis.scatter(
