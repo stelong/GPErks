@@ -115,7 +115,7 @@ def main():
 
     # device=torch.device('cpu')
     emul = GPEmul(train_scaled_data, model, optimizer, metrics)
-    emul.train(savepath=savepath, save_losses=True)
+    emul.train(savepath=savepath, save_losses=False)  # TODO: re-enable save_losses=True
 
     # ================================================================
     # (4) Saving trained GPE
