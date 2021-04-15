@@ -255,9 +255,7 @@ class GPEmul:
         best_model = torch.load(self.savepath + "checkpoint.pth")
         if self.restart_idx == 0:
             if self.scaled_data.with_val:
-                self.bellepoque, self.delta = analyze_losstruct(
-                    numpy.array(train_stats.val_loss)
-                )
+                self.bellepoque, self.delta = 0, 0.0
             else:
                 self.bellepoque, self.delta = analyze_losstruct(
                     numpy.array(train_stats.train_loss)

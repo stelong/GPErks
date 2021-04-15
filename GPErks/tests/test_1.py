@@ -144,7 +144,7 @@ def main():
     print(f"  R2Score = {r2s:.8f}")
     print(f"  ISE = {ise:.2f} %\n")
 
-    if with_val and not np.isclose(r2s, 0.92854369, rtol=1.0e-5):
+    if with_val and not np.isclose(r2s, 0.93111849, rtol=1.0e-5):
         log.error("INCORRECT R2Score")
     if not with_val and not np.isclose(r2s, 0.92921608, rtol=1.0e-5):
         log.error("INCORRECT R2Score")
