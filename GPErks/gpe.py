@@ -5,6 +5,7 @@ from typing import List, Dict
 import gpytorch
 import matplotlib.gridspec as grsp
 import matplotlib.pyplot as plt
+# plt.switch_backend('TkAgg')
 import numpy
 import numpy as np
 import torch
@@ -264,7 +265,7 @@ class GPEmul:
             print("\nDone. Now the training starts...")
 
         if self.save_losses:
-            self.plot_loss()
+            self.plot_loss(train_stats)
 
         return train_stats, best_model
 
@@ -298,12 +299,10 @@ class GPEmul:
         )
         if self.learn_noise:
             msg += f"\nLikelihood noise: {self.model.likelihood.noise_covar.noise.data.squeeze():.4f}"
-        # TODO: fix, because we don't have these attributes anymore
-        # if self.scaled_data.with_val:
-        #     for metric, best_metric_score in zip(
-        #         self.metrics, self.best_metric_score
-        #     ):
-        #         msg += f"\n{get_metric_name(metric)}: {best_metric_score:.4f}"
+
+        if self.scaled_data.with_val:
+            for metric_name, best_value in self.best_val_metrics_score.items():
+                msg += f"\n{metric_name}: {best_value:.4f}"
         print(msg)
 
     def predict(self, X_new):
@@ -349,36 +348,43 @@ class GPEmul:
 
         return y_samples
 
-    def plot_loss(self):
-        ylabels = ["Training loss"]
-        vectors = [self.train_loss_list]
+    def plot_loss(self, train_stats: TrainStats):
         if self.scaled_data.with_val:
-            vectors.append(self.val_loss_list)
-            ylabels.append("Validation loss")
-            for metric in self.metrics:
-                vectors.append(self.metric_score_list[get_metric_name(metric)])
-                ylabels.append(get_metric_name(metric))
-        n = len(vectors)
+            fig, axes = plt.subplots(1, 1 + len(self.metrics))
+        else:
+            fig, axis = plt.subplots(1, 1)
+            axes = [axis]
 
         # height = 9.36111
         # width = 5.91667
-        # fig = plt.figure(figsize=(2 * width / (4 - n), 2 * height / 3))
-        fig = plt.figure()
-        gs = grsp.GridSpec(1, n)
+        # figsize = (2 * width / (4 - n), 2 * height / 3))
 
-        for i, v in enumerate(vectors):
-            axis = fig.add_subplot(gs[0, i])
-            axis.scatter(numpy.arange(1, len(v) + 1), v)
-            axis.axvline(self.idx_best + 1, c="r", ls="--", lw=0.8)
-            axis.set_xlabel("Epochs", fontsize=12)
-            axis.set_ylabel(ylabels[i], fontsize=12)
+        loss_len = len(train_stats.train_loss)
+
+        axes[0].plot(numpy.arange(loss_len), train_stats.train_loss, zorder=1, label="training loss")
+        axes[0].axvline(train_stats.idx_best, c="r", ls="--", lw=0.8, zorder=2)
+        axes[0].set_ylabel("Loss", fontsize=12, zorder=1)
+        axes[0].set_xlabel("Epoch", fontsize=12)
+
+        if self.scaled_data.with_val:
+            axes[0].plot(numpy.arange(loss_len), train_stats.val_loss, zorder=1, label="validation loss")
+
+            for metric, axis in zip(self.metrics, axes.flat[1:]):
+                metric_name = get_metric_name(metric)
+                axis.plot(numpy.arange(loss_len), train_stats.val_metrics_score[metric_name])
+                axis.axvline(train_stats.idx_best, c="r", ls="--", lw=0.8)
+                axis.set_xlabel("Epoch", fontsize=12)
+                axis.set_ylabel(metric_name, fontsize=12)
+
+        axes[0].legend()
 
         fig.tight_layout()
-        plt.savefig(
-            self.savepath + f"loss_vs_epochs_restart_{self.restart_idx}.pdf",
-            bbox_inches="tight",
-            dpi=1000,
-        )
+        # plt.savefig(
+        #     self.savepath + f"loss_vs_epochs_restart_{self.restart_idx}.pdf",
+        #     bbox_inches="tight",
+        #     dpi=1000,
+        # )
+        plt.show()
 
     def save(self, filename=FILENAME):
         print("\nSaving trained emulator...")
