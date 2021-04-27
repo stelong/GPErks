@@ -6,3 +6,4 @@ venv/
 **/__pycache__/
 GPErks.egg-info/
 GPErks/tests/temp/
+GPErks/tests/output/

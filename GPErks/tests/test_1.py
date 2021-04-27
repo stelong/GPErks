@@ -15,6 +15,7 @@ from GPErks.data import ScaledData
 from GPErks.gpe import LEARNING_RATE, GPEmul
 from GPErks.models.models import ExactGPModel, LinearMean
 from GPErks.utils.design import read_labels
+from GPErks.utils.earlystopping import FixedEpochEarlyStoppingCriterion
 from GPErks.utils.log import get_logger
 from GPErks.utils.metrics import IndependentStandardError as ISE
 from GPErks.utils.preprocessing import StandardScaler, UnitCubeScaler
@@ -101,7 +102,7 @@ def main():
     metrics = [ExplainedVariance(), MeanSquaredError(), R2Score()]
     for _ in metrics:
         pass
-    metrics = [R2Score()]
+    metrics = [R2Score(), MeanSquaredError()]
 
     model = ExactGPModel(
         train_scaled_data.X_train,
@@ -115,7 +116,11 @@ def main():
 
     # device=torch.device('cpu')
     emul = GPEmul(train_scaled_data, model, optimizer, metrics)
-    emul.train(savepath=savepath, save_losses=True)
+    emul.train(
+        savepath=savepath,
+        save_losses=True,
+        early_stopping_criterion_class=FixedEpochEarlyStoppingCriterion,
+    )
 
     # ================================================================
     # (4) Saving trained GPE
@@ -144,9 +149,9 @@ def main():
     print(f"  R2Score = {r2s:.8f}")
     print(f"  ISE = {ise:.2f} %\n")
 
-    if with_val and not np.isclose(r2s, 0.92854369, rtol=1.0e-5):
+    if with_val and not np.isclose(r2s, 0.93622035, rtol=1.0e-5):
         log.error("INCORRECT R2Score")
-    if not with_val and not np.isclose(r2s, 0.92921608, rtol=1.0e-5):
+    if not with_val and not np.isclose(r2s, 0.93622035, rtol=1.0e-5):
         log.error("INCORRECT R2Score")
 
     # ================================================================
@@ -160,7 +165,7 @@ def main():
         y_pred_mean
     )  # let's sort predicted values for a better visualisation
 
-    ci = 2  # ~95% confidance interval
+    ci = 2  # ~95% confidence interval
 
     axis.scatter(
         np.arange(len(l)),

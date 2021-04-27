@@ -1,15 +1,20 @@
+from collections import defaultdict
 from copy import deepcopy
+from typing import List, Type
 
 import gpytorch
 import matplotlib.gridspec as grsp
 import matplotlib.pyplot as plt
+# plt.switch_backend('TkAgg')
 import numpy
 import torch
 
 from GPErks.data import ScaledData
-from GPErks.utils.earlystopping import EarlyStopping, analyze_losstruct
+from GPErks.utils.earlystopping import EarlyStoppingCriterion
+from GPErks.utils.log import get_logger
 from GPErks.utils.metrics import get_metric_name
 from GPErks.utils.tensor import tensorize
+from GPErks.utils.train_stats import TrainStats
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 DEVICE_LOAD = torch.device("cpu")
@@ -18,12 +23,15 @@ LEARN_NOISE = True
 LEARNING_RATE = 0.1
 MAX_EPOCHS = 1000
 N_DRAWS = 1000
-N_RESTARTS = 1
+N_RESTARTS = 2
 PATH = "./"
 PATIENCE = 20
 SAVE_LOSSES = False
 SCALE_DATA = True
 WATCH_METRIC = "R2Score"
+
+
+log = get_logger()
 
 
 class GPEmul:
@@ -53,7 +61,7 @@ class GPEmul:
 
         self.optimizer = optimizer
         self.learning_rate = learning_rate
-        self.metrics = metrics  # TODO manage multiple metrics
+        self.metrics = metrics
 
     def train(
         self,
@@ -62,7 +70,7 @@ class GPEmul:
         patience=PATIENCE,
         savepath=PATH,
         save_losses=SAVE_LOSSES,
-        watch_metric=WATCH_METRIC,
+        early_stopping_criterion_class=None,
     ):
         print("\nTraining emulator...")
         self.n_restarts = n_restarts
@@ -70,8 +78,8 @@ class GPEmul:
         self.patience = patience
         self.savepath = savepath
         self.save_losses = save_losses
-        self.watch_metric = get_metric_name(self.metrics)
 
+        # TODO: clean up (since aggregate values are computed later over restarts' TrainStats)
         train_loss_list = []
         model_state_list = []
         if self.scaled_data.with_val:
@@ -79,7 +87,6 @@ class GPEmul:
             metric_score_list = {get_metric_name(m): [] for m in self.metrics}
 
         self.idx_best_list = []
-        i = 0
 
         X_train = self.scaled_data.X_train.to(self.device)
         y_train = self.scaled_data.y_train.to(self.device)
@@ -91,51 +98,76 @@ class GPEmul:
             X_val = self.scaled_data.X_val
             y_val = self.scaled_data.y_val
 
-        while i < n_restarts + 1:
-            self.restart_idx = i
-            if self.restart_idx == 0:
-                print("\nAnalyzing loss structure...")
-                self.print_msg = False
-                self.delta = 0
-                self.bellepoque = self.max_epochs - 1
-            else:
-                print(f"\nRestart {self.restart_idx}...")
-                self.print_msg = True
+        restarts_train_stats: List[TrainStats] = []
+        restarts_best_models = []
 
-            try:
-                self.train_once(X_train, y_train, X_val, y_val)
-            except RuntimeError as err:
-                print(
-                    f"Repeating restart {self.restart_idx} because of RuntimeError: {err.args[0]}"
-                )
-            else:
-                i += 1
+        current_restart = 1
+        while current_restart <= n_restarts:
+            log.info(f"Running restart {current_restart}...")
+            self.restart_idx = current_restart
 
-                if self.restart_idx > 0:
-                    self.idx_best_list.append(self.idx_best)
-                    train_loss_list.append(self.train_loss_list[self.idx_best])
-                    model_state_list.append(self.best_model)
-                    if self.scaled_data.with_val:
-                        val_loss_list.append(self.val_loss_list[self.idx_best])
-                        for metric_name in self.metric_score_list.keys():
-                            metric_score_list[metric_name].append(
-                                self.metric_score_list[metric_name][
-                                    self.idx_best
-                                ]
-                            )
+            # if self.restart_idx == 0:
+            #     print("\nAnalyzing loss structure...")
+            #     self.print_msg = False
+            #     self.delta = 0
+            #     self.bellepoque = self.max_epochs - 1
+            # else:
+            #     print(f"\nRestart {self.restart_idx}...")
+            # self.print_msg = True
 
+            # try:
+            restart_train_stats, restart_best_model = self.train_once(
+                X_train, y_train, X_val, y_val, early_stopping_criterion_class
+            )
+            # if self.restart_idx > 0:
+            restarts_train_stats.append(restart_train_stats)
+            restarts_best_models.append(restart_best_model)
+            # except RuntimeError as err:
+            #     print(
+            #         f"Repeating restart {self.restart_idx} because of RuntimeError: {err.args[0]}"
+            #     )
+            # else:
+            log.info(f"Run restart {current_restart}.")
+            current_restart += 1
+
+        train_loss_list = [rts.train_loss[rts.idx_best] for rts in
+                           restarts_train_stats]
+        idx_best = numpy.argmin(train_loss_list)
         if self.scaled_data.with_val:
-            idx_min = numpy.argmin(val_loss_list)
-            self.best_metric_score = [
-                metric_score_list[m][idx_min]
-                for m in self.metric_score_list.keys()
-            ]
-        else:
-            idx_min = numpy.argmin(train_loss_list)
-        self.best_restart = idx_min + 1
-        self.best_epoch = self.idx_best_list[idx_min] + 1
+            val_loss_list = [rts.val_loss[rts.idx_best] for rts in restarts_train_stats]
+            idx_best = numpy.argmin(val_loss_list)
 
-        self.best_model = model_state_list[idx_min]
+        # TODO: try if they work AFTER having computed metric values for training data in train_once
+        # train_metrics_score_list = defaultdict(list)
+        # for rts in restarts_train_stats:
+        #     for metric_name, metric_values in rts.train_metrics_score.items():
+        #         train_metrics_score_list[metric_name].append(
+        #             metric_values[rts.idx_best]
+        #         )
+        # self.best_train_metrics_score = {
+        #     metric_name: best_values[idx_best]
+        #     for metric_name, best_values in train_metrics_score_list.items()
+        # }
+
+        val_metrics_score_list = None
+        if self.scaled_data.with_val:
+            val_metrics_score_list = defaultdict(list)
+            for rts in restarts_train_stats:
+                for metric_name, metric_values in rts.val_metrics_score.items():
+                    val_metrics_score_list[metric_name].append(
+                        metric_values[rts.idx_best]
+                    )
+            self.best_val_metrics_score = {
+                metric_name: best_values[idx_best]
+                for metric_name, best_values in val_metrics_score_list.items()
+            }
+
+        idx_best_list = [rts.idx_best for rts in restarts_train_stats]
+
+        self.best_restart = idx_best + 1
+        self.best_epoch = idx_best_list[idx_best] + 1
+
+        self.best_model = restarts_best_models[idx_best]  # TODO: improve
         self.model.load_state_dict(self.best_model)
 
         print(
@@ -144,7 +176,14 @@ class GPEmul:
         print("\nThe fitted emulator hyperparameters are:")
         self.print_stats()
 
-    def train_once(self, X_train, y_train, X_val, y_val):
+    def train_once(
+            self,
+            X_train,
+            y_train,
+            X_val,
+            y_val,
+            early_stopping_criterion_class: Type[EarlyStoppingCriterion],
+    ):
         self.model.load_state_dict(self.init_state)
 
         if self.restart_idx > 0:
@@ -172,69 +211,64 @@ class GPEmul:
             self.model.likelihood, self.model
         )
 
-        early_stopping = EarlyStopping(
-            self.patience, self.delta, self.savepath
+        # early_stopping = EarlyStopping(
+        #     self.patience, self.delta, self.savepath
+        # )
+
+        restart_model_checkpoint_file = f"{self.savepath}restart{self.restart_idx}_checkpoint.pth"
+        train_stats = TrainStats(list(map(get_metric_name, self.metrics)))
+        early_stopping_criterion: EarlyStoppingCriterion = early_stopping_criterion_class(
+            self.model, train_stats, restart_model_checkpoint_file
         )
 
-        self.train_loss_list = []
-        if self.scaled_data.with_val:
-            self.val_loss_list = []
-            self.metric_score_list = {
-                get_metric_name(m): [] for m in self.metrics
-            }
-
         for epoch in range(self.max_epochs):
+            train_stats.current_epoch = epoch + 1
             train_loss = self.train_step(X_train, y_train)
+            train_stats.train_loss.append(train_loss)
+            # TODO: compute train_metrics_score
+            msg = (
+                    f"[{epoch + 1:>{len(str(self.max_epochs))}}/{self.max_epochs:>{len(str(self.max_epochs))}}] "
+                    + f"Training Loss: {train_loss:.4f}"
+            )
+
             if self.scaled_data.with_val:
                 val_loss, metric_scores = self.val_step(X_val, y_val)
-
-            msg = (
-                f"[{epoch+1:>{len(str(self.max_epochs))}}/{self.max_epochs:>{len(str(self.max_epochs))}}] "
-                + f"Training Loss: {train_loss:.4f}"
-            )
-            if self.scaled_data.with_val:
+                train_stats.val_loss.append(val_loss)
                 msg += f" - Validation Loss: {val_loss:.4f}"
                 for metric, metric_score in zip(self.metrics, metric_scores):
-                    msg += f" - {get_metric_name(metric)}: {metric_score:.4f}"
-            if self.print_msg:
-                print(msg)
+                    metric_name = get_metric_name(metric)
+                    msg += f" - {metric_name}: {metric_score:.4f}"
+                    train_stats.val_metrics_score[metric_name].append(metric_score)
+            # if self.print_msg:
+            print(msg)
 
-            self.train_loss_list.append(train_loss)
-            if self.scaled_data.with_val:
-                self.val_loss_list.append(val_loss)
-                for metric_name, metric_score in zip(
-                    self.metric_score_list.keys(), metric_scores
-                ):
-                    self.metric_score_list[metric_name].append(metric_score)
-
-            if epoch >= self.bellepoque:
-                if self.scaled_data.with_val:
-                    early_stopping(val_loss, self.model)
-                else:
-                    early_stopping(train_loss, self.model)
-            if early_stopping.early_stop:
-                print("Early stopping!")
+            early_stopping_criterion.evaluate()
+            if early_stopping_criterion.is_stopped:
                 break
 
-        self.best_model = torch.load(self.savepath + "checkpoint.pth")
-        if self.scaled_data.with_val:
-            self.idx_best = numpy.argmin(self.val_loss_list)
-        else:
-            self.idx_best = numpy.argmin(self.train_loss_list)
+            # if epoch >= self.bellepoque:
+            #     if self.scaled_data.with_val:
+            #         early_stopping(val_loss, self.model)
+            #     else:
+            #         early_stopping(train_loss, self.model)
+            # if early_stopping.early_stop:
+            #     print("Early stopping!")
+            #     break
 
-        if self.restart_idx == 0:
-            if self.scaled_data.with_val:
-                self.bellepoque, self.delta = analyze_losstruct(
-                    numpy.array(self.val_loss_list)
-                )
-            else:
-                self.bellepoque, self.delta = analyze_losstruct(
-                    numpy.array(self.train_loss_list)
-                )
-            print("\nDone. Now the training starts...")
+        best_model = torch.load(restart_model_checkpoint_file)
+        # if self.restart_idx == 0:
+        #     if self.scaled_data.with_val:
+        #         self.bellepoque, self.delta = 0, 0.0
+        #     else:
+        #         self.bellepoque, self.delta = analyze_losstruct(
+        #             numpy.array(train_stats.train_loss)
+        #         )
+        #     print("\nDone. Now the training starts...")
 
         if self.save_losses:
-            self.plot_loss()
+            self.plot_loss(train_stats)
+
+        return train_stats, best_model
 
     def train_step(self, X_train, y_train):
         self.model.train()
@@ -266,11 +300,10 @@ class GPEmul:
         )
         if self.learn_noise:
             msg += f"\nLikelihood noise: {self.model.likelihood.noise_covar.noise.data.squeeze():.4f}"
+
         if self.scaled_data.with_val:
-            for metric, best_metric_score in zip(
-                self.metrics, self.best_metric_score
-            ):
-                msg += f"\n{get_metric_name(metric)}: {best_metric_score:.4f}"
+            for metric_name, best_value in self.best_val_metrics_score.items():
+                msg += f"\n{metric_name}: {best_value:.4f}"
         print(msg)
 
     def predict(self, X_new):
@@ -316,36 +349,43 @@ class GPEmul:
 
         return y_samples
 
-    def plot_loss(self):
-        ylabels = ["Training loss"]
-        vectors = [self.train_loss_list]
+    def plot_loss(self, train_stats: TrainStats):
         if self.scaled_data.with_val:
-            vectors.append(self.val_loss_list)
-            ylabels.append("Validation loss")
-            for metric in self.metrics:
-                vectors.append(self.metric_score_list[get_metric_name(metric)])
-                ylabels.append(get_metric_name(metric))
-        n = len(vectors)
+            fig, axes = plt.subplots(1, 1 + len(self.metrics))
+        else:
+            fig, axis = plt.subplots(1, 1)
+            axes = [axis]
 
         # height = 9.36111
         # width = 5.91667
-        # fig = plt.figure(figsize=(2 * width / (4 - n), 2 * height / 3))
-        fig = plt.figure()
-        gs = grsp.GridSpec(1, n)
+        # figsize = (2 * width / (4 - n), 2 * height / 3))
 
-        for i, v in enumerate(vectors):
-            axis = fig.add_subplot(gs[0, i])
-            axis.scatter(numpy.arange(1, len(v) + 1), v)
-            axis.axvline(self.idx_best + 1, c="r", ls="--", lw=0.8)
-            axis.set_xlabel("Epochs", fontsize=12)
-            axis.set_ylabel(ylabels[i], fontsize=12)
+        loss_len = len(train_stats.train_loss)
+
+        axes[0].plot(numpy.arange(loss_len), train_stats.train_loss, zorder=1, label="training loss")
+        axes[0].axvline(train_stats.idx_best, c="r", ls="--", lw=0.8, zorder=2)
+        axes[0].set_ylabel("Loss", fontsize=12, zorder=1)
+        axes[0].set_xlabel("Epoch", fontsize=12)
+
+        if self.scaled_data.with_val:
+            axes[0].plot(numpy.arange(loss_len), train_stats.val_loss, zorder=1, label="validation loss")
+
+            for metric, axis in zip(self.metrics, axes.flat[1:]):
+                metric_name = get_metric_name(metric)
+                axis.plot(numpy.arange(loss_len), train_stats.val_metrics_score[metric_name])
+                axis.axvline(train_stats.idx_best, c="r", ls="--", lw=0.8)
+                axis.set_xlabel("Epoch", fontsize=12)
+                axis.set_ylabel(metric_name, fontsize=12)
+
+        axes[0].legend()
 
         fig.tight_layout()
-        plt.savefig(
-            self.savepath + f"loss_vs_epochs_restart_{self.restart_idx}.pdf",
-            bbox_inches="tight",
-            dpi=1000,
-        )
+        # plt.savefig(
+        #     self.savepath + f"loss_vs_epochs_restart_{self.restart_idx}.pdf",
+        #     bbox_inches="tight",
+        #     dpi=1000,
+        # )
+        plt.show()
 
     def save(self, filename=FILENAME):
         print("\nSaving trained emulator...")
