@@ -1,19 +1,20 @@
 from collections import defaultdict
 from copy import deepcopy
-from typing import List, Dict
+from typing import List, Type
 
 import gpytorch
 import matplotlib.gridspec as grsp
 import matplotlib.pyplot as plt
 # plt.switch_backend('TkAgg')
 import numpy
-import numpy as np
 import torch
 
 from GPErks.data import ScaledData
-from GPErks.utils.earlystopping import EarlyStopping, analyze_losstruct
+from GPErks.utils.earlystopping import EarlyStoppingCriterion
+from GPErks.utils.log import get_logger
 from GPErks.utils.metrics import get_metric_name
 from GPErks.utils.tensor import tensorize
+from GPErks.utils.train_stats import TrainStats
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 DEVICE_LOAD = torch.device("cpu")
@@ -22,7 +23,7 @@ LEARN_NOISE = True
 LEARNING_RATE = 0.1
 MAX_EPOCHS = 1000
 N_DRAWS = 1000
-N_RESTARTS = 1
+N_RESTARTS = 2
 PATH = "./"
 PATIENCE = 20
 SAVE_LOSSES = False
@@ -30,27 +31,7 @@ SCALE_DATA = True
 WATCH_METRIC = "R2Score"
 
 
-class TrainStats:
-    def __init__(self, metrics_names):
-        self.current_epoch: int = 0
-        self.train_loss: List[float] = []
-        self.val_loss: List[float] = []
-        self.train_metrics_score: Dict[str, List[float]] = {
-            metric_name: []
-            for metric_name in metrics_names
-        }
-        self.val_metrics_score: Dict[str, List[float]] = {
-            metric_name: []
-            for metric_name in metrics_names
-        }
-        print('')
-
-    @property
-    def idx_best(self):
-        if len(self.val_loss) > 0:
-            return numpy.argmin(self.val_loss)
-        else:
-            return numpy.argmin(self.train_loss)
+log = get_logger()
 
 
 class GPEmul:
@@ -89,6 +70,7 @@ class GPEmul:
         patience=PATIENCE,
         savepath=PATH,
         save_losses=SAVE_LOSSES,
+        early_stopping_criterion_class=None,
     ):
         print("\nTraining emulator...")
         self.n_restarts = n_restarts
@@ -105,7 +87,6 @@ class GPEmul:
             metric_score_list = {get_metric_name(m): [] for m in self.metrics}
 
         self.idx_best_list = []
-        i = 0
 
         X_train = self.scaled_data.X_train.to(self.device)
         y_train = self.scaled_data.y_train.to(self.device)
@@ -119,30 +100,35 @@ class GPEmul:
 
         restarts_train_stats: List[TrainStats] = []
         restarts_best_models = []
-        while i < n_restarts + 1:
-            self.restart_idx = i
-            if self.restart_idx == 0:
-                print("\nAnalyzing loss structure...")
-                self.print_msg = False
-                self.delta = 0
-                self.bellepoque = self.max_epochs - 1
-            else:
-                print(f"\nRestart {self.restart_idx}...")
-                self.print_msg = True
 
-            try:
-                restart_train_stats, restart_best_model = self.train_once(
-                    X_train, y_train, X_val, y_val
-                )
-                if self.restart_idx > 0:
-                    restarts_train_stats.append(restart_train_stats)
-                    restarts_best_models.append(restart_best_model)
-            except RuntimeError as err:
-                print(
-                    f"Repeating restart {self.restart_idx} because of RuntimeError: {err.args[0]}"
-                )
-            else:
-                i += 1
+        current_restart = 1
+        while current_restart <= n_restarts:
+            log.info(f"Running restart {current_restart}...")
+            self.restart_idx = current_restart
+
+            # if self.restart_idx == 0:
+            #     print("\nAnalyzing loss structure...")
+            #     self.print_msg = False
+            #     self.delta = 0
+            #     self.bellepoque = self.max_epochs - 1
+            # else:
+            #     print(f"\nRestart {self.restart_idx}...")
+            # self.print_msg = True
+
+            # try:
+            restart_train_stats, restart_best_model = self.train_once(
+                X_train, y_train, X_val, y_val, early_stopping_criterion_class
+            )
+            # if self.restart_idx > 0:
+            restarts_train_stats.append(restart_train_stats)
+            restarts_best_models.append(restart_best_model)
+            # except RuntimeError as err:
+            #     print(
+            #         f"Repeating restart {self.restart_idx} because of RuntimeError: {err.args[0]}"
+            #     )
+            # else:
+            log.info(f"Run restart {current_restart}.")
+            current_restart += 1
 
         train_loss_list = [rts.train_loss[rts.idx_best] for rts in
                            restarts_train_stats]
@@ -190,7 +176,14 @@ class GPEmul:
         print("\nThe fitted emulator hyperparameters are:")
         self.print_stats()
 
-    def train_once(self, X_train, y_train, X_val, y_val):
+    def train_once(
+            self,
+            X_train,
+            y_train,
+            X_val,
+            y_val,
+            early_stopping_criterion_class: Type[EarlyStoppingCriterion],
+    ):
         self.model.load_state_dict(self.init_state)
 
         if self.restart_idx > 0:
@@ -218,12 +211,18 @@ class GPEmul:
             self.model.likelihood, self.model
         )
 
-        early_stopping = EarlyStopping(
-            self.patience, self.delta, self.savepath
+        # early_stopping = EarlyStopping(
+        #     self.patience, self.delta, self.savepath
+        # )
+
+        restart_model_checkpoint_file = f"{self.savepath}restart{self.restart_idx}_checkpoint.pth"
+        train_stats = TrainStats(list(map(get_metric_name, self.metrics)))
+        early_stopping_criterion: EarlyStoppingCriterion = early_stopping_criterion_class(
+            self.model, train_stats, restart_model_checkpoint_file
         )
 
-        train_stats = TrainStats(list(map(get_metric_name, self.metrics)))
         for epoch in range(self.max_epochs):
+            train_stats.current_epoch = epoch + 1
             train_loss = self.train_step(X_train, y_train)
             train_stats.train_loss.append(train_loss)
             # TODO: compute train_metrics_score
@@ -240,27 +239,31 @@ class GPEmul:
                     metric_name = get_metric_name(metric)
                     msg += f" - {metric_name}: {metric_score:.4f}"
                     train_stats.val_metrics_score[metric_name].append(metric_score)
-            if self.print_msg:
-                print(msg)
+            # if self.print_msg:
+            print(msg)
 
-            if epoch >= self.bellepoque:
-                if self.scaled_data.with_val:
-                    early_stopping(val_loss, self.model)
-                else:
-                    early_stopping(train_loss, self.model)
-            if early_stopping.early_stop:
-                print("Early stopping!")
+            early_stopping_criterion.evaluate()
+            if early_stopping_criterion.is_stopped:
                 break
 
-        best_model = torch.load(self.savepath + "checkpoint.pth")
-        if self.restart_idx == 0:
-            if self.scaled_data.with_val:
-                self.bellepoque, self.delta = 0, 0.0
-            else:
-                self.bellepoque, self.delta = analyze_losstruct(
-                    numpy.array(train_stats.train_loss)
-                )
-            print("\nDone. Now the training starts...")
+            # if epoch >= self.bellepoque:
+            #     if self.scaled_data.with_val:
+            #         early_stopping(val_loss, self.model)
+            #     else:
+            #         early_stopping(train_loss, self.model)
+            # if early_stopping.early_stop:
+            #     print("Early stopping!")
+            #     break
+
+        best_model = torch.load(restart_model_checkpoint_file)
+        # if self.restart_idx == 0:
+        #     if self.scaled_data.with_val:
+        #         self.bellepoque, self.delta = 0, 0.0
+        #     else:
+        #         self.bellepoque, self.delta = analyze_losstruct(
+        #             numpy.array(train_stats.train_loss)
+        #         )
+        #     print("\nDone. Now the training starts...")
 
         if self.save_losses:
             self.plot_loss(train_stats)
