@@ -10,7 +10,8 @@ import numpy
 import torch
 
 from GPErks.data import ScaledData
-from GPErks.utils.earlystopping import EarlyStoppingCriterion
+from GPErks.utils.earlystopping import EarlyStoppingCriterion, \
+    NoEarlyStoppingCriterion
 from GPErks.utils.log import get_logger
 from GPErks.utils.metrics import get_metric_name
 from GPErks.utils.tensor import tensorize
@@ -70,7 +71,7 @@ class GPEmul:
         patience=PATIENCE,
         savepath=PATH,
         save_losses=SAVE_LOSSES,
-        early_stopping_criterion_class=None,
+        early_stopping_criterion=NoEarlyStoppingCriterion(),
     ):
         print("\nTraining emulator...")
         self.n_restarts = n_restarts
@@ -117,7 +118,7 @@ class GPEmul:
 
             # try:
             restart_train_stats, restart_best_model = self.train_once(
-                X_train, y_train, X_val, y_val, early_stopping_criterion_class
+                X_train, y_train, X_val, y_val, early_stopping_criterion
             )
             # if self.restart_idx > 0:
             restarts_train_stats.append(restart_train_stats)
@@ -182,7 +183,7 @@ class GPEmul:
             y_train,
             X_val,
             y_val,
-            early_stopping_criterion_class: Type[EarlyStoppingCriterion],
+            early_stopping_criterion: EarlyStoppingCriterion,
     ):
         self.model.load_state_dict(self.init_state)
 
@@ -217,9 +218,12 @@ class GPEmul:
 
         restart_model_checkpoint_file = f"{self.savepath}restart{self.restart_idx}_checkpoint.pth"
         train_stats = TrainStats(list(map(get_metric_name, self.metrics)))
-        early_stopping_criterion: EarlyStoppingCriterion = early_stopping_criterion_class(
-            self.model, train_stats, restart_model_checkpoint_file
-        )
+        if early_stopping_criterion:
+            early_stopping_criterion.enable(
+                self.model,
+                train_stats,
+                restart_model_checkpoint_file,
+            )
 
         for epoch in range(self.max_epochs):
             train_stats.current_epoch = epoch + 1
@@ -242,9 +246,10 @@ class GPEmul:
             # if self.print_msg:
             print(msg)
 
-            early_stopping_criterion.evaluate()
-            if early_stopping_criterion.is_stopped:
-                break
+            if early_stopping_criterion:
+                early_stopping_criterion.evaluate()
+                if early_stopping_criterion.is_verified:
+                    break
 
             # if epoch >= self.bellepoque:
             #     if self.scaled_data.with_val:

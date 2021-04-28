@@ -1,4 +1,5 @@
 from abc import ABCMeta, abstractmethod
+from typing import Optional
 
 import gpytorch
 import numpy as np
@@ -78,28 +79,34 @@ log = get_logger()
 
 
 class EarlyStoppingCriterion(metaclass=ABCMeta):
-    def __init__(
+    def __init__(self):
+        self.model: Optional[gpytorch.models.ExactGP] = None
+        self.train_stats: Optional[TrainStats] = None
+        self.save_path = None
+        self.is_verified = False
+
+    def enable(
             self,
             model: gpytorch.models.ExactGP,
             train_stats: TrainStats,
             save_path,
     ):
-        self.model: gpytorch.models.ExactGP = model
-        self.train_stats: TrainStats = train_stats
+        self.model = model
+        self.train_stats = train_stats
         self.save_path = save_path
-        self.is_stopped = False
+        self.is_verified = False
 
     def evaluate(self):
-        if self._stop():
+        if self._should_stop():
             log.debug("Early stopping: calling on_stop()")
-            self.is_stopped = True
+            self.is_verified = True
             self._on_stop()
         else:
             log.debug("Early stopping: calling on_continue()")
             self._on_continue()
 
     @abstractmethod
-    def _stop(self) -> bool:
+    def _should_stop(self) -> bool:
         pass
 
     @abstractmethod
@@ -111,7 +118,7 @@ class EarlyStoppingCriterion(metaclass=ABCMeta):
         pass
 
 
-class SnapshotEarlyStoppingCriterion(EarlyStoppingCriterion, metaclass=ABCMeta):
+class SnapshottingEarlyStoppingCriterion(EarlyStoppingCriterion, metaclass=ABCMeta):
 
     def _on_stop(self):
         log.info("SnapshotEarlyStoppingCriterion on_stop().")
@@ -120,10 +127,26 @@ class SnapshotEarlyStoppingCriterion(EarlyStoppingCriterion, metaclass=ABCMeta):
         log.info(f"Saved model to {self.save_path} file.")
 
 
-class FixedEpochEarlyStoppingCriterion(SnapshotEarlyStoppingCriterion):
+class NoEarlyStoppingCriterion(EarlyStoppingCriterion):
 
-    def _stop(self) -> bool:
-        return self.train_stats.current_epoch == 88
+    def _should_stop(self) -> bool:
+        return False
+
+    def _on_stop(self):
+        pass
+
+    def _on_continue(self):
+        pass
+
+
+class FixedEpochEarlyStoppingCriterion(SnapshottingEarlyStoppingCriterion):
+
+    def __init__(self, epoch: int):
+        super().__init__()
+        self.epoch: int = epoch
+
+    def _should_stop(self) -> bool:
+        return self.train_stats.current_epoch == self.epoch
 
     def _on_stop(self):
         super()._on_stop()
