@@ -15,7 +15,8 @@ from GPErks.data import ScaledData
 from GPErks.gpe import LEARNING_RATE, GPEmul
 from GPErks.models.models import ExactGPModel, LinearMean
 from GPErks.utils.design import read_labels
-from GPErks.utils.earlystopping import FixedEpochEarlyStoppingCriterion
+from GPErks.utils.earlystopping import FixedEpochEarlyStoppingCriterion, \
+    NoEarlyStoppingCriterion
 from GPErks.utils.log import get_logger
 from GPErks.utils.metrics import IndependentStandardError as ISE
 from GPErks.utils.preprocessing import StandardScaler, UnitCubeScaler
@@ -113,13 +114,15 @@ def main():
     )
 
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
+    esc = FixedEpochEarlyStoppingCriterion(88)
+    # esc = NoEarlyStoppingCriterion()  # TODO: investigate if snapshot is required anyway
 
     # device=torch.device('cpu')
     emul = GPEmul(train_scaled_data, model, optimizer, metrics)
     emul.train(
         savepath=savepath,
         save_losses=True,
-        early_stopping_criterion_class=FixedEpochEarlyStoppingCriterion,
+        early_stopping_criterion=esc,
     )
 
     # ================================================================
