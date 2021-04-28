@@ -2,7 +2,7 @@ from abc import ABCMeta, abstractmethod
 from typing import Optional
 
 import gpytorch
-import numpy as np
+import numpy
 import torch
 
 from GPErks.utils.train_stats import TrainStats
@@ -153,5 +153,46 @@ class FixedEpochEarlyStoppingCriterion(SnapshottingEarlyStoppingCriterion):
         log.info("FixedEpochEarlyStoppingCriterion on_stop().")
 
     def _on_continue(self):
-        # log.info("FixedEpochEarlyStoppingCriterion on_continue().")
+        log.info("FixedEpochEarlyStoppingCriterion on_continue().")
         pass
+
+
+class GLEarlyStoppingCriterion(SnapshottingEarlyStoppingCriterion):
+
+    def __init__(self, alpha: float, patience: int):
+        super().__init__()
+        self.alpha: float = alpha
+        self.patience: int = patience
+        self.counter: int = 0
+        self.Eva_opt: float = numpy.infty
+        self.GL: List = []
+
+    def _should_stop(self) -> bool:
+        return self.counter == self.patience
+
+    def _on_stop(self):
+        super()._on_stop()
+        log.info("GLEpochEarlyStoppingCriterion on_stop().")
+
+        self.train_stats.early_stopping_enabled = True
+        self.train_stats.idx_best = self.train_stats.current_epoch - self.patience
+
+        # TODO: CREATE A "RESET CLASS" METHOD (OTHERWISE NEXT RESTARTS WILL FAIL)
+        self.Eva_opt = numpy.infty
+        self.GL = []
+        self.counter = 0
+
+    def _on_continue(self):
+        log.info("GLEpochEarlyStoppingCriterion on_continue().")
+    
+        if self.train_stats.val_loss[-1] < self.Eva_opt:
+            self.Eva_opt = self.train_stats.val_loss[-1]
+        self.GL.append( 100 * numpy.abs(1 - self.train_stats.val_loss[-1] / self.Eva_opt) )
+
+        if self.GL[-1] > self.alpha:
+            log.info(f"Triggered GLEpochEarlyStoppingCriterion countdown: {self.patience - self.counter}.")
+            self.counter += 1
+        else:
+            if self.counter > 0:          
+                log.info(f"Resetting GLEpochEarlyStoppingCriterion countdown.")
+            self.counter = 0
