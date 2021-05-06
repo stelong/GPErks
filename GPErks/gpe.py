@@ -11,7 +11,7 @@ import torch
 
 from GPErks.data import ScaledData
 from GPErks.utils.earlystopping import EarlyStoppingCriterion, \
-    NoEarlyStoppingCriterion
+    NoEarlyStoppingCriterion, GLEarlyStoppingCriterion
 from GPErks.utils.log import get_logger
 from GPErks.utils.metrics import get_metric_name
 from GPErks.utils.tensor import tensorize
