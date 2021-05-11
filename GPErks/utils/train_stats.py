@@ -1,7 +1,5 @@
 from typing import List, Dict
 
-import numpy
-
 
 class TrainStats:
     def __init__(self, metrics_names):
@@ -16,21 +14,3 @@ class TrainStats:
             metric_name: []
             for metric_name in metrics_names
         }
-        # self.early_stopping_enabled: bool = False
-        # print('')
-
-    # @property
-    # def idx_best(self):
-    #     TODO: improve
-        # if self.early_stopping_enabled:
-        #     return self._idx_best
-        # else:
-        #     if len(self.val_loss) > 0:
-        #         return numpy.argmin(self.val_loss)
-        #     else:
-        #         return numpy.argmin(self.train_loss)
-    #
-    # @idx_best.setter
-    # def idx_best(self, value: int):
-    #     TODO: improve
-        # self._idx_best: int = value

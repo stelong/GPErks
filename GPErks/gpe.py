@@ -5,7 +5,7 @@ from typing import List, Type, Optional
 import gpytorch
 import matplotlib.gridspec as grsp
 import matplotlib.pyplot as plt
-plt.switch_backend('TkAgg')
+# plt.switch_backend('TkAgg')
 import numpy
 import torch
 
@@ -23,7 +23,7 @@ FILENAME = "gpe.pth"
 LEARN_NOISE = True
 LEARNING_RATE = 0.1
 N_DRAWS = 1000
-N_RESTARTS = 4
+N_RESTARTS = 3
 PATH = "./"
 PATIENCE = 20
 SAVE_LOSSES = False
@@ -192,7 +192,7 @@ class GPEmul:
         self.model.load_state_dict(self.init_state)
 
         if self.restart_idx > 0:
-            theta_inf, theta_sup = numpy.log(1e-1), numpy.log(1e1)
+            theta_inf, theta_sup = numpy.log(1e-1), numpy.log(1e1)  # TODO: make range customizable
             hyperparameters = {
                 "covar_module.base_kernel.raw_lengthscale": (
                     theta_sup - theta_inf
@@ -222,12 +222,11 @@ class GPEmul:
 
         restart_model_checkpoint_file = f"{self.savepath}restart{self.restart_idx}_checkpoint.pth"
         train_stats = TrainStats(list(map(get_metric_name, self.metrics)))
-        if early_stopping_criterion:
-            early_stopping_criterion.enable(
-                self.model,
-                train_stats,
-                restart_model_checkpoint_file,
-            )
+        early_stopping_criterion.enable(
+            self.model,
+            train_stats,
+            restart_model_checkpoint_file,
+        )
 
         max_epochs: int = early_stopping_criterion.max_epochs
         while True:

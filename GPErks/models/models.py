@@ -1,4 +1,5 @@
 import gpytorch
+import numpy
 import torch
 
 
@@ -26,15 +27,15 @@ class LinearMean(gpytorch.means.Mean):
 class ExactGPModel(gpytorch.models.ExactGP):
     def __init__(
         self,
-        train_x,
-        train_y,
-        likelihood,
-        linear_model,
-        kernel,
+        X_train: torch.Tensor,
+        y_train: torch.Tensor,
+        likelihood: gpytorch.likelihoods.Likelihood,
+        mean_module: gpytorch.means.Mean,
+        covar_module: gpytorch.kernels.Kernel,
     ):
-        super(ExactGPModel, self).__init__(train_x, train_y, likelihood)
-        self.mean_module = linear_model
-        self.covar_module = kernel
+        super(ExactGPModel, self).__init__(X_train, y_train, likelihood)
+        self.mean_module = mean_module
+        self.covar_module = covar_module
 
     def forward(self, x):
         mean_x = self.mean_module(x)

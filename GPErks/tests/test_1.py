@@ -8,36 +8,25 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from gpytorch.kernels import MaternKernel, RBFKernel, ScaleKernel
+from gpytorch.means import LinearMean
 from sklearn.model_selection import train_test_split
 from torchmetrics import ExplainedVariance, MeanSquaredError, R2Score
 
 from GPErks.data import ScaledData
+from GPErks.experiment import GPExperiment
 from GPErks.gpe import LEARNING_RATE, GPEmul
-from GPErks.models.models import ExactGPModel, LinearMean
+from GPErks.models.models import ExactGPModel
 from GPErks.utils.design import read_labels
 from GPErks.utils.earlystopping import NoEarlyStoppingCriterion, GLEarlyStoppingCriterion
 from GPErks.utils.log import get_logger
 from GPErks.utils.metrics import IndependentStandardError as ISE
-from GPErks.utils.preprocessing import StandardScaler, UnitCubeScaler
 from GPErks.utils.tensor import tensorize
 
-SEED = 8
-KERNEL_DCT = {"Matern": MaternKernel, "RBF": RBFKernel}
-KERNEL = "RBF"
-LOG_TRANSFORM = False
 
 log = get_logger()
 
 
 def main():
-    # ================================================================
-    # (0) Making the code reproducible
-    # ================================================================
-    seed = SEED
-    np.random.seed(seed)
-    random.seed(seed)
-    torch.manual_seed(seed)
-
     # ================================================================
     # (1) Loading and visualising dataset
     # ================================================================
@@ -57,6 +46,7 @@ def main():
 
     y = np.copy(Y[:, int(idx_feature)])
 
+    seed = 8
     X_, X_test, y_, y_test = train_test_split(
         X, y, test_size=0.2, random_state=seed
     )
@@ -75,42 +65,30 @@ def main():
     np.savetxt(savepath + "X_val.txt", X_val, fmt="%.6f")
     np.savetxt(savepath + "y_val.txt", y_val, fmt="%.6f")
 
-    X_scaler = UnitCubeScaler()
-    y_scaler = StandardScaler(log_transform=LOG_TRANSFORM)
-    with_val = True
-    if with_val:
-        train_scaled_data = ScaledData(
-            X_train, y_train, X_scaler, y_scaler, X_val, y_val
-        )
-    else:
-        train_scaled_data = ScaledData(
-            X_train,
-            y_train,
-            X_scaler,
-            y_scaler,
-        )
-
     likelihood = gpytorch.likelihoods.GaussianLikelihood()
 
-    linear_model = LinearMean(
-        input_size=train_scaled_data.input_size, data_mean=0.0
-    )
+    input_size = X_train.shape[1]
+    mean_function = LinearMean(input_size=input_size)
     kernel = ScaleKernel(
-        KERNEL_DCT[KERNEL](ard_num_dims=train_scaled_data.input_size)
+        # MaternKernel(ard_num_dims=input_size),
+        RBFKernel(ard_num_dims=input_size),
     )
 
-    metrics = [ExplainedVariance(), MeanSquaredError(), R2Score()]
-    for _ in metrics:
-        pass
+    # metrics = [ExplainedVariance(), MeanSquaredError(), R2Score()]
     metrics = [R2Score(), MeanSquaredError()]
-
-    model = ExactGPModel(
-        train_scaled_data.X_train,
-        train_scaled_data.y_train,
+    experiment = GPExperiment(
+        X_train,
+        y_train,
         likelihood,
-        linear_model,
+        mean_function,
         kernel,
+        metrics=metrics,
+        X_val=X_val,
+        y_val=y_val,
+        seed=seed,
     )
+
+    model = experiment.model
 
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
     # esc = FixedEpochEarlyStoppingCriterion(88)
@@ -119,7 +97,7 @@ def main():
     esc = GLEarlyStoppingCriterion(MAX_EPOCHS, alpha=1.0, patience=8)
 
     # device=torch.device('cpu')
-    emul = GPEmul(train_scaled_data, model, optimizer, metrics)
+    emul = GPEmul(experiment.scaled_data, model, optimizer, metrics)
     emul.train(
         esc,
         savepath=savepath,
@@ -137,7 +115,13 @@ def main():
     # NOTE: you need exactly the same training dataset used in (3)
     # ================================================================
     loadpath = savepath
-    emul = GPEmul.load(train_scaled_data, model, optimizer, metrics, loadpath)
+    emul = GPEmul.load(
+        experiment.scaled_data,
+        model,
+        optimizer,
+        metrics,
+        loadpath
+    )
 
     # ================================================================
     # (6) Testing trained GPE at new input points (inference)
@@ -153,9 +137,9 @@ def main():
     print(f"  R2Score = {r2s:.8f}")
     print(f"  ISE = {ise:.2f} %\n")
 
-    if with_val and not np.isclose(r2s, 0.93622035, rtol=1.0e-5):
+    if experiment.scaled_data.with_val and not np.isclose(r2s, 0.93622035, rtol=1.0e-5):
         log.error("INCORRECT R2Score")
-    if not with_val and not np.isclose(r2s, 0.93622035, rtol=1.0e-5):
+    if not experiment.scaled_data.with_val and not np.isclose(r2s, 0.93622035, rtol=1.0e-5):
         log.error("INCORRECT R2Score")
 
     # ================================================================
