@@ -1,13 +1,11 @@
-import random
 from typing import Optional, List
 
 import numpy
 import gpytorch
-import torch
 import torchmetrics
 
 from GPErks.data import ScaledData
-from GPErks.models.models import ExactGPModel
+from GPErks.models import ExactGPModel
 from GPErks.utils.random import set_seed
 from GPErks.utils.scaler import UnitCubeScaler, StandardScaler
 

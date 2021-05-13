@@ -14,7 +14,7 @@ from sklearn.model_selection import train_test_split
 from torchmetrics import ExplainedVariance, MeanSquaredError, R2Score
 
 from GPErks.experiment import GPExperiment
-from GPErks.gpe import GPEmul
+from GPErks.emulator import GPEmulator
 from GPErks.utils.design import read_labels
 from GPErks.utils.earlystopping import NoEarlyStoppingCriterion, GLEarlyStoppingCriterion
 from GPErks.utils.log import get_logger
@@ -98,7 +98,7 @@ def main():
     esc = GLEarlyStoppingCriterion(MAX_EPOCHS, alpha=1.0, patience=8)
 
     # device=torch.device('cpu')
-    emul = GPEmul(experiment, optimizer)
+    emul = GPEmulator(experiment, optimizer)
     emul.train(
         esc,
         savepath=savepath,
@@ -116,7 +116,7 @@ def main():
     # NOTE: you need exactly the same training dataset used in (3)
     # ================================================================
     loadpath = savepath
-    emul = GPEmul.load(
+    emul = GPEmulator.load(
         experiment,
         optimizer,
         loadpath

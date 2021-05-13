@@ -29,7 +29,7 @@ SAVE_LOSSES = False
 log = get_logger()
 
 
-class GPEmul:
+class GPEmulator:
     def __init__(
         self,
         experiment: GPExperiment,
