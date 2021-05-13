@@ -14,7 +14,7 @@ from sklearn.model_selection import train_test_split
 from torchmetrics import ExplainedVariance, MeanSquaredError, R2Score
 
 from GPErks.experiment import GPExperiment
-from GPErks.gpe import LEARNING_RATE, GPEmul
+from GPErks.gpe import GPEmul
 from GPErks.utils.design import read_labels
 from GPErks.utils.earlystopping import NoEarlyStoppingCriterion, GLEarlyStoppingCriterion
 from GPErks.utils.log import get_logger
@@ -91,7 +91,7 @@ def main():
         seed=seed,
     )
 
-    optimizer = torch.optim.Adam(experiment.model.parameters(), lr=LEARNING_RATE)
+    optimizer = torch.optim.Adam(experiment.model.parameters(), lr=0.1)
     # esc = FixedEpochEarlyStoppingCriterion(88)
     # esc = NoEarlyStoppingCriterion(100)  # TODO: investigate if snapshot is required anyway
     MAX_EPOCHS = 1000

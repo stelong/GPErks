@@ -22,7 +22,6 @@ from GPErks.utils.train_stats import TrainStats
 DEVICE = torch.device("cpu")
 DEVICE_LOAD = torch.device("cpu")
 FILENAME = "gpe.pth"
-LEARNING_RATE = 0.1
 PATH = "./"
 SAVE_LOSSES = False
 
@@ -35,7 +34,6 @@ class GPEmul:
         self,
         experiment: GPExperiment,
         optimizer,
-        learning_rate=LEARNING_RATE,
         device=DEVICE,
     ):
         self.experiment: GPExperiment = experiment
@@ -54,7 +52,6 @@ class GPEmul:
         self.init_state = deepcopy(self.model.state_dict())
 
         self.optimizer = optimizer
-        self.learning_rate = learning_rate
         self.metrics: List[torchmetrics.Metric] = experiment.metrics
 
     def train(
