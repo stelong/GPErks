@@ -46,7 +46,7 @@ def main():
 
     y = np.copy(Y[:, int(idx_feature)])
 
-    seed = 8
+    seed = 88
     X_, X_test, y_, y_test = train_test_split(
         X, y, test_size=0.2, random_state=seed
     )
@@ -97,7 +97,7 @@ def main():
     esc = GLEarlyStoppingCriterion(MAX_EPOCHS, alpha=1.0, patience=8)
 
     # device=torch.device('cpu')
-    emul = GPEmul(experiment.scaled_data, model, optimizer, metrics)
+    emul = GPEmul(experiment, optimizer, metrics)
     emul.train(
         esc,
         savepath=savepath,
@@ -116,10 +116,8 @@ def main():
     # ================================================================
     loadpath = savepath
     emul = GPEmul.load(
-        experiment.scaled_data,
-        model,
+        experiment,
         optimizer,
-        metrics,
         loadpath
     )
 
@@ -139,8 +137,8 @@ def main():
 
     if experiment.scaled_data.with_val and not np.isclose(r2s, 0.93622035, rtol=1.0e-5):
         log.error("INCORRECT R2Score")
-    if not experiment.scaled_data.with_val and not np.isclose(r2s, 0.93622035, rtol=1.0e-5):
-        log.error("INCORRECT R2Score")
+    if not experiment.scaled_data.with_val and not np.isclose(r2s, 0.22611368, rtol=1.0e-5):
+        log.error("INCORRECT R2Score (with val)")
 
     # ================================================================
     # (7) Plotting predictions vs observations

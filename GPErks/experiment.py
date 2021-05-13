@@ -23,8 +23,11 @@ class GPExperiment:
             metrics: Optional[List[torchmetrics.Metric]] = None,
             X_val: numpy.ndarray = None,
             y_val: numpy.ndarray = None,
+            n_draws: int = 1000,
+            learn_noise: bool = True,
             seed: Optional[int] = None,
     ):
+        # scale data by default
         self.scaled_data: ScaledData = ScaledData(
             X_train,
             y_train,
@@ -33,14 +36,19 @@ class GPExperiment:
             X_val,
             y_val,
         )
+
         if metrics:
             self.metrics: List[torchmetrics.Metric] = metrics
         else:
             self.metrics: List[torchmetrics.Metric] = []
+
+        self.n_draws: int = n_draws
+        self.learn_noise: bool = learn_noise
         if seed:
             random.seed(seed)
             numpy.random.seed(seed)
             torch.manual_seed(seed)
+
         self.model: ExactGPModel = ExactGPModel(
             self.scaled_data.X_train,
             self.scaled_data.y_train,
