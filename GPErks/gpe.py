@@ -18,11 +18,11 @@ from GPErks.utils.metrics import get_metric_name
 from GPErks.utils.tensor import tensorize
 from GPErks.utils.train_stats import TrainStats
 
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+DEVICE = torch.device("cpu")
 DEVICE_LOAD = torch.device("cpu")
 FILENAME = "gpe.pth"
 LEARNING_RATE = 0.1
-N_RESTARTS = 1
 PATH = "./"
 SAVE_LOSSES = False
 
@@ -60,12 +60,10 @@ class GPEmul:
     def train(
         self,
         early_stopping_criterion,
-        n_restarts=N_RESTARTS,
         savepath=PATH,
         save_losses=SAVE_LOSSES,
     ):
         print("\nTraining emulator...")
-        self.n_restarts = n_restarts
         self.savepath = savepath
         self.save_losses = save_losses
 
@@ -93,7 +91,7 @@ class GPEmul:
         restarts_best_epochs = []
 
         current_restart = 1
-        while current_restart <= n_restarts:
+        while current_restart <= self.experiment.n_restarts:
             log.info(f"Running restart {current_restart}...")
             self.restart_idx = current_restart
 

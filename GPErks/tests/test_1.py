@@ -5,6 +5,7 @@ from pathlib import Path
 
 import gpytorch
 import matplotlib.pyplot as plt
+import numpy
 import numpy as np
 import torch
 from gpytorch.kernels import MaternKernel, RBFKernel, ScaleKernel
@@ -12,14 +13,13 @@ from gpytorch.means import LinearMean
 from sklearn.model_selection import train_test_split
 from torchmetrics import ExplainedVariance, MeanSquaredError, R2Score
 
-from GPErks.data import ScaledData
 from GPErks.experiment import GPExperiment
 from GPErks.gpe import LEARNING_RATE, GPEmul
-from GPErks.models.models import ExactGPModel
 from GPErks.utils.design import read_labels
 from GPErks.utils.earlystopping import NoEarlyStoppingCriterion, GLEarlyStoppingCriterion
 from GPErks.utils.log import get_logger
 from GPErks.utils.metrics import IndependentStandardError as ISE
+from GPErks.utils.random import set_seed
 from GPErks.utils.tensor import tensorize
 
 
@@ -27,6 +27,9 @@ log = get_logger()
 
 
 def main():
+    seed = 88
+    set_seed(seed)
+
     # ================================================================
     # (1) Loading and visualising dataset
     # ================================================================
@@ -46,7 +49,6 @@ def main():
 
     y = np.copy(Y[:, int(idx_feature)])
 
-    seed = 88
     X_, X_test, y_, y_test = train_test_split(
         X, y, test_size=0.2, random_state=seed
     )
@@ -73,31 +75,30 @@ def main():
         # MaternKernel(ard_num_dims=input_size),
         RBFKernel(ard_num_dims=input_size),
     )
-
     # metrics = [ExplainedVariance(), MeanSquaredError(), R2Score()]
     metrics = [R2Score(), MeanSquaredError()]
+
     experiment = GPExperiment(
         X_train,
         y_train,
         likelihood,
         mean_function,
         kernel,
+        1,
         metrics=metrics,
         X_val=X_val,
         y_val=y_val,
         seed=seed,
     )
 
-    model = experiment.model
-
-    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
+    optimizer = torch.optim.Adam(experiment.model.parameters(), lr=LEARNING_RATE)
     # esc = FixedEpochEarlyStoppingCriterion(88)
     # esc = NoEarlyStoppingCriterion(100)  # TODO: investigate if snapshot is required anyway
     MAX_EPOCHS = 1000
     esc = GLEarlyStoppingCriterion(MAX_EPOCHS, alpha=1.0, patience=8)
 
     # device=torch.device('cpu')
-    emul = GPEmul(experiment, optimizer, metrics)
+    emul = GPEmul(experiment, optimizer)
     emul.train(
         esc,
         savepath=savepath,
@@ -137,7 +138,7 @@ def main():
 
     if experiment.scaled_data.with_val and not np.isclose(r2s, 0.93622035, rtol=1.0e-5):
         log.error("INCORRECT R2Score")
-    if not experiment.scaled_data.with_val and not np.isclose(r2s, 0.22611368, rtol=1.0e-5):
+    if not experiment.scaled_data.with_val and not np.isclose(r2s, 0.56124592, rtol=1.0e-5):
         log.error("INCORRECT R2Score (with val)")
 
     # ================================================================
