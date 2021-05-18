@@ -18,8 +18,7 @@ from GPErks.utils.metrics import get_metric_name
 from GPErks.utils.tensor import tensorize
 from GPErks.utils.train_stats import TrainStats
 
-# DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-DEVICE = torch.device("cpu")
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 DEVICE_LOAD = torch.device("cpu")
 FILENAME = "gpe.pth"
 PATH = "./"
