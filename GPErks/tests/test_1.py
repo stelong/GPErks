@@ -84,7 +84,7 @@ def main():
         likelihood,
         mean_function,
         kernel,
-        1,
+        3,
         metrics=metrics,
         X_val=X_val,
         y_val=y_val,
@@ -92,8 +92,7 @@ def main():
     )
 
     optimizer = torch.optim.Adam(experiment.model.parameters(), lr=0.1)
-    # esc = FixedEpochEarlyStoppingCriterion(88)
-    # esc = NoEarlyStoppingCriterion(100)  # TODO: investigate if snapshot is required anyway
+    # esc = NoEarlyStoppingCriterion(33)  # TODO: investigate if snapshot is required anyway
     MAX_EPOCHS = 1000
     esc = GLEarlyStoppingCriterion(MAX_EPOCHS, alpha=1.0, patience=8)
 
@@ -138,7 +137,7 @@ def main():
 
     if experiment.scaled_data.with_val and not np.isclose(r2s, 0.93622035, rtol=1.0e-5):
         log.error("INCORRECT R2Score")
-    if not experiment.scaled_data.with_val and not np.isclose(r2s, 0.56124592, rtol=1.0e-5):
+    if not experiment.scaled_data.with_val and not np.isclose(r2s, 0.55336893, rtol=1.0e-5):
         log.error("INCORRECT R2Score (with val)")
 
     # ================================================================

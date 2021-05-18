@@ -63,24 +63,16 @@ class GPEmulator:
         self.savepath = savepath
         self.save_losses = save_losses
 
-        # TODO: clean up (since aggregate values are computed later over restarts' TrainStats)
-        train_loss_list = []
-        model_state_list = []
-        if self.scaled_data.with_val:
-            val_loss_list = []
-            metric_score_list = {get_metric_name(m): [] for m in self.metrics}
-
         self.idx_best_list = []
 
         X_train = self.scaled_data.X_train.to(self.device)
         y_train = self.scaled_data.y_train.to(self.device)
 
-        if self.scaled_data.with_val:
-            X_val = self.scaled_data.X_val.to(self.device)
-            y_val = self.scaled_data.y_val.to(self.device)
-        else:  # missing validation data: no need to move anything to device
-            X_val = self.scaled_data.X_val
-            y_val = self.scaled_data.y_val
+        X_val = self.scaled_data.X_val
+        y_val = self.scaled_data.y_val
+        if self.scaled_data.with_val:  # move to device only if available
+            X_val = X_val.to(self.device)
+            y_val = y_val.to(self.device)
 
         restarts_train_stats: List[TrainStats] = []
         restarts_best_models = []
@@ -90,73 +82,52 @@ class GPEmulator:
         while current_restart <= self.experiment.n_restarts:
             log.info(f"Running restart {current_restart}...")
             self.restart_idx = current_restart
-
-            # if self.restart_idx == 0:
-            #     print("\nAnalyzing loss structure...")
-            #     self.print_msg = False
-            #     self.delta = 0
-            #     self.bellepoque = self.max_epochs - 1
-            # else:
-            #     print(f"\nRestart {self.restart_idx}...")
-            # self.print_msg = True
-
-            # try:
             restart_train_stats, restart_best_model, restart_best_epoch = self.train_once(
                 X_train, y_train, X_val, y_val, early_stopping_criterion
             )
-            # if self.restart_idx > 0:
             restarts_train_stats.append(restart_train_stats)
             restarts_best_models.append(restart_best_model)
             restarts_best_epochs.append(restart_best_epoch)
-            # except RuntimeError as err:
-            #     print(
-            #         f"Repeating restart {self.restart_idx} because of RuntimeError: {err.args[0]}"
-            #     )
-            # else:
             log.info(f"Run restart {current_restart}.")
             current_restart += 1
 
         train_loss_list = [
-            train_stats.train_loss[best_epoch]
+            train_stats.train_loss[best_epoch - 1]
             for train_stats, best_epoch in zip(restarts_train_stats, restarts_best_epochs) 
         ]
         best_overall_loss_idx = numpy.argmin(train_loss_list)
         if self.scaled_data.with_val:
             val_loss_list = [
-                train_stats.val_loss[best_epoch]
+                train_stats.val_loss[best_epoch - 1]
                 for train_stats, best_epoch in zip(restarts_train_stats, restarts_best_epochs)
             ]
             best_overall_loss_idx = numpy.argmin(val_loss_list)
 
-        # TODO: try if they work AFTER having computed metric values for training data in train_once
-        # train_metrics_score_list = defaultdict(list)
-        # for rts in restarts_train_stats:
-        #     for metric_name, metric_values in rts.train_metrics_score.items():
-        #         train_metrics_score_list[metric_name].append(
-        #             metric_values[rts.idx_best]
-        #         )
-        # self.best_train_metrics_score = {
-        #     metric_name: best_values[idx_best]
-        #     for metric_name, best_values in train_metrics_score_list.items()
-        # }
+        train_metrics_score_list = defaultdict(list)
+        for train_stats, best_epoch in zip(restarts_train_stats, restarts_best_epochs):
+            for metric_name, metric_values in train_stats.train_metrics_score.items():
+                train_metrics_score_list[metric_name].append(
+                    metric_values[best_epoch - 1]
+                )
+        self.best_train_metrics_score = {
+            metric_name: best_values[best_overall_loss_idx]
+            for metric_name, best_values in train_metrics_score_list.items()
+        }
 
-        val_metrics_score_list = None
         if self.scaled_data.with_val:
             val_metrics_score_list = defaultdict(list)
             for train_stats, best_epoch in zip(restarts_train_stats, restarts_best_epochs):
                 for metric_name, metric_values in train_stats.val_metrics_score.items():
                     val_metrics_score_list[metric_name].append(
-                        metric_values[best_epoch]
+                        metric_values[best_epoch - 1]
                     )
             self.best_val_metrics_score = {
                 metric_name: best_values[best_overall_loss_idx]
                 for metric_name, best_values in val_metrics_score_list.items()
             }
 
-        # idx_best_list = [rts.idx_best for rts in restarts_train_stats]
-
         self.best_restart = best_overall_loss_idx + 1
-        self.best_epoch = restarts_best_epochs[best_overall_loss_idx] + 1  # TODO: check +1 / old code:  # idx_best_list[best_overall_loss_idx] + 1
+        self.best_epoch = restarts_best_epochs[best_overall_loss_idx]
 
         self.best_model = restarts_best_models[best_overall_loss_idx]  # TODO: improve
         self.model.load_state_dict(self.best_model)
@@ -215,45 +186,35 @@ class GPEmulator:
             train_stats.current_epoch += 1
             train_loss = self.train_step(X_train, y_train)
             train_stats.train_loss.append(train_loss)
-            # TODO: compute train_metrics_score
             msg = (
                     f"[{train_stats.current_epoch:>{len(str(max_epochs))}}/{max_epochs:>{len(str(max_epochs))}}] "
                     + f"Training Loss: {train_loss:.4f}"
             )
 
-            if self.scaled_data.with_val:
-                val_loss, metric_scores = self.val_step(X_val, y_val)
-                train_stats.val_loss.append(val_loss)
-                msg += f" - Validation Loss: {val_loss:.4f}"
+            self.model.eval()
+            with torch.no_grad(), gpytorch.settings.fast_pred_var():
+                metric_scores = self.evaluate_metrics(X_train, y_train)
                 for metric, metric_score in zip(self.metrics, metric_scores):
                     metric_name = get_metric_name(metric)
                     msg += f" - {metric_name}: {metric_score:.4f}"
-                    train_stats.val_metrics_score[metric_name].append(metric_score)
-            # if self.print_msg:
+                    train_stats.train_metrics_score[metric_name].append(metric_score)
+
+                if self.scaled_data.with_val:
+                    val_loss = self.val_step(X_val, y_val)
+                    train_stats.val_loss.append(val_loss)
+                    msg += f" | Validation Loss: {val_loss:.4f}"
+                    metric_scores = self.evaluate_metrics(X_val, y_val)
+                    for metric, metric_score in zip(self.metrics, metric_scores):
+                        metric_name = get_metric_name(metric)
+                        msg += f" - {metric_name}: {metric_score:.4f}"
+                        train_stats.val_metrics_score[metric_name].append(metric_score)
             log.info(msg)
 
             best_epoch: Optional[int] = early_stopping_criterion.evaluate()
             if early_stopping_criterion.is_verified:
                 break
 
-            # if epoch >= self.bellepoque:
-            #     if self.scaled_data.with_val:
-            #         early_stopping(val_loss, self.model)
-            #     else:
-            #         early_stopping(train_loss, self.model)
-            # if early_stopping.early_stop:
-            #     print("Early stopping!")
-            #     break
-
         best_model = torch.load(restart_model_checkpoint_file)
-        # if self.restart_idx == 0:
-        #     if self.scaled_data.with_val:
-        #         self.bellepoque, self.delta = 0, 0.0
-        #     else:
-        #         self.bellepoque, self.delta = analyze_losstruct(
-        #             numpy.array(train_stats.train_loss)
-        #         )
-        #     print("\nDone. Now the training starts...")
 
         if self.save_losses:
             self.plot_loss(train_stats, best_epoch)
@@ -266,18 +227,16 @@ class GPEmulator:
         train_loss = -self.criterion(self.model(X_train), y_train)
         train_loss.backward()
         self.optimizer.step()
-
         return train_loss.item()
 
     def val_step(self, X_val, y_val):
-        self.model.eval()
-        with torch.no_grad(), gpytorch.settings.fast_pred_var():
-            val_loss = -self.criterion(self.model(X_val), y_val)
-            predictions = self.model.likelihood(self.model(X_val))
-            y_pred = predictions.mean
-            metric_scores = [m(y_pred, y_val).cpu() for m in self.metrics]
+        val_loss = -self.criterion(self.model(X_val), y_val)
+        return val_loss.item()
 
-        return val_loss.item(), metric_scores
+    def evaluate_metrics(self, X, y):
+        predictions = self.model.likelihood(self.model(X))
+        y_pred = predictions.mean
+        return [m(y_pred, y).cpu() for m in self.metrics]
 
     def print_stats(self):
         torch.set_printoptions(sci_mode=False)
