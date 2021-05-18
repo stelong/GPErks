@@ -5,13 +5,14 @@ from typing import List, Type, Optional
 import gpytorch
 import matplotlib.gridspec as grsp
 import matplotlib.pyplot as plt
-plt.switch_backend('TkAgg')
+# plt.switch_backend('TkAgg')
 import numpy
 import torch
+import torchmetrics
 
 from GPErks.data import ScaledData
-from GPErks.utils.earlystopping import EarlyStoppingCriterion, \
-    NoEarlyStoppingCriterion, GLEarlyStoppingCriterion
+from GPErks.experiment import GPExperiment
+from GPErks.utils.earlystopping import EarlyStoppingCriterion
 from GPErks.utils.log import get_logger
 from GPErks.utils.metrics import get_metric_name
 from GPErks.utils.tensor import tensorize
@@ -20,34 +21,24 @@ from GPErks.utils.train_stats import TrainStats
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 DEVICE_LOAD = torch.device("cpu")
 FILENAME = "gpe.pth"
-LEARN_NOISE = True
-LEARNING_RATE = 0.1
-N_DRAWS = 1000
-N_RESTARTS = 4
 PATH = "./"
-PATIENCE = 20
 SAVE_LOSSES = False
-SCALE_DATA = True
-WATCH_METRIC = "R2Score"
 
 
 log = get_logger()
 
 
-class GPEmul:
+class GPEmulator:
     def __init__(
         self,
-        scaled_data: ScaledData,
-        model,
+        experiment: GPExperiment,
         optimizer,
-        metrics,
-        learning_rate=LEARNING_RATE,
         device=DEVICE,
-        learn_noise=LEARN_NOISE,
     ):
-        self.scaled_data = scaled_data
+        self.experiment: GPExperiment = experiment
+        self.scaled_data: ScaledData = experiment.scaled_data
         self.device = device
-        self.learn_noise = learn_noise
+        self.learn_noise: bool = experiment.learn_noise
 
         if not self.learn_noise:
             self.model.likelihood.noise_covar.register_constraint(
@@ -56,24 +47,19 @@ class GPEmul:
             self.model.likelihood.noise = 1e-4
             self.model.likelihood.noise_covar.raw_noise.requires_grad_(False)
 
-        self.model = model
+        self.model: gpytorch.models.ExactGP = experiment.model
         self.init_state = deepcopy(self.model.state_dict())
 
         self.optimizer = optimizer
-        self.learning_rate = learning_rate
-        self.metrics = metrics
+        self.metrics: List[torchmetrics.Metric] = experiment.metrics
 
     def train(
         self,
         early_stopping_criterion,
-        n_restarts=N_RESTARTS,
-        patience=PATIENCE,
         savepath=PATH,
         save_losses=SAVE_LOSSES,
     ):
         print("\nTraining emulator...")
-        self.n_restarts = n_restarts
-        self.patience = patience
         self.savepath = savepath
         self.save_losses = save_losses
 
@@ -101,7 +87,7 @@ class GPEmul:
         restarts_best_epochs = []
 
         current_restart = 1
-        while current_restart <= n_restarts:
+        while current_restart <= self.experiment.n_restarts:
             log.info(f"Running restart {current_restart}...")
             self.restart_idx = current_restart
 
@@ -192,7 +178,7 @@ class GPEmul:
         self.model.load_state_dict(self.init_state)
 
         if self.restart_idx > 0:
-            theta_inf, theta_sup = numpy.log(1e-1), numpy.log(1e1)
+            theta_inf, theta_sup = numpy.log(1e-1), numpy.log(1e1)  # TODO: make range customizable
             hyperparameters = {
                 "covar_module.base_kernel.raw_lengthscale": (
                     theta_sup - theta_inf
@@ -216,18 +202,13 @@ class GPEmul:
             self.model.likelihood, self.model
         )
 
-        # early_stopping = EarlyStopping(
-        #     self.patience, self.delta, self.savepath
-        # )
-
         restart_model_checkpoint_file = f"{self.savepath}restart{self.restart_idx}_checkpoint.pth"
         train_stats = TrainStats(list(map(get_metric_name, self.metrics)))
-        if early_stopping_criterion:
-            early_stopping_criterion.enable(
-                self.model,
-                train_stats,
-                restart_model_checkpoint_file,
-            )
+        early_stopping_criterion.enable(
+            self.model,
+            train_stats,
+            restart_model_checkpoint_file,
+        )
 
         max_epochs: int = early_stopping_criterion.max_epochs
         while True:
@@ -334,7 +315,7 @@ class GPEmul:
 
         return y_mean, y_std
 
-    def sample(self, X_new, n_draws=N_DRAWS):
+    def sample(self, X_new):
         self.model.eval()
         self.model.likelihood.eval()
 
@@ -346,12 +327,12 @@ class GPEmul:
             predictions = self.model.likelihood(self.model(X_new))
             y_std = numpy.sqrt(predictions.variance.cpu().numpy())
             y_samples = (
-                predictions.sample(sample_shape=torch.Size([n_draws]))
+                predictions.sample(sample_shape=torch.Size([self.experiment.n_draws]))
                 .cpu()
                 .numpy()
             )
 
-        for i in range(n_draws):
+        for i in range(self.experiment.n_draws):
             y_samples[i] = self.scaled_data.scy.inverse_transform(
                 y_samples[i], ystd_=y_std
             )[0]
@@ -404,16 +385,14 @@ class GPEmul:
     @classmethod
     def load(
         cls,
-        data_scaler,
-        model,
+        experiment,
         optimizer,
-        metrics,
         loadpath=PATH,
         filename=FILENAME,
         device=DEVICE_LOAD,
     ):
         print("\nLoading emulator...")
-        emul = cls(data_scaler, model, optimizer, metrics, device=device)
+        emul = cls(experiment, optimizer, device=device)
         emul.model.load_state_dict(
             torch.load(loadpath + filename, map_location=device)
         )
