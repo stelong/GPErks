@@ -251,8 +251,11 @@ class GPEmulator:
                         )
             log.info(msg)
 
-            best_epoch: Optional[int] = early_stopping_criterion.evaluate()
+            best_epoch: Optional[int] = None
+            best_model: Optional[gpytorch.models.ExactGP] = None
+            best_epoch, best_model = early_stopping_criterion.evaluate()
             if early_stopping_criterion.is_verified:
+                # snapshotting_criterion.save(self.restart_idx, best_epoch)  # TODO: renable when fixed AND SAVE BEST MODEL NOT CURRENT ONE IN MEMORY
                 break
 
         snapshotting_criterion.keep_snapshots_until(self.restart_idx, best_epoch)

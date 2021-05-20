@@ -15,7 +15,8 @@ from torchmetrics import ExplainedVariance, MeanSquaredError, R2Score
 
 from GPErks.emulator import GPEmulator
 from GPErks.experiment import GPExperiment
-from GPErks.snapshotting import EveryEpochSnapshottingCriterion
+from GPErks.snapshotting import EveryEpochSnapshottingCriterion, \
+    NeverSaveSnapshottingCriterion
 from GPErks.utils.design import read_labels
 from GPErks.utils.earlystopping import (
     GLEarlyStoppingCriterion,
@@ -95,6 +96,7 @@ def main():
         seed=seed,
     )
 
+    # snapc = NeverSaveSnapshottingCriterion(
     snapc = EveryEpochSnapshottingCriterion(
         "/home/gianvito/personal/GPErks/GPErks/tests/snapshot/my_model/restart_{restart}/",
         "epoch_{epoch}.pth"

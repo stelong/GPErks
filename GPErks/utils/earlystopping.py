@@ -1,5 +1,5 @@
 from abc import ABCMeta, abstractmethod
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import gpytorch
 import numpy
@@ -23,14 +23,12 @@ class EarlyStoppingCriterion(metaclass=ABCMeta):
         self,
         model: gpytorch.models.ExactGP,
         train_stats: TrainStats,
-        # save_path,
     ):
         self.model = model
         self.train_stats = train_stats
-        # self.save_path = save_path
         self.is_verified = False
 
-    def evaluate(self) -> Optional[int]:
+    def evaluate(self) -> Tuple[Optional[int], Optional[gpytorch.models.ExactGP]]:
         if (
             self.train_stats.current_epoch == self.max_epochs
             or self._should_stop()
@@ -40,13 +38,13 @@ class EarlyStoppingCriterion(metaclass=ABCMeta):
                 f"{self.train_stats.current_epoch}"
             )
             self.is_verified = True
-            best_epoch = self._on_stop()
+            best_epoch, best_model = self._on_stop()
             self._reset()
-            return best_epoch
+            return best_epoch, best_model
         else:
             log.debug("Early stopping: calling on_continue()")
             self._on_continue()
-            return None
+            return None, None
 
     @abstractmethod
     def _reset(self):
@@ -57,7 +55,7 @@ class EarlyStoppingCriterion(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def _on_stop(self) -> int:
+    def _on_stop(self) -> int:  # TODO: return also current_best_model
         pass
 
     @abstractmethod
@@ -65,17 +63,7 @@ class EarlyStoppingCriterion(metaclass=ABCMeta):
         pass
 
 
-class SnapshottingEarlyStoppingCriterion(
-    EarlyStoppingCriterion, metaclass=ABCMeta
-):
-    def _on_stop(self):
-        log.info("SnapshotEarlyStoppingCriterion on_stop().")
-        # log.info(f"Saving model to {self.save_path} file...")
-        # torch.save(self.model.state_dict(), self.save_path)
-        # log.info(f"Saved model to {self.save_path} file.")
-
-
-class NoEarlyStoppingCriterion(SnapshottingEarlyStoppingCriterion):
+class NoEarlyStoppingCriterion(EarlyStoppingCriterion):
     def __init__(self, max_epochs: int):
         super().__init__(max_epochs)
 
@@ -93,7 +81,7 @@ class NoEarlyStoppingCriterion(SnapshottingEarlyStoppingCriterion):
         pass
 
 
-class PkEarlyStoppingCriterion(SnapshottingEarlyStoppingCriterion):
+class PkEarlyStoppingCriterion(EarlyStoppingCriterion):
     # ref: https://page.mi.fu-berlin.de/prechelt/Biblio/stop_tricks1997.pdf
     # note: uses training data
 
@@ -176,7 +164,7 @@ class PkEarlyStoppingCriterion(SnapshottingEarlyStoppingCriterion):
         log.debug("PkEpochEarlyStoppingCriterion on_continue().")
 
 
-class GLEarlyStoppingCriterion(SnapshottingEarlyStoppingCriterion):
+class GLEarlyStoppingCriterion(EarlyStoppingCriterion):
     # ref: https://page.mi.fu-berlin.de/prechelt/Biblio/stop_tricks1997.pdf
     # note: uses validation data
 

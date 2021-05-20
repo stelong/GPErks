@@ -35,11 +35,14 @@ class SnapshottingCriterion(metaclass=ABCMeta):
 
     def maybe_save(self, restart, epoch):
         if self._should_save():
-            log.debug("Snapshotting criterion: calling _save_snapshot()")
-            self._save_snapshot(self.get_snapshot_file_path(restart, epoch))
-            self._reached_epoch = epoch
+            self.save(restart, epoch)
         else:
             log.debug("Snapshotting criterion: not calling _save_snapshot()")
+
+    def save(self, restart, epoch):
+        log.debug("Snapshotting criterion: calling _save_snapshot()")
+        self._save_snapshot(self.get_snapshot_file_path(restart, epoch))
+        self._reached_epoch = epoch
 
     def get_snapshot_file_path(self, restart, epoch):
         restart_dir = Path(self.snapshot_dir.format(restart=restart))
@@ -68,6 +71,15 @@ class EveryEpochSnapshottingCriterion(SnapshottingCriterion):
 
     def _should_save(self) -> bool:
         return True
+
+    def _save_snapshot(self, snapshot_file_path):
+        torch.save(self.model.state_dict(), snapshot_file_path)
+
+
+class NeverSaveSnapshottingCriterion(SnapshottingCriterion):
+
+    def _should_save(self) -> bool:
+        return False
 
     def _save_snapshot(self, snapshot_file_path):
         torch.save(self.model.state_dict(), snapshot_file_path)
