@@ -16,7 +16,7 @@ from torchmetrics import ExplainedVariance, MeanSquaredError, R2Score
 from GPErks.experiment import GPExperiment
 from GPErks.emulator import GPEmulator
 from GPErks.utils.design import read_labels
-from GPErks.utils.earlystopping import NoEarlyStoppingCriterion, GLEarlyStoppingCriterion
+from GPErks.utils.earlystopping import NoEarlyStoppingCriterion, GLEarlyStoppingCriterion, PkEarlyStoppingCriterion
 from GPErks.utils.log import get_logger
 from GPErks.utils.metrics import IndependentStandardError as ISE
 from GPErks.utils.random import set_seed
@@ -86,15 +86,16 @@ def main():
         kernel,
         3,
         metrics=metrics,
-        X_val=X_val,
-        y_val=y_val,
+        # X_val=X_val,
+        # y_val=y_val,
         seed=seed,
     )
 
     optimizer = torch.optim.Adam(experiment.model.parameters(), lr=0.1)
     # esc = NoEarlyStoppingCriterion(33)  # TODO: investigate if snapshot is required anyway
     MAX_EPOCHS = 1000
-    esc = GLEarlyStoppingCriterion(MAX_EPOCHS, alpha=1.0, patience=8)
+    # esc = GLEarlyStoppingCriterion(MAX_EPOCHS, alpha=1.0, patience=8)
+    esc = PkEarlyStoppingCriterion(MAX_EPOCHS, alpha=1.0, patience=8, strip_length=20)
 
     # device=torch.device('cpu')
     emul = GPEmulator(experiment, optimizer)
