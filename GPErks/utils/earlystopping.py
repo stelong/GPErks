@@ -94,6 +94,80 @@ class NoEarlyStoppingCriterion(SnapshottingEarlyStoppingCriterion):
         pass
 
 
+class PkEarlyStoppingCriterion(SnapshottingEarlyStoppingCriterion):
+    # ref: https://page.mi.fu-berlin.de/prechelt/Biblio/stop_tricks1997.pdf
+    # note: uses training data
+
+    def __init__(
+        self,
+        max_epochs: int,
+        alpha: float,
+        patience: int,
+        strip_length: int,
+    ):
+        super().__init__(max_epochs)
+        self.alpha: float = alpha
+        self.patience: int = patience
+        self.counter: int = 0
+        self.strip_length: int = strip_length
+        self.strip_counter: int = 0
+        self.computation_enabled: bool = False
+        self.Pk: List = []
+
+    def enable(
+            self,
+            model: gpytorch.models.ExactGP,
+            train_stats: TrainStats,
+            save_path,
+    ):
+        super(PkEarlyStoppingCriterion, self).enable(
+            model,
+            train_stats,
+            save_path
+        )
+
+    def _reset(self):
+        self.counter: int = 0
+        self.strip_counter: int = 0
+        self.computation_enabled: bool = False
+        self.Pk: List = []
+
+    def _should_stop(self) -> bool:
+        self.strip_counter += 1
+        if self.strip_counter % self.strip_length == 0:
+            self.computation_enabled = True
+
+        if self.computation_enabled:
+            self.Pk.append( numpy.abs(numpy.sum(self.train_stats.train_loss[-self.strip_length:]) / (self.strip_length * numpy.min(self.train_stats.train_loss[-self.strip_length:])) - 1) )
+        else:
+            self.Pk.append( 0.0 )
+
+        log.info(f"Pk[-1]={self.Pk[-1]}, alpha={self.alpha}")
+        if self.Pk[-1] > self.alpha:
+            self.counter += 1
+            log.info(
+                f"Triggered PkEpochEarlyStoppingCriterion {self.counter}/{self.patience}"
+            )
+        else:
+            if self.counter > 0:
+                log.info(f"Resetting PkEpochEarlyStoppingCriterion countdown.")
+            log.info(
+                f"The best epoch I will return is: {self.train_stats.current_epoch}"
+            )
+            self.counter = 0
+        return self.counter == self.patience
+
+    def _on_stop(self) -> int:
+        super()._on_stop()
+        log.info("PkEpochEarlyStoppingCriterion on_stop().")
+        return self.train_stats.current_epoch - self.patience
+
+    def _on_continue(self):
+        log.debug("PkEpochEarlyStoppingCriterion on_continue().")
+
+
+
+
 class GLEarlyStoppingCriterion(SnapshottingEarlyStoppingCriterion):
     # ref: https://page.mi.fu-berlin.de/prechelt/Biblio/stop_tricks1997.pdf
     # note: uses validation data
