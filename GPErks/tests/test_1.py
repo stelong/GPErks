@@ -13,15 +13,18 @@ from gpytorch.means import LinearMean
 from sklearn.model_selection import train_test_split
 from torchmetrics import ExplainedVariance, MeanSquaredError, R2Score
 
-from GPErks.experiment import GPExperiment
 from GPErks.emulator import GPEmulator
+from GPErks.experiment import GPExperiment
 from GPErks.utils.design import read_labels
-from GPErks.utils.earlystopping import NoEarlyStoppingCriterion, GLEarlyStoppingCriterion, PkEarlyStoppingCriterion
+from GPErks.utils.earlystopping import (
+    GLEarlyStoppingCriterion,
+    NoEarlyStoppingCriterion,
+    PkEarlyStoppingCriterion,
+)
 from GPErks.utils.log import get_logger
 from GPErks.utils.metrics import IndependentStandardError as ISE
 from GPErks.utils.random import set_seed
 from GPErks.utils.tensor import tensorize
-
 
 log = get_logger()
 
@@ -95,7 +98,9 @@ def main():
     # esc = NoEarlyStoppingCriterion(33)  # TODO: investigate if snapshot is required anyway
     MAX_EPOCHS = 1000
     # esc = GLEarlyStoppingCriterion(MAX_EPOCHS, alpha=1.0, patience=8)
-    esc = PkEarlyStoppingCriterion(MAX_EPOCHS, alpha=1.0, patience=8, strip_length=20)
+    esc = PkEarlyStoppingCriterion(
+        MAX_EPOCHS, alpha=1.0, patience=8, strip_length=20
+    )
 
     # device=torch.device('cpu')
     emul = GPEmulator(experiment, optimizer)
@@ -116,11 +121,7 @@ def main():
     # NOTE: you need exactly the same training dataset used in (3)
     # ================================================================
     loadpath = savepath
-    emul = GPEmulator.load(
-        experiment,
-        optimizer,
-        loadpath
-    )
+    emul = GPEmulator.load(experiment, optimizer, loadpath)
 
     # ================================================================
     # (6) Testing trained GPE at new input points (inference)
@@ -136,9 +137,13 @@ def main():
     print(f"  R2Score = {r2s:.8f}")
     print(f"  ISE = {ise:.2f} %\n")
 
-    if experiment.scaled_data.with_val and not np.isclose(r2s, 0.93622035, rtol=1.0e-5):
+    if experiment.scaled_data.with_val and not np.isclose(
+        r2s, 0.93622035, rtol=1.0e-5
+    ):
         log.error("INCORRECT R2Score")
-    if not experiment.scaled_data.with_val and not np.isclose(r2s, 0.55336893, rtol=1.0e-5):
+    if not experiment.scaled_data.with_val and not np.isclose(
+        r2s, 0.55336893, rtol=1.0e-5
+    ):
         log.error("INCORRECT R2Score (with val)")
 
     # ================================================================

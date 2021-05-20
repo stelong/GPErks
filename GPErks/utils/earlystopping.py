@@ -1,12 +1,12 @@
 from abc import ABCMeta, abstractmethod
-from typing import Optional, List
+from typing import List, Optional
 
 import gpytorch
 import numpy
 import torch
 
-from GPErks.utils.train_stats import TrainStats
 from GPErks.utils.log import get_logger
+from GPErks.utils.train_stats import TrainStats
 
 log = get_logger()
 
@@ -20,10 +20,10 @@ class EarlyStoppingCriterion(metaclass=ABCMeta):
         self.is_verified = False
 
     def enable(
-            self,
-            model: gpytorch.models.ExactGP,
-            train_stats: TrainStats,
-            save_path,
+        self,
+        model: gpytorch.models.ExactGP,
+        train_stats: TrainStats,
+        save_path,
     ):
         self.model = model
         self.train_stats = train_stats
@@ -31,8 +31,10 @@ class EarlyStoppingCriterion(metaclass=ABCMeta):
         self.is_verified = False
 
     def evaluate(self) -> Optional[int]:
-        if self.train_stats.current_epoch == self.max_epochs or \
-                self._should_stop():
+        if (
+            self.train_stats.current_epoch == self.max_epochs
+            or self._should_stop()
+        ):
             log.debug(
                 f"Early stopping: calling on_stop() at epoch "
                 f"{self.train_stats.current_epoch}"
@@ -64,10 +66,8 @@ class EarlyStoppingCriterion(metaclass=ABCMeta):
 
 
 class SnapshottingEarlyStoppingCriterion(
-    EarlyStoppingCriterion,
-    metaclass=ABCMeta
+    EarlyStoppingCriterion, metaclass=ABCMeta
 ):
-
     def _on_stop(self):
         log.info("SnapshotEarlyStoppingCriterion on_stop().")
         log.info(f"Saving model to {self.save_path} file...")
@@ -76,7 +76,6 @@ class SnapshottingEarlyStoppingCriterion(
 
 
 class NoEarlyStoppingCriterion(SnapshottingEarlyStoppingCriterion):
-
     def __init__(self, max_epochs: int):
         super().__init__(max_epochs)
 
@@ -115,15 +114,13 @@ class PkEarlyStoppingCriterion(SnapshottingEarlyStoppingCriterion):
         self.Pk: List = []
 
     def enable(
-            self,
-            model: gpytorch.models.ExactGP,
-            train_stats: TrainStats,
-            save_path,
+        self,
+        model: gpytorch.models.ExactGP,
+        train_stats: TrainStats,
+        save_path,
     ):
         super(PkEarlyStoppingCriterion, self).enable(
-            model,
-            train_stats,
-            save_path
+            model, train_stats, save_path
         )
 
     def _reset(self):
@@ -138,9 +135,22 @@ class PkEarlyStoppingCriterion(SnapshottingEarlyStoppingCriterion):
             self.computation_enabled = True
 
         if self.computation_enabled:
-            self.Pk.append( numpy.abs(numpy.sum(self.train_stats.train_loss[-self.strip_length:]) / (self.strip_length * numpy.min(self.train_stats.train_loss[-self.strip_length:])) - 1) )
+            self.Pk.append(
+                numpy.abs(
+                    numpy.sum(
+                        self.train_stats.train_loss[-self.strip_length :]
+                    )
+                    / (
+                        self.strip_length
+                        * numpy.min(
+                            self.train_stats.train_loss[-self.strip_length :]
+                        )
+                    )
+                    - 1
+                )
+            )
         else:
-            self.Pk.append( 0.0 )
+            self.Pk.append(0.0)
 
         log.info(f"Pk[-1]={self.Pk[-1]}, alpha={self.alpha}")
         if self.Pk[-1] > self.alpha:
@@ -166,8 +176,6 @@ class PkEarlyStoppingCriterion(SnapshottingEarlyStoppingCriterion):
         log.debug("PkEpochEarlyStoppingCriterion on_continue().")
 
 
-
-
 class GLEarlyStoppingCriterion(SnapshottingEarlyStoppingCriterion):
     # ref: https://page.mi.fu-berlin.de/prechelt/Biblio/stop_tricks1997.pdf
     # note: uses validation data
@@ -181,15 +189,13 @@ class GLEarlyStoppingCriterion(SnapshottingEarlyStoppingCriterion):
         self.GL: List = []
 
     def enable(
-            self,
-            model: gpytorch.models.ExactGP,
-            train_stats: TrainStats,
-            save_path,
+        self,
+        model: gpytorch.models.ExactGP,
+        train_stats: TrainStats,
+        save_path,
     ):
         super(GLEarlyStoppingCriterion, self).enable(
-            model,
-            train_stats,
-            save_path
+            model, train_stats, save_path
         )
 
     def _reset(self):

@@ -1,10 +1,11 @@
 from collections import defaultdict
 from copy import deepcopy
-from typing import List, Type, Optional
+from typing import List, Optional, Type
 
 import gpytorch
 import matplotlib.gridspec as grsp
 import matplotlib.pyplot as plt
+
 # plt.switch_backend('TkAgg')
 import numpy
 import torch
@@ -82,7 +83,11 @@ class GPEmulator:
         while current_restart <= self.experiment.n_restarts:
             log.info(f"Running restart {current_restart}...")
             self.restart_idx = current_restart
-            restart_train_stats, restart_best_model, restart_best_epoch = self.train_once(
+            (
+                restart_train_stats,
+                restart_best_model,
+                restart_best_epoch,
+            ) = self.train_once(
                 X_train, y_train, X_val, y_val, early_stopping_criterion
             )
             restarts_train_stats.append(restart_train_stats)
@@ -93,19 +98,28 @@ class GPEmulator:
 
         train_loss_list = [
             train_stats.train_loss[best_epoch - 1]
-            for train_stats, best_epoch in zip(restarts_train_stats, restarts_best_epochs) 
+            for train_stats, best_epoch in zip(
+                restarts_train_stats, restarts_best_epochs
+            )
         ]
         best_overall_loss_idx = numpy.argmin(train_loss_list)
         if self.scaled_data.with_val:
             val_loss_list = [
                 train_stats.val_loss[best_epoch - 1]
-                for train_stats, best_epoch in zip(restarts_train_stats, restarts_best_epochs)
+                for train_stats, best_epoch in zip(
+                    restarts_train_stats, restarts_best_epochs
+                )
             ]
             best_overall_loss_idx = numpy.argmin(val_loss_list)
 
         train_metrics_score_list = defaultdict(list)
-        for train_stats, best_epoch in zip(restarts_train_stats, restarts_best_epochs):
-            for metric_name, metric_values in train_stats.train_metrics_score.items():
+        for train_stats, best_epoch in zip(
+            restarts_train_stats, restarts_best_epochs
+        ):
+            for (
+                metric_name,
+                metric_values,
+            ) in train_stats.train_metrics_score.items():
                 train_metrics_score_list[metric_name].append(
                     metric_values[best_epoch - 1]
                 )
@@ -116,8 +130,13 @@ class GPEmulator:
 
         if self.scaled_data.with_val:
             val_metrics_score_list = defaultdict(list)
-            for train_stats, best_epoch in zip(restarts_train_stats, restarts_best_epochs):
-                for metric_name, metric_values in train_stats.val_metrics_score.items():
+            for train_stats, best_epoch in zip(
+                restarts_train_stats, restarts_best_epochs
+            ):
+                for (
+                    metric_name,
+                    metric_values,
+                ) in train_stats.val_metrics_score.items():
                     val_metrics_score_list[metric_name].append(
                         metric_values[best_epoch - 1]
                     )
@@ -129,7 +148,9 @@ class GPEmulator:
         self.best_restart = best_overall_loss_idx + 1
         self.best_epoch = restarts_best_epochs[best_overall_loss_idx]
 
-        self.best_model = restarts_best_models[best_overall_loss_idx]  # TODO: improve
+        self.best_model = restarts_best_models[
+            best_overall_loss_idx
+        ]  # TODO: improve
         self.model.load_state_dict(self.best_model)
 
         print(
@@ -139,17 +160,19 @@ class GPEmulator:
         self.print_stats()
 
     def train_once(
-            self,
-            X_train,
-            y_train,
-            X_val,
-            y_val,
-            early_stopping_criterion: EarlyStoppingCriterion,
+        self,
+        X_train,
+        y_train,
+        X_val,
+        y_val,
+        early_stopping_criterion: EarlyStoppingCriterion,
     ):
         self.model.load_state_dict(self.init_state)
 
         if self.restart_idx > 0:
-            theta_inf, theta_sup = numpy.log(1e-1), numpy.log(1e1)  # TODO: make range customizable
+            theta_inf, theta_sup = numpy.log(1e-1), numpy.log(
+                1e1
+            )  # TODO: make range customizable
             hyperparameters = {
                 "covar_module.base_kernel.raw_lengthscale": (
                     theta_sup - theta_inf
@@ -173,7 +196,9 @@ class GPEmulator:
             self.model.likelihood, self.model
         )
 
-        restart_model_checkpoint_file = f"{self.savepath}restart{self.restart_idx}_checkpoint.pth"
+        restart_model_checkpoint_file = (
+            f"{self.savepath}restart{self.restart_idx}_checkpoint.pth"
+        )
         train_stats = TrainStats(list(map(get_metric_name, self.metrics)))
         early_stopping_criterion.enable(
             self.model,
@@ -187,8 +212,8 @@ class GPEmulator:
             train_loss = self.train_step(X_train, y_train)
             train_stats.train_loss.append(train_loss)
             msg = (
-                    f"[{train_stats.current_epoch:>{len(str(max_epochs))}}/{max_epochs:>{len(str(max_epochs))}}] "
-                    + f"Training Loss: {train_loss:.4f}"
+                f"[{train_stats.current_epoch:>{len(str(max_epochs))}}/{max_epochs:>{len(str(max_epochs))}}] "
+                + f"Training Loss: {train_loss:.4f}"
             )
 
             self.model.eval()
@@ -197,17 +222,23 @@ class GPEmulator:
                 for metric, metric_score in zip(self.metrics, metric_scores):
                     metric_name = get_metric_name(metric)
                     msg += f" - {metric_name}: {metric_score:.4f}"
-                    train_stats.train_metrics_score[metric_name].append(metric_score)
+                    train_stats.train_metrics_score[metric_name].append(
+                        metric_score
+                    )
 
                 if self.scaled_data.with_val:
                     val_loss = self.val_step(X_val, y_val)
                     train_stats.val_loss.append(val_loss)
                     msg += f" | Validation Loss: {val_loss:.4f}"
                     metric_scores = self.evaluate_metrics(X_val, y_val)
-                    for metric, metric_score in zip(self.metrics, metric_scores):
+                    for metric, metric_score in zip(
+                        self.metrics, metric_scores
+                    ):
                         metric_name = get_metric_name(metric)
                         msg += f" - {metric_name}: {metric_score:.4f}"
-                        train_stats.val_metrics_score[metric_name].append(metric_score)
+                        train_stats.val_metrics_score[metric_name].append(
+                            metric_score
+                        )
             log.info(msg)
 
             best_epoch: Optional[int] = early_stopping_criterion.evaluate()
@@ -286,7 +317,9 @@ class GPEmulator:
             predictions = self.model.likelihood(self.model(X_new))
             y_std = numpy.sqrt(predictions.variance.cpu().numpy())
             y_samples = (
-                predictions.sample(sample_shape=torch.Size([self.experiment.n_draws]))
+                predictions.sample(
+                    sample_shape=torch.Size([self.experiment.n_draws])
+                )
                 .cpu()
                 .numpy()
             )
@@ -311,17 +344,30 @@ class GPEmulator:
 
         loss_len = len(train_stats.train_loss)
 
-        axes[0].plot(numpy.arange(1, loss_len + 1), train_stats.train_loss, zorder=1, label="training")
+        axes[0].plot(
+            numpy.arange(1, loss_len + 1),
+            train_stats.train_loss,
+            zorder=1,
+            label="training",
+        )
         axes[0].axvline(best_epoch, c="r", ls="--", lw=0.8, zorder=2)
         axes[0].set_ylabel("Loss", fontsize=12, zorder=1)
         axes[0].set_xlabel("Epoch", fontsize=12)
 
         if self.scaled_data.with_val:
-            axes[0].plot(numpy.arange(1, loss_len + 1), train_stats.val_loss, zorder=1, label="validation")
+            axes[0].plot(
+                numpy.arange(1, loss_len + 1),
+                train_stats.val_loss,
+                zorder=1,
+                label="validation",
+            )
 
             for metric, axis in zip(self.metrics, axes.flat[1:]):
                 metric_name = get_metric_name(metric)
-                axis.plot(numpy.arange(1, loss_len + 1), train_stats.val_metrics_score[metric_name])
+                axis.plot(
+                    numpy.arange(1, loss_len + 1),
+                    train_stats.val_metrics_score[metric_name],
+                )
                 axis.axvline(best_epoch, c="r", ls="--", lw=0.8)
                 axis.set_xlabel("Epoch", fontsize=12)
                 axis.set_ylabel(metric_name, fontsize=12)
