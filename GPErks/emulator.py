@@ -147,12 +147,6 @@ class GPEmulator:
         best_restart = best_overall_loss_idx + 1
         best_epoch = restarts_best_epochs[best_overall_loss_idx]
 
-        print(
-            f"\nDone. The best model resulted from Restart {best_restart}, Epoch {best_epoch}."
-        )
-        print("\nThe fitted emulator hyperparameters are:")
-        self.print_stats()
-
         log.info(f"Loading best model (restart: {best_restart}, epoch: {best_epoch})...")
         best_model = torch.load(
             snapshotting_criterion.get_snapshot_file_path(best_restart, best_epoch),
@@ -160,8 +154,10 @@ class GPEmulator:
         )  # TODO: check if return device used for training (e.g. GPU)
         self.model.load_state_dict(best_model)
         log.info(
-            f"Loaded best model (restart: {best_restart}, epoch: {best_epoch})..."
+            f"Loaded best model (restart: {best_restart}, epoch: {best_epoch})."
         )
+        log.info("The fitted emulator hyperparameters are:")
+        self.print_stats()
 
     def train_once(
         self,
