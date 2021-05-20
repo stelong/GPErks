@@ -23,11 +23,11 @@ class EarlyStoppingCriterion(metaclass=ABCMeta):
         self,
         model: gpytorch.models.ExactGP,
         train_stats: TrainStats,
-        save_path,
+        # save_path,
     ):
         self.model = model
         self.train_stats = train_stats
-        self.save_path = save_path
+        # self.save_path = save_path
         self.is_verified = False
 
     def evaluate(self) -> Optional[int]:
@@ -70,9 +70,9 @@ class SnapshottingEarlyStoppingCriterion(
 ):
     def _on_stop(self):
         log.info("SnapshotEarlyStoppingCriterion on_stop().")
-        log.info(f"Saving model to {self.save_path} file...")
-        torch.save(self.model.state_dict(), self.save_path)
-        log.info(f"Saved model to {self.save_path} file.")
+        # log.info(f"Saving model to {self.save_path} file...")
+        # torch.save(self.model.state_dict(), self.save_path)
+        # log.info(f"Saved model to {self.save_path} file.")
 
 
 class NoEarlyStoppingCriterion(SnapshottingEarlyStoppingCriterion):
@@ -117,10 +117,10 @@ class PkEarlyStoppingCriterion(SnapshottingEarlyStoppingCriterion):
         self,
         model: gpytorch.models.ExactGP,
         train_stats: TrainStats,
-        save_path,
+        # save_path,
     ):
         super(PkEarlyStoppingCriterion, self).enable(
-            model, train_stats, save_path
+            model, train_stats,
         )
 
     def _reset(self):
@@ -192,10 +192,10 @@ class GLEarlyStoppingCriterion(SnapshottingEarlyStoppingCriterion):
         self,
         model: gpytorch.models.ExactGP,
         train_stats: TrainStats,
-        save_path,
+        # save_path,
     ):
         super(GLEarlyStoppingCriterion, self).enable(
-            model, train_stats, save_path
+            model, train_stats,
         )
 
     def _reset(self):

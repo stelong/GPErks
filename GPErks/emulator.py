@@ -13,6 +13,7 @@ import torchmetrics
 
 from GPErks.data import ScaledData
 from GPErks.experiment import GPExperiment
+from GPErks.snapshotting import SnapshottingCriterion
 from GPErks.utils.earlystopping import EarlyStoppingCriterion
 from GPErks.utils.log import get_logger
 from GPErks.utils.metrics import get_metric_name
@@ -57,11 +58,10 @@ class GPEmulator:
     def train(
         self,
         early_stopping_criterion,
-        savepath=PATH,
+        snapshotting_criterion,
         save_losses=SAVE_LOSSES,
     ):
         print("\nTraining emulator...")
-        self.savepath = savepath
         self.save_losses = save_losses
 
         self.idx_best_list = []
@@ -76,7 +76,7 @@ class GPEmulator:
             y_val = y_val.to(self.device)
 
         restarts_train_stats: List[TrainStats] = []
-        restarts_best_models = []
+        # restarts_best_models = []
         restarts_best_epochs = []
 
         current_restart = 1
@@ -85,13 +85,12 @@ class GPEmulator:
             self.restart_idx = current_restart
             (
                 restart_train_stats,
-                restart_best_model,
                 restart_best_epoch,
             ) = self.train_once(
-                X_train, y_train, X_val, y_val, early_stopping_criterion
+                X_train, y_train, X_val, y_val, early_stopping_criterion, snapshotting_criterion
             )
             restarts_train_stats.append(restart_train_stats)
-            restarts_best_models.append(restart_best_model)
+            # restarts_best_models.append(restart_best_model)
             restarts_best_epochs.append(restart_best_epoch)
             log.info(f"Run restart {current_restart}.")
             current_restart += 1
@@ -145,19 +144,24 @@ class GPEmulator:
                 for metric_name, best_values in val_metrics_score_list.items()
             }
 
-        self.best_restart = best_overall_loss_idx + 1
-        self.best_epoch = restarts_best_epochs[best_overall_loss_idx]
-
-        self.best_model = restarts_best_models[
-            best_overall_loss_idx
-        ]  # TODO: improve
-        self.model.load_state_dict(self.best_model)
+        best_restart = best_overall_loss_idx + 1
+        best_epoch = restarts_best_epochs[best_overall_loss_idx]
 
         print(
-            f"\nDone. The best model resulted from Restart {self.best_restart}, Epoch {self.best_epoch}."
+            f"\nDone. The best model resulted from Restart {best_restart}, Epoch {best_epoch}."
         )
         print("\nThe fitted emulator hyperparameters are:")
         self.print_stats()
+
+        log.info(f"Loading best model (restart: {best_restart}, epoch: {best_epoch})...")
+        best_model = torch.load(
+            snapshotting_criterion.get_snapshot_file_path(best_restart, best_epoch),
+            map_location=torch.device("cpu"),
+        )  # TODO: check if return device used for training (e.g. GPU)
+        self.model.load_state_dict(best_model)
+        log.info(
+            f"Loaded best model (restart: {best_restart}, epoch: {best_epoch})..."
+        )
 
     def train_once(
         self,
@@ -166,6 +170,7 @@ class GPEmulator:
         X_val,
         y_val,
         early_stopping_criterion: EarlyStoppingCriterion,
+        snapshotting_criterion: SnapshottingCriterion,
     ):
         self.model.load_state_dict(self.init_state)
 
@@ -196,14 +201,18 @@ class GPEmulator:
             self.model.likelihood, self.model
         )
 
-        restart_model_checkpoint_file = (
-            f"{self.savepath}restart{self.restart_idx}_checkpoint.pth"
-        )
+        # restart_model_checkpoint_file = (
+        #     f"{self.savepath}restart{self.restart_idx}_checkpoint.pth"
+        # )
         train_stats = TrainStats(list(map(get_metric_name, self.metrics)))
         early_stopping_criterion.enable(
             self.model,
             train_stats,
-            restart_model_checkpoint_file,
+            # restart_model_checkpoint_file,
+        )
+        snapshotting_criterion.enable(
+            self.model,
+            train_stats,
         )
 
         max_epochs: int = early_stopping_criterion.max_epochs
@@ -214,6 +223,11 @@ class GPEmulator:
             msg = (
                 f"[{train_stats.current_epoch:>{len(str(max_epochs))}}/{max_epochs:>{len(str(max_epochs))}}] "
                 + f"Training Loss: {train_loss:.4f}"
+            )
+
+            snapshotting_criterion.maybe_save(
+                self.restart_idx,
+                train_stats.current_epoch,
             )
 
             self.model.eval()
@@ -245,12 +259,14 @@ class GPEmulator:
             if early_stopping_criterion.is_verified:
                 break
 
-        best_model = torch.load(restart_model_checkpoint_file)
+        snapshotting_criterion.keep_snapshots_until(self.restart_idx, best_epoch)
+        # best_model = snap torch.load(restart_model_checkpoint_file)
+        # best_model = torch.load(restart_model_checkpoint_file)
 
         if self.save_losses:
             self.plot_loss(train_stats, best_epoch)
 
-        return train_stats, best_model, best_epoch
+        return train_stats, best_epoch
 
     def train_step(self, X_train, y_train):
         self.model.train()
