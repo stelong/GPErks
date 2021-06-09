@@ -15,6 +15,8 @@ from torchmetrics import ExplainedVariance, MeanSquaredError, R2Score
 
 from GPErks.emulator import GPEmulator
 from GPErks.experiment import GPExperiment
+from GPErks.snapshotting import EveryEpochSnapshottingCriterion, \
+    NeverSaveSnapshottingCriterion
 from GPErks.utils.design import read_labels
 from GPErks.utils.earlystopping import (
     GLEarlyStoppingCriterion,
@@ -89,39 +91,40 @@ def main():
         kernel,
         3,
         metrics=metrics,
-        # X_val=X_val,
-        # y_val=y_val,
+        X_val=X_val,
+        y_val=y_val,
         seed=seed,
+    )
+
+    # snapc = NeverSaveSnapshottingCriterion(
+    snapc = EveryEpochSnapshottingCriterion(
+        "/home/gianvito/personal/GPErks/GPErks/tests/snapshot/my_model/restart_{restart}/",
+        "epoch_{epoch}.pth"
     )
 
     optimizer = torch.optim.Adam(experiment.model.parameters(), lr=0.1)
     # esc = NoEarlyStoppingCriterion(33)  # TODO: investigate if snapshot is required anyway
     MAX_EPOCHS = 1000
-    # esc = GLEarlyStoppingCriterion(MAX_EPOCHS, alpha=1.0, patience=8)
-    esc = PkEarlyStoppingCriterion(
-        MAX_EPOCHS, alpha=1.0, patience=8, strip_length=20
-    )
+    esc = GLEarlyStoppingCriterion(MAX_EPOCHS, alpha=1.0, patience=8)
+    # esc = PkEarlyStoppingCriterion(
+    #     MAX_EPOCHS, alpha=1.0, patience=8, strip_length=20
+    # )
 
-    # device=torch.device('cpu')
     emul = GPEmulator(experiment, optimizer)
-    emul.train(
-        esc,
-        savepath=savepath,
-        save_losses=True,
-    )
+    emul.train(esc, snapc, save_losses=True)
 
     # ================================================================
     # (4) Saving trained GPE
     # ================================================================
-    emul.save()
+    # emul.save()
 
     # ================================================================
     # (5) Loading already trained GPE
     # ================================================================
     # NOTE: you need exactly the same training dataset used in (3)
     # ================================================================
-    loadpath = savepath
-    emul = GPEmulator.load(experiment, optimizer, loadpath)
+    # loadpath = savepath
+    # emul = GPEmulator.load(experiment, optimizer, loadpath)
 
     # ================================================================
     # (6) Testing trained GPE at new input points (inference)
@@ -138,13 +141,13 @@ def main():
     print(f"  ISE = {ise:.2f} %\n")
 
     if experiment.scaled_data.with_val and not np.isclose(
-        r2s, 0.93622035, rtol=1.0e-5
-    ):
-        log.error("INCORRECT R2Score")
-    if not experiment.scaled_data.with_val and not np.isclose(
-        r2s, 0.55336893, rtol=1.0e-5
+        r2s, 0.58630764, rtol=1.0e-5
     ):
         log.error("INCORRECT R2Score (with val)")
+    if not experiment.scaled_data.with_val and not np.isclose(
+        r2s, 0.89883888, rtol=1.0e-5
+    ):
+        log.error("INCORRECT R2Score")
 
     # ================================================================
     # (7) Plotting predictions vs observations
