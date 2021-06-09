@@ -110,7 +110,6 @@ def main():
     #     MAX_EPOCHS, alpha=1.0, patience=8, strip_length=20
     # )
 
-    # device=torch.device('cpu')
     emul = GPEmulator(experiment, optimizer)
     emul.train(esc, snapc, save_losses=True)
 
@@ -142,11 +141,11 @@ def main():
     print(f"  ISE = {ise:.2f} %\n")
 
     if experiment.scaled_data.with_val and not np.isclose(
-        r2s, 0.55336893, rtol=1.0e-5
+        r2s, 0.58630764, rtol=1.0e-5
     ):
         log.error("INCORRECT R2Score (with val)")
     if not experiment.scaled_data.with_val and not np.isclose(
-        r2s, 0.89529657, rtol=1.0e-5
+        r2s, 0.89883888, rtol=1.0e-5
     ):
         log.error("INCORRECT R2Score")
 

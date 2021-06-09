@@ -255,12 +255,11 @@ class GPEmulator:
             best_model: Optional[gpytorch.models.ExactGP] = None
             best_epoch, best_model = early_stopping_criterion.evaluate()
             if early_stopping_criterion.is_verified:
-                # snapshotting_criterion.save(self.restart_idx, best_epoch)  # TODO: renable when fixed AND SAVE BEST MODEL NOT CURRENT ONE IN MEMORY
+                snapshotting_criterion.model = best_model
+                snapshotting_criterion.save(self.restart_idx, best_epoch)
                 break
 
         snapshotting_criterion.keep_snapshots_until(self.restart_idx, best_epoch)
-        # best_model = snap torch.load(restart_model_checkpoint_file)
-        # best_model = torch.load(restart_model_checkpoint_file)
 
         if self.save_losses:
             self.plot_loss(train_stats, best_epoch)

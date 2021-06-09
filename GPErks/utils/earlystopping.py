@@ -1,5 +1,6 @@
 from abc import ABCMeta, abstractmethod
-from typing import List, Optional, Tuple
+from copy import deepcopy
+from typing import List, Optional, Tuple, Dict, Any
 
 import gpytorch
 import numpy
@@ -55,7 +56,7 @@ class EarlyStoppingCriterion(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def _on_stop(self) -> int:  # TODO: return also current_best_model
+    def _on_stop(self) -> Tuple[int, gpytorch.models.ExactGP]:
         pass
 
     @abstractmethod
@@ -73,9 +74,9 @@ class NoEarlyStoppingCriterion(EarlyStoppingCriterion):
     def _should_stop(self) -> bool:
         return False
 
-    def _on_stop(self) -> int:
+    def _on_stop(self) -> Tuple[int, gpytorch.models.ExactGP]:
         super()._on_stop()
-        return self.train_stats.current_epoch
+        return self.train_stats.current_epoch, self.model
 
     def _on_continue(self):
         pass
@@ -100,12 +101,12 @@ class PkEarlyStoppingCriterion(EarlyStoppingCriterion):
         self.strip_counter: int = 0
         self.computation_enabled: bool = False
         self.Pk: List = []
+        self.current_best_state_dict: Dict[Any, Any] = {}
 
     def enable(
         self,
         model: gpytorch.models.ExactGP,
         train_stats: TrainStats,
-        # save_path,
     ):
         super(PkEarlyStoppingCriterion, self).enable(
             model, train_stats,
@@ -152,13 +153,15 @@ class PkEarlyStoppingCriterion(EarlyStoppingCriterion):
             log.info(
                 f"The best epoch I will return is: {self.train_stats.current_epoch}"
             )
+            self.current_best_state_dict = deepcopy(self.model.state_dict())
             self.counter = 0
         return self.counter == self.patience
 
-    def _on_stop(self) -> int:
+    def _on_stop(self) -> Tuple[int, gpytorch.models.ExactGP]:
         super()._on_stop()
         log.info("PkEpochEarlyStoppingCriterion on_stop().")
-        return self.train_stats.current_epoch - self.patience
+        self.model.load_state_dict(self.current_best_state_dict)
+        return self.train_stats.current_epoch - self.patience, self.model
 
     def _on_continue(self):
         log.debug("PkEpochEarlyStoppingCriterion on_continue().")
@@ -175,12 +178,12 @@ class GLEarlyStoppingCriterion(EarlyStoppingCriterion):
         self.counter: int = 0
         self.Eva_opt: float = numpy.infty
         self.GL: List = []
+        self.current_best_state_dict: Dict[Any, Any] = {}
 
     def enable(
         self,
         model: gpytorch.models.ExactGP,
         train_stats: TrainStats,
-        # save_path,
     ):
         super(GLEarlyStoppingCriterion, self).enable(
             model, train_stats,
@@ -211,12 +214,14 @@ class GLEarlyStoppingCriterion(EarlyStoppingCriterion):
                 f"The best epoch I will return is: {self.train_stats.current_epoch}"
             )
             self.counter = 0
+            self.current_best_state_dict = deepcopy(self.model.state_dict())
         return self.counter == self.patience
 
-    def _on_stop(self) -> int:
+    def _on_stop(self) -> Tuple[int, gpytorch.models.ExactGP]:
         super()._on_stop()
         log.info("GLEpochEarlyStoppingCriterion on_stop().")
-        return self.train_stats.current_epoch - self.patience
+        self.model.load_state_dict(self.current_best_state_dict)
+        return self.train_stats.current_epoch - self.patience, self.model
 
     def _on_continue(self):
         log.debug("GLEpochEarlyStoppingCriterion on_continue().")
