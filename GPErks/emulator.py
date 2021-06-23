@@ -1,9 +1,10 @@
 from collections import defaultdict
 from copy import deepcopy
-from typing import List, Optional, Type
+from typing import List, Optional
 
 import gpytorch
-import matplotlib.gridspec as grsp
+
+# import matplotlib.gridspec as grsp
 import matplotlib.pyplot as plt
 
 # plt.switch_backend('TkAgg')
@@ -83,11 +84,13 @@ class GPEmulator:
         while current_restart <= self.experiment.n_restarts:
             log.info(f"Running restart {current_restart}...")
             self.restart_idx = current_restart
-            (
-                restart_train_stats,
-                restart_best_epoch,
-            ) = self.train_once(
-                X_train, y_train, X_val, y_val, early_stopping_criterion, snapshotting_criterion
+            (restart_train_stats, restart_best_epoch,) = self.train_once(
+                X_train,
+                y_train,
+                X_val,
+                y_val,
+                early_stopping_criterion,
+                snapshotting_criterion,
             )
             restarts_train_stats.append(restart_train_stats)
             # restarts_best_models.append(restart_best_model)
@@ -147,9 +150,13 @@ class GPEmulator:
         best_restart = best_overall_loss_idx + 1
         best_epoch = restarts_best_epochs[best_overall_loss_idx]
 
-        log.info(f"Loading best model (restart: {best_restart}, epoch: {best_epoch})...")
+        log.info(
+            f"Loading best model (restart: {best_restart}, epoch: {best_epoch})..."
+        )
         best_model = torch.load(
-            snapshotting_criterion.get_snapshot_file_path(best_restart, best_epoch),
+            snapshotting_criterion.get_snapshot_file_path(
+                best_restart, best_epoch
+            ),
             map_location=torch.device("cpu"),
         )  # TODO: check if return device used for training (e.g. GPU)
         self.model.load_state_dict(best_model)
@@ -259,7 +266,9 @@ class GPEmulator:
                 snapshotting_criterion.save(self.restart_idx, best_epoch)
                 break
 
-        snapshotting_criterion.keep_snapshots_until(self.restart_idx, best_epoch)
+        snapshotting_criterion.keep_snapshots_until(
+            self.restart_idx, best_epoch
+        )
 
         if self.save_losses:
             self.plot_loss(train_stats, best_epoch)

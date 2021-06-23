@@ -1,10 +1,9 @@
 from abc import ABCMeta, abstractmethod
 from copy import deepcopy
-from typing import List, Optional, Tuple, Dict, Any
+from typing import Any, Dict, List, Optional, Tuple
 
 import gpytorch
 import numpy
-import torch
 
 from GPErks.utils.log import get_logger
 from GPErks.utils.train_stats import TrainStats
@@ -29,7 +28,9 @@ class EarlyStoppingCriterion(metaclass=ABCMeta):
         self.train_stats = train_stats
         self.is_verified = False
 
-    def evaluate(self) -> Tuple[Optional[int], Optional[gpytorch.models.ExactGP]]:
+    def evaluate(
+        self,
+    ) -> Tuple[Optional[int], Optional[gpytorch.models.ExactGP]]:
         if (
             self.train_stats.current_epoch == self.max_epochs
             or self._should_stop()
@@ -109,7 +110,8 @@ class PkEarlyStoppingCriterion(EarlyStoppingCriterion):
         train_stats: TrainStats,
     ):
         super(PkEarlyStoppingCriterion, self).enable(
-            model, train_stats,
+            model,
+            train_stats,
         )
 
     def _reset(self):
@@ -149,7 +151,7 @@ class PkEarlyStoppingCriterion(EarlyStoppingCriterion):
             )
         else:
             if self.counter > 0:
-                log.info(f"Resetting PkEpochEarlyStoppingCriterion countdown.")
+                log.info("Resetting PkEpochEarlyStoppingCriterion countdown.")
             log.info(
                 f"The best epoch I will return is: {self.train_stats.current_epoch}"
             )
@@ -186,7 +188,8 @@ class GLEarlyStoppingCriterion(EarlyStoppingCriterion):
         train_stats: TrainStats,
     ):
         super(GLEarlyStoppingCriterion, self).enable(
-            model, train_stats,
+            model,
+            train_stats,
         )
 
     def _reset(self):
@@ -209,7 +212,7 @@ class GLEarlyStoppingCriterion(EarlyStoppingCriterion):
             )
         else:
             if self.counter > 0:
-                log.info(f"Resetting GLEpochEarlyStoppingCriterion countdown.")
+                log.info("Resetting GLEpochEarlyStoppingCriterion countdown.")
             log.info(
                 f"The best epoch I will return is: {self.train_stats.current_epoch}"
             )

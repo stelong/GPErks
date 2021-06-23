@@ -14,9 +14,9 @@ log = get_logger()
 
 class SnapshottingCriterion(metaclass=ABCMeta):
     def __init__(
-            self,
-            snapshot_dir: str,
-            snapshot_file: str,
+        self,
+        snapshot_dir: str,
+        snapshot_file: str,
     ):
         self.model: Optional[gpytorch.models.ExactGP] = None
         self.train_stats: Optional[TrainStats] = None
@@ -25,9 +25,9 @@ class SnapshottingCriterion(metaclass=ABCMeta):
         self._reached_epoch: int = -1
 
     def enable(
-            self,
-            model: gpytorch.models.ExactGP,
-            train_stats: TrainStats,
+        self,
+        model: gpytorch.models.ExactGP,
+        train_stats: TrainStats,
     ):
         self.model = model
         self.train_stats = train_stats
@@ -48,7 +48,7 @@ class SnapshottingCriterion(metaclass=ABCMeta):
         restart_dir = Path(self.snapshot_dir.format(restart=restart))
         restart_dir.mkdir(parents=True, exist_ok=True)
         return (
-                restart_dir / self.snapshot_file.format(epoch=epoch)
+            restart_dir / self.snapshot_file.format(epoch=epoch)
         ).as_posix()
 
     def keep_snapshots_until(self, restart, epoch):
@@ -68,7 +68,6 @@ class SnapshottingCriterion(metaclass=ABCMeta):
 
 
 class EveryEpochSnapshottingCriterion(SnapshottingCriterion):
-
     def _should_save(self) -> bool:
         return True
 
@@ -77,7 +76,6 @@ class EveryEpochSnapshottingCriterion(SnapshottingCriterion):
 
 
 class NeverSaveSnapshottingCriterion(SnapshottingCriterion):
-
     def _should_save(self) -> bool:
         return False
 
