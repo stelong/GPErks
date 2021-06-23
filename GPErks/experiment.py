@@ -2,6 +2,7 @@ from typing import List, Optional
 
 import gpytorch
 import numpy
+import torch
 import torchmetrics
 
 from GPErks.data import ScaledData
@@ -55,3 +56,24 @@ class GPExperiment:
             mean_module,
             covar_module,
         )
+
+    def load_model(
+        self,
+        model_path: str,
+        device: torch.device = torch.device("cpu"),
+    ):
+        self.model.load_state_dict(torch.load(model_path, map_location=device))
+        self.print_stats()
+
+    def print_stats(self):
+        torch.set_printoptions(sci_mode=False)
+        msg = (
+            "\n"
+            + f"Bias: {self.model.mean_module.bias.data.squeeze():.4f}\n"
+            + f"Weights: {self.model.mean_module.weights.data.squeeze()}\n"
+            + f"Outputscale: {self.model.covar_module.outputscale.data.squeeze():.4f}\n"
+            + f"Lengthscales: {self.model.covar_module.base_kernel.lengthscale.data.squeeze()}"
+        )
+        if self.learn_noise:
+            msg += f"\nLikelihood noise: {self.model.likelihood.noise_covar.noise.data.squeeze():.4f}"
+        print(msg)

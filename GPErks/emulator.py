@@ -35,7 +35,6 @@ class GPEmulator:
     def __init__(
         self,
         experiment: GPExperiment,
-        optimizer,
         device=DEVICE,
     ):
         self.experiment: GPExperiment = experiment
@@ -53,11 +52,11 @@ class GPEmulator:
         self.model: gpytorch.models.ExactGP = experiment.model
         self.init_state = deepcopy(self.model.state_dict())
 
-        self.optimizer = optimizer
         self.metrics: List[torchmetrics.Metric] = experiment.metrics
 
     def train(
         self,
+        optimizer,
         early_stopping_criterion,
         snapshotting_criterion,
         save_losses=SAVE_LOSSES,
@@ -87,6 +86,7 @@ class GPEmulator:
             (restart_train_stats, restart_best_epoch,) = self.train_once(
                 X_train,
                 y_train,
+                optimizer,
                 X_val,
                 y_val,
                 early_stopping_criterion,
@@ -164,12 +164,19 @@ class GPEmulator:
             f"Loaded best model (restart: {best_restart}, epoch: {best_epoch})."
         )
         log.info("The fitted emulator hyperparameters are:")
-        self.print_stats()
+        self.experiment.print_stats()
+
+        if self.scaled_data.with_val:
+            msg = ""
+            for metric_name, best_value in self.best_val_metrics_score.items():
+                msg += f"{metric_name}: {best_value:.4f}\n"
+            print(msg)
 
     def train_once(
         self,
         X_train,
         y_train,
+        optimizer,
         X_val,
         y_val,
         early_stopping_criterion: EarlyStoppingCriterion,
@@ -221,7 +228,7 @@ class GPEmulator:
         max_epochs: int = early_stopping_criterion.max_epochs
         while True:
             train_stats.current_epoch += 1
-            train_loss = self.train_step(X_train, y_train)
+            train_loss = self.train_step(X_train, y_train, optimizer)
             train_stats.train_loss.append(train_loss)
             msg = (
                 f"[{train_stats.current_epoch:>{len(str(max_epochs))}}/{max_epochs:>{len(str(max_epochs))}}] "
@@ -275,12 +282,12 @@ class GPEmulator:
 
         return train_stats, best_epoch
 
-    def train_step(self, X_train, y_train):
+    def train_step(self, X_train, y_train, optimizer):
         self.model.train()
-        self.optimizer.zero_grad()
+        optimizer.zero_grad()
         train_loss = -self.criterion(self.model(X_train), y_train)
         train_loss.backward()
-        self.optimizer.step()
+        optimizer.step()
         return train_loss.item()
 
     def val_step(self, X_val, y_val):
@@ -291,23 +298,6 @@ class GPEmulator:
         predictions = self.model.likelihood(self.model(X))
         y_pred = predictions.mean
         return [m(y_pred, y).cpu() for m in self.metrics]
-
-    def print_stats(self):
-        torch.set_printoptions(sci_mode=False)
-        msg = (
-            "\n"
-            + f"Bias: {self.model.mean_module.bias.data.squeeze():.4f}\n"
-            + f"Weights: {self.model.mean_module.weights.data.squeeze()}\n"
-            + f"Outputscale: {self.model.covar_module.outputscale.data.squeeze():.4f}\n"
-            + f"Lengthscales: {self.model.covar_module.base_kernel.lengthscale.data.squeeze()}"
-        )
-        if self.learn_noise:
-            msg += f"\nLikelihood noise: {self.model.likelihood.noise_covar.noise.data.squeeze():.4f}"
-
-        if self.scaled_data.with_val:
-            for metric_name, best_value in self.best_val_metrics_score.items():
-                msg += f"\n{metric_name}: {best_value:.4f}"
-        print(msg)
 
     def predict(self, X_new):
         self.model.eval()
@@ -409,30 +399,3 @@ class GPEmulator:
         print("\nSaving trained emulator...")
         torch.save(self.best_model, self.savepath + filename)
         print("\nDone.")
-
-    @classmethod
-    def load(
-        cls,
-        experiment,
-        optimizer,
-        loadpath=PATH,
-        filename=FILENAME,
-        device=DEVICE_LOAD,
-    ):
-        print("\nLoading emulator...")
-        emul = cls(experiment, optimizer, device=device)
-        emul.model.load_state_dict(
-            torch.load(loadpath + filename, map_location=device)
-        )
-        emul.model.to(device)
-        emul.learn_noise = not numpy.isclose(
-            emul.model.likelihood.noise_covar.raw_noise.item(),
-            numpy.log(1e-4),
-            rtol=0.0,
-            atol=1e-1,
-        )
-        emul.scaled_data.with_val = False
-
-        print("\nDone. The emulator hyperparameters are:")
-        emul.print_stats()
-        return emul

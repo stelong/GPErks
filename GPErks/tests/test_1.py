@@ -100,7 +100,7 @@ def main():
 
     # snapc = NeverSaveSnapshottingCriterion(
     snapc = EveryEpochSnapshottingCriterion(
-        "/home/gianvito/personal/GPErks/GPErks/tests/snapshot/my_model/restart_{restart}/",
+        "/home/sl18/Documents/Python/GPErks/GPErks/tests/snapshot/test_1/restart_{restart}/",
         "epoch_{epoch}.pth",
     )
 
@@ -112,8 +112,8 @@ def main():
     #     MAX_EPOCHS, alpha=1.0, patience=8, strip_length=20
     # )
 
-    emul = GPEmulator(experiment, optimizer)
-    emul.train(esc, snapc, save_losses=True)
+    emul = GPEmulator(experiment)
+    emul.train(optimizer, esc, snapc, save_losses=True)
 
     # ================================================================
     # (4) Saving trained GPE
