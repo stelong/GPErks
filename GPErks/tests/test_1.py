@@ -15,7 +15,7 @@ from sklearn.model_selection import train_test_split
 from torchmetrics import ExplainedVariance, MeanSquaredError, R2Score
 
 from GPErks.emulator import GPEmulator
-from GPErks.experiment import GPExperiment
+from GPErks.experiment import GPExperiment, load_experiment_from_config_file
 from GPErks.snapshotting import (
     EveryEpochSnapshottingCriterion,
     NeverSaveSnapshottingCriterion,
@@ -98,6 +98,17 @@ def main():
         y_val=y_val,
         seed=seed,
     )
+    config_file = __file__.replace(".py", ".ini")
+    experiment.save_to_config_file(config_file)
+
+    # Alternatively, load from file
+    # experiment = load_experiment_from_config_file(
+    #     config_file,
+    #     X_train,
+    #     y_train,
+    #     X_val,
+    #     y_val,
+    # )
 
     here = os.path.abspath(os.path.dirname(__file__))
     # snapc = NeverSaveSnapshottingCriterion(
