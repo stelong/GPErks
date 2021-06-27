@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import os
 import random
 import sys
 from pathlib import Path
@@ -98,9 +99,10 @@ def main():
         seed=seed,
     )
 
+    here = os.path.abspath(os.path.dirname(__file__))
     # snapc = NeverSaveSnapshottingCriterion(
     snapc = EveryEpochSnapshottingCriterion(
-        "/home/sl18/Documents/Python/GPErks/GPErks/tests/snapshot/test_1/restart_{restart}/",
+        here + "/snapshot/test_1/restart_{restart}/",
         "epoch_{epoch}.pth",
     )
 

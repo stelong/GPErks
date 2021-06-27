@@ -1,5 +1,7 @@
+import os
 from collections import defaultdict
 from copy import deepcopy
+from pathlib import Path
 from typing import List, Optional
 
 import gpytorch
@@ -26,7 +28,6 @@ DEVICE_LOAD = torch.device("cpu")
 FILENAME = "gpe.pth"
 PATH = "./"
 SAVE_LOSSES = False
-
 
 log = get_logger()
 
@@ -153,16 +154,29 @@ class GPEmulator:
         log.info(
             f"Loading best model (restart: {best_restart}, epoch: {best_epoch})..."
         )
+        best_model_file = snapshotting_criterion.get_snapshot_file_path(
+            best_restart, best_epoch
+        )
         best_model = torch.load(
-            snapshotting_criterion.get_snapshot_file_path(
-                best_restart, best_epoch
-            ),
+            best_model_file,
             map_location=torch.device("cpu"),
-        )  # TODO: check if return device used for training (e.g. GPU)
+        )
         self.model.load_state_dict(best_model)
         log.info(
             f"Loaded best model (restart: {best_restart}, epoch: {best_epoch})."
         )
+        best_model_link = (
+            Path(snapshotting_criterion.snapshot_dir).parent / "best_model.pth"
+        ).as_posix()
+        log.debug(
+            f"Linking best model {best_model_file} to {best_model_link}..."
+        )
+        try:  # if the symlink exists we have to override it
+            os.remove(best_model_link)
+        except FileNotFoundError:
+            pass  # nothing to do
+        os.symlink(best_model_file, best_model_link)
+        log.debug(f"Linked best model {best_model_file} to {best_model_link}.")
         log.info("The fitted emulator hyperparameters are:")
         self.experiment.print_stats()
 
