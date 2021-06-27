@@ -9,4 +9,3 @@
 # 5-fold cross-validation (stratified/not, find best model)
 # doc, with step-by-step
 # GSA with salib
-# simlink bestmodel.pth
