@@ -1,3 +1,4 @@
+from configparser import ConfigParser
 from typing import List, Optional
 
 import gpytorch
@@ -10,7 +11,7 @@ from GPErks.data import ScaledData
 from GPErks.models import ExactGPModel
 from GPErks.utils.config import get_repeatable_section, read_config
 from GPErks.utils.random import set_seed
-from GPErks.utils.runtime import build_instance
+from GPErks.utils.runtime import build_instance, dump_instance
 from GPErks.utils.scaler import StandardScaler, UnitCubeScaler
 
 
@@ -32,6 +33,7 @@ class GPExperiment:
         learn_noise: bool = True,
     ):
         set_seed(seed)  # set immediately, for reproducible initialization
+        self.seed: Optional[int] = seed
 
         # scale data by default
         self.scaled_data: ScaledData = ScaledData(
@@ -81,8 +83,26 @@ class GPExperiment:
             msg += f"\nLikelihood noise: {self.model.likelihood.noise_covar.noise.data.squeeze():.4f}"
         print(msg)
 
+    def save_to_config_file(self, experiment_file_path):
+        config = ConfigParser()
+        config["GPExperiment"] = {}
+        config["GPExperiment"]["n_restarts"] = str(self.n_restarts)
+        config["GPExperiment"]["seed"] = str(self.seed)
+        config["GPExperiment"]["n_draws"] = str(self.n_draws)
+        config["GPExperiment"]["learn_noise"] = str(self.learn_noise)
 
-def load_experiment_from_file(
+        for i, metric in enumerate(self.metrics):
+            config[f"Metric_{i}"] = dump_instance(metric)
+
+        config["Likelihood"] = dump_instance(self.model.likelihood)
+        config["Mean"] = dump_instance(self.model.mean_module)
+        config["Kernel"] = dump_instance(self.model.covar_module.base_kernel)
+
+        with open(experiment_file_path, "w") as out_f:
+            config.write(out_f)
+
+
+def load_experiment_from_config_file(
     experiment_file_path,
     X_train: numpy.ndarray,
     y_train: numpy.ndarray,
@@ -96,6 +116,8 @@ def load_experiment_from_file(
     seed = gpexperiment.getint("seed")
     n_draws = gpexperiment.getint("n_draws")
     learn_noise = gpexperiment.getboolean("learn_noise")
+
+    set_seed(seed)
 
     metrics = [
         build_instance(**{k: v for k, v in metric.items()})
