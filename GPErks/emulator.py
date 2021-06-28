@@ -313,7 +313,7 @@ class GPEmulator:
         y_pred = predictions.mean
         return [m(y_pred, y).cpu() for m in self.metrics]
 
-    def predict(self, X_new):
+    def predict(self, X_new, with_covar=False):
         self.model.eval()
         self.model.likelihood.eval()
 
@@ -325,12 +325,35 @@ class GPEmulator:
             predictions = self.model.likelihood(self.model(X_new))
             y_mean = predictions.mean.cpu().numpy()
             y_std = numpy.sqrt(predictions.variance.cpu().numpy())
+            y_covar = (
+                predictions.covariance_matrix.cpu().detach().numpy()
+            )  # WHY should detach here since other don't need it?!
+            covar_sign = numpy.sign(y_covar)
 
         y_mean, y_std = self.scaled_data.scy.inverse_transform(
             y_mean, ystd_=y_std
         )
 
-        return y_mean, y_std
+        # trick here to backtransform a full covariance matrix:
+        y_covar_as_vec = numpy.sqrt(
+            numpy.abs(
+                y_covar.reshape(
+                    len(y_std) ** 2,
+                )
+            )
+        )
+        _, y_covar_as_vec = self.scaled_data.scy.inverse_transform(
+            y_mean, ystd_=y_covar_as_vec
+        )
+        y_covar = covar_sign * numpy.power(
+            y_covar_as_vec.reshape(len(y_std), len(y_std)), 2
+        )
+
+        output = (y_mean, y_std)
+        if with_covar:
+            output += (y_covar,)
+
+        return output
 
     def sample(self, X_new):
         self.model.eval()
