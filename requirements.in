@@ -2,7 +2,7 @@ matplotlib
 numpy
 pandas
 scikit-learn
-scipy
+scipy==1.7.0
 seaborn
 gpytorch==1.1.1
 torchvision==0.6.0
