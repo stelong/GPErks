@@ -143,16 +143,16 @@ class PkEarlyStoppingCriterion(EarlyStoppingCriterion):
         else:
             self.Pk.append(0.0)
 
-        log.info(f"Pk[-1]={self.Pk[-1]}, alpha={self.alpha}")
+        log.debug(f"Pk[-1]={self.Pk[-1]}, alpha={self.alpha}")
         if self.Pk[-1] > self.alpha:
             self.counter += 1
-            log.info(
+            log.debug(
                 f"Triggered PkEpochEarlyStoppingCriterion {self.counter}/{self.patience}"
             )
         else:
             if self.counter > 0:
-                log.info("Resetting PkEpochEarlyStoppingCriterion countdown.")
-            log.info(
+                log.debug("Resetting PkEpochEarlyStoppingCriterion countdown.")
+            log.debug(
                 f"The best epoch I will return is: {self.train_stats.current_epoch}"
             )
             self.current_best_state_dict = deepcopy(self.model.state_dict())
@@ -161,7 +161,7 @@ class PkEarlyStoppingCriterion(EarlyStoppingCriterion):
 
     def _on_stop(self) -> Tuple[int, gpytorch.models.ExactGP]:
         super()._on_stop()
-        log.info("PkEpochEarlyStoppingCriterion on_stop().")
+        log.debug("PkEpochEarlyStoppingCriterion on_stop().")
         self.model.load_state_dict(self.current_best_state_dict)
         return self.train_stats.current_epoch - self.patience, self.model
 
@@ -204,16 +204,16 @@ class GLEarlyStoppingCriterion(EarlyStoppingCriterion):
             100 * numpy.abs(1 - self.train_stats.val_loss[-1] / self.Eva_opt)
         )
 
-        log.info(f"GL[-1]={self.GL[-1]}, alpha={self.alpha}")
+        log.debug(f"GL[-1]={self.GL[-1]}, alpha={self.alpha}")
         if self.GL[-1] > self.alpha:
             self.counter += 1
-            log.info(
+            log.debug(
                 f"Triggered GLEpochEarlyStoppingCriterion {self.counter}/{self.patience}"
             )
         else:
             if self.counter > 0:
-                log.info("Resetting GLEpochEarlyStoppingCriterion countdown.")
-            log.info(
+                log.debug("Resetting GLEpochEarlyStoppingCriterion countdown.")
+            log.debug(
                 f"The best epoch I will return is: {self.train_stats.current_epoch}"
             )
             self.counter = 0
@@ -222,7 +222,7 @@ class GLEarlyStoppingCriterion(EarlyStoppingCriterion):
 
     def _on_stop(self) -> Tuple[int, gpytorch.models.ExactGP]:
         super()._on_stop()
-        log.info("GLEpochEarlyStoppingCriterion on_stop().")
+        log.debug("GLEpochEarlyStoppingCriterion on_stop().")
         self.model.load_state_dict(self.current_best_state_dict)
         return self.train_stats.current_epoch - self.patience, self.model
 

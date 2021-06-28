@@ -6,10 +6,6 @@ from typing import List, Optional
 
 import gpytorch
 
-# import matplotlib.gridspec as grsp
-import matplotlib.pyplot as plt
-
-# plt.switch_backend('TkAgg')
 import numpy
 import torch
 import torchmetrics
@@ -20,14 +16,9 @@ from GPErks.snapshotting import SnapshottingCriterion
 from GPErks.utils.earlystopping import EarlyStoppingCriterion
 from GPErks.utils.log import get_logger
 from GPErks.utils.metrics import get_metric_name
+from GPErks.utils.path import posix_path
 from GPErks.utils.tensor import tensorize
-from GPErks.utils.train_stats import TrainStats
-
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-DEVICE_LOAD = torch.device("cpu")
-FILENAME = "gpe.pth"
-PATH = "./"
-SAVE_LOSSES = False
+from GPErks.utils.train_stats import TrainStats, load_train_stats_from_file
 
 log = get_logger()
 
@@ -36,11 +27,11 @@ class GPEmulator:
     def __init__(
         self,
         experiment: GPExperiment,
-        device=DEVICE,
+        device: str,
     ):
         self.experiment: GPExperiment = experiment
         self.scaled_data: ScaledData = experiment.scaled_data
-        self.device = device
+        self.device: torch.device = torch.device(device)
         self.learn_noise: bool = experiment.learn_noise
 
         if not self.learn_noise:
@@ -60,12 +51,8 @@ class GPEmulator:
         optimizer,
         early_stopping_criterion,
         snapshotting_criterion,
-        save_losses=SAVE_LOSSES,
     ):
-        print("\nTraining emulator...")
-        self.save_losses = save_losses
-
-        self.idx_best_list = []
+        log.info("Training emulator...")
 
         X_train = self.scaled_data.X_train.to(self.device)
         y_train = self.scaled_data.y_train.to(self.device)
@@ -77,7 +64,6 @@ class GPEmulator:
             y_val = y_val.to(self.device)
 
         restarts_train_stats: List[TrainStats] = []
-        # restarts_best_models = []
         restarts_best_epochs = []
 
         current_restart = 1
@@ -94,10 +80,11 @@ class GPEmulator:
                 snapshotting_criterion,
             )
             restarts_train_stats.append(restart_train_stats)
-            # restarts_best_models.append(restart_best_model)
             restarts_best_epochs.append(restart_best_epoch)
             log.info(f"Run restart {current_restart}.")
             current_restart += 1
+
+        log.info("Trained emulator...")
 
         train_loss_list = [
             train_stats.train_loss[best_epoch - 1]
@@ -165,9 +152,10 @@ class GPEmulator:
         log.info(
             f"Loaded best model (restart: {best_restart}, epoch: {best_epoch})."
         )
-        best_model_link = (
-            Path(snapshotting_criterion.snapshot_dir).parent / "best_model.pth"
-        ).as_posix()
+        best_model_link = posix_path(
+            Path(snapshotting_criterion.snapshot_dir).parent.as_posix(),
+            "best_model.pth",
+        )
         log.debug(
             f"Linking best model {best_model_file} to {best_model_link}..."
         )
@@ -177,6 +165,29 @@ class GPEmulator:
             pass  # nothing to do
         os.symlink(best_model_file, best_model_link)
         log.debug(f"Linked best model {best_model_file} to {best_model_link}.")
+
+        log.info(
+            f"Loading best train stats (restart: {best_restart}, epoch: {best_epoch})..."
+        )
+        best_train_stats_file = posix_path(
+            Path(best_model_file).parent.as_posix(),
+            "train_stats.json"
+        )
+        best_train_stats = load_train_stats_from_file(best_train_stats_file)
+        best_train_stats_link = posix_path(
+            Path(snapshotting_criterion.snapshot_dir).parent.as_posix(),
+            "best_train_stats.json",
+        )
+        log.debug(
+            f"Linking best train stats {best_train_stats_file} to {best_train_stats_link}..."
+        )
+        try:  # if the symlink exists we have to override it
+            os.remove(best_train_stats_link)
+        except FileNotFoundError:
+            pass  # nothing to do
+        os.symlink(best_train_stats_file, best_train_stats_link)
+        log.debug(f"Linked best train stats {best_train_stats_file} to {best_train_stats_link}.")
+
         log.info("The fitted emulator hyperparameters are:")
         self.experiment.print_stats()
 
@@ -185,6 +196,8 @@ class GPEmulator:
             for metric_name, best_value in self.best_val_metrics_score.items():
                 msg += f"{metric_name}: {best_value:.4f}\n"
             print(msg)
+
+        return best_model, best_train_stats
 
     def train_once(
         self,
@@ -225,14 +238,10 @@ class GPEmulator:
             self.model.likelihood, self.model
         )
 
-        # restart_model_checkpoint_file = (
-        #     f"{self.savepath}restart{self.restart_idx}_checkpoint.pth"
-        # )
         train_stats = TrainStats(list(map(get_metric_name, self.metrics)))
         early_stopping_criterion.enable(
             self.model,
             train_stats,
-            # restart_model_checkpoint_file,
         )
         snapshotting_criterion.enable(
             self.model,
@@ -245,7 +254,8 @@ class GPEmulator:
             train_loss = self.train_step(X_train, y_train, optimizer)
             train_stats.train_loss.append(train_loss)
             msg = (
-                f"[{train_stats.current_epoch:>{len(str(max_epochs))}}/{max_epochs:>{len(str(max_epochs))}}] "
+                f"[{train_stats.current_epoch:>{len(str(max_epochs))}}/"
+                f"{max_epochs:>{len(str(max_epochs))}}] "
                 + f"Training Loss: {train_loss:.4f}"
             )
 
@@ -261,7 +271,7 @@ class GPEmulator:
                     metric_name = get_metric_name(metric)
                     msg += f" - {metric_name}: {metric_score:.4f}"
                     train_stats.train_metrics_score[metric_name].append(
-                        metric_score
+                        float(metric_score)
                     )
 
                 if self.scaled_data.with_val:
@@ -275,7 +285,7 @@ class GPEmulator:
                         metric_name = get_metric_name(metric)
                         msg += f" - {metric_name}: {metric_score:.4f}"
                         train_stats.val_metrics_score[metric_name].append(
-                            metric_score
+                            float(metric_score)
                         )
             log.info(msg)
 
@@ -287,13 +297,18 @@ class GPEmulator:
                 snapshotting_criterion.save(self.restart_idx, best_epoch)
                 break
 
+        train_stats.best_epoch = best_epoch
+        train_stats.save_to_file(
+            posix_path(
+                snapshotting_criterion.snapshot_dir.format(
+                    restart=self.restart_idx
+                ),
+                "train_stats.json"
+            )
+        )
         snapshotting_criterion.keep_snapshots_until(
             self.restart_idx, best_epoch
         )
-
-        if self.save_losses:
-            self.plot_loss(train_stats, best_epoch)
-
         return train_stats, best_epoch
 
     def train_step(self, X_train, y_train, optimizer):
@@ -322,12 +337,16 @@ class GPEmulator:
         )
 
         with torch.no_grad(), gpytorch.settings.fast_pred_var():
+            # TODO: check off-diagonal elements during fast-pred
             predictions = self.model.likelihood(self.model(X_new))
             y_mean = predictions.mean.cpu().numpy()
-            y_std = numpy.sqrt(predictions.variance.cpu().numpy())
+            # force a detach() due to improper handling of views in no_grad
+            # contexts.
+            # ref: https://github.com/pytorch/pytorch/issues/11390
+            y_std = numpy.sqrt(predictions.variance.cpu().detach().numpy())
             y_covar = (
                 predictions.covariance_matrix.cpu().detach().numpy()
-            )  # WHY should detach here since other don't need it?!
+            )
             covar_sign = numpy.sign(y_covar)
 
         y_mean, y_std = self.scaled_data.scy.inverse_transform(
@@ -381,58 +400,3 @@ class GPEmulator:
 
         return y_samples
 
-    def plot_loss(self, train_stats: TrainStats, best_epoch: int):
-        if self.scaled_data.with_val:
-            fig, axes = plt.subplots(1, 1 + len(self.metrics))
-        else:
-            fig, axis = plt.subplots(1, 1)
-            axes = [axis]
-
-        # height = 9.36111
-        # width = 5.91667
-        # figsize = (2 * width / (4 - n), 2 * height / 3))
-
-        loss_len = len(train_stats.train_loss)
-
-        axes[0].plot(
-            numpy.arange(1, loss_len + 1),
-            train_stats.train_loss,
-            zorder=1,
-            label="training",
-        )
-        axes[0].axvline(best_epoch, c="r", ls="--", lw=0.8, zorder=2)
-        axes[0].set_ylabel("Loss", fontsize=12, zorder=1)
-        axes[0].set_xlabel("Epoch", fontsize=12)
-
-        if self.scaled_data.with_val:
-            axes[0].plot(
-                numpy.arange(1, loss_len + 1),
-                train_stats.val_loss,
-                zorder=1,
-                label="validation",
-            )
-
-            for metric, axis in zip(self.metrics, axes.flat[1:]):
-                metric_name = get_metric_name(metric)
-                axis.plot(
-                    numpy.arange(1, loss_len + 1),
-                    train_stats.val_metrics_score[metric_name],
-                )
-                axis.axvline(best_epoch, c="r", ls="--", lw=0.8)
-                axis.set_xlabel("Epoch", fontsize=12)
-                axis.set_ylabel(metric_name, fontsize=12)
-
-        axes[0].legend()
-
-        fig.tight_layout()
-        # plt.savefig(
-        #     self.savepath + f"loss_vs_epochs_restart_{self.restart_idx}.pdf",
-        #     bbox_inches="tight",
-        #     dpi=1000,
-        # )
-        plt.show()
-
-    def save(self, filename=FILENAME):
-        print("\nSaving trained emulator...")
-        torch.save(self.best_model, self.savepath + filename)
-        print("\nDone.")

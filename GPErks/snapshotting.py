@@ -67,12 +67,21 @@ class SnapshottingCriterion(metaclass=ABCMeta):
         pass
 
 
-class EveryEpochSnapshottingCriterion(SnapshottingCriterion):
+class EveryNEpochsSnapshottingCriterion(SnapshottingCriterion):
+    def __init__(self, snapshot_dir: str, snapshot_file: str, n):
+        super().__init__(snapshot_dir, snapshot_file)
+        self.n = n
+
     def _should_save(self) -> bool:
-        return True
+        return self.train_stats.current_epoch % self.n == 0
 
     def _save_snapshot(self, snapshot_file_path):
         torch.save(self.model.state_dict(), snapshot_file_path)
+
+
+class EveryEpochSnapshottingCriterion(EveryNEpochsSnapshottingCriterion):
+    def __init__(self, snapshot_dir: str, snapshot_file: str):
+        super().__init__(snapshot_dir, snapshot_file, 1)
 
 
 class NeverSaveSnapshottingCriterion(SnapshottingCriterion):

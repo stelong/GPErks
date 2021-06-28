@@ -92,7 +92,7 @@ def main():
         likelihood,
         mean_function,
         kernel,
-        3,
+        n_restarts=3,
         metrics=metrics,
         X_val=X_val,
         y_val=y_val,
@@ -125,8 +125,9 @@ def main():
     #     MAX_EPOCHS, alpha=1.0, patience=8, strip_length=20
     # )
 
-    emul = GPEmulator(experiment)
-    emul.train(optimizer, esc, snapc, save_losses=True)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    emul = GPEmulator(experiment, device)
+    emul.train(optimizer, esc, snapc)
 
     # ================================================================
     # (4) Saving trained GPE

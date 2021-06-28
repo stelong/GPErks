@@ -21,9 +21,12 @@ class Diagnostics:
             self.y_pred_covar,
         ) = self.emulator.predict(self.X_test, with_covar=True)
 
-        self.n = self.emulator.experiment.scaled_data.X_train.shape[0]
-        self.q = self.emulator.experiment.scaled_data.X_train.shape[1]
-        self.m = self.X_test.shape[0]
+        self.n = self.emulator.scaled_data.sample_size
+        self.q = self.emulator.scaled_data.input_size
+        self.m = (
+            self.X_test.shape[0]
+            if len(self.X_test.shape) > 1 else len(self.X_test)
+        )
 
     def chi_squared(self):
         """

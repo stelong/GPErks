@@ -77,7 +77,7 @@ class Inference:
         if self.X_test.shape[1] != 2:
             raise ValueError("Not a 2D input!")
 
-        n = 100
+        n = 50
         X_train = self.emulator.experiment.scaled_data.X_train
         minmax = get_minmax(X_train)
 

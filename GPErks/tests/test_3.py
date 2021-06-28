@@ -126,8 +126,9 @@ def main():
         "epoch_{epoch}.pth",
     )
 
-    # emul = GPEmulator(experiment)
-    # emul.train(optimizer, early_stopping_criterion, snapshotting_criterion, save_losses=True)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    # emul = GPEmulator(experiment, device)
+    # emul.train(optimizer, early_stopping_criterion, snapshotting_criterion)
 
     # ================================================================
     # (5) Loading already trained GPE
@@ -148,12 +149,12 @@ def main():
         seed=seed,
     )
 
-    best_restart = 3
-    best_epoch = 492
-    model_path = f"/home/sl18/Documents/Python/GPErks/GPErks/tests/snapshot/test_3/restart_{best_restart}/epoch_{best_epoch}.pth"
+    here = os.path.abspath(os.path.dirname(__file__))
+    model_path = here + f"/snapshot/test_3/best_model.pth"
 
     experiment.load_model(model_path)
-    emul = GPEmulator(experiment)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    emul = GPEmulator(experiment, device)
 
     # ================================================================
     # (6) Testing trained GPE at new input points (inference)

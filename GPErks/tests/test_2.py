@@ -120,12 +120,12 @@ def main():
         "epoch_{epoch}.pth",
     )
 
-    emul = GPEmulator(experiment)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    emul = GPEmulator(experiment, device)
     emul.train(
         optimizer,
         early_stopping_criterion,
         snapshotting_criterion,
-        save_losses=True,
     )
 
     # ================================================================
