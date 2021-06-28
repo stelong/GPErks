@@ -1,5 +1,7 @@
+import os
 from collections import defaultdict
 from copy import deepcopy
+from pathlib import Path
 from typing import List, Optional
 
 import gpytorch
@@ -26,7 +28,6 @@ DEVICE_LOAD = torch.device("cpu")
 FILENAME = "gpe.pth"
 PATH = "./"
 SAVE_LOSSES = False
-
 
 log = get_logger()
 
@@ -153,16 +154,29 @@ class GPEmulator:
         log.info(
             f"Loading best model (restart: {best_restart}, epoch: {best_epoch})..."
         )
+        best_model_file = snapshotting_criterion.get_snapshot_file_path(
+            best_restart, best_epoch
+        )
         best_model = torch.load(
-            snapshotting_criterion.get_snapshot_file_path(
-                best_restart, best_epoch
-            ),
+            best_model_file,
             map_location=torch.device("cpu"),
-        )  # TODO: check if return device used for training (e.g. GPU)
+        )
         self.model.load_state_dict(best_model)
         log.info(
             f"Loaded best model (restart: {best_restart}, epoch: {best_epoch})."
         )
+        best_model_link = (
+            Path(snapshotting_criterion.snapshot_dir).parent / "best_model.pth"
+        ).as_posix()
+        log.debug(
+            f"Linking best model {best_model_file} to {best_model_link}..."
+        )
+        try:  # if the symlink exists we have to override it
+            os.remove(best_model_link)
+        except FileNotFoundError:
+            pass  # nothing to do
+        os.symlink(best_model_file, best_model_link)
+        log.debug(f"Linked best model {best_model_file} to {best_model_link}.")
         log.info("The fitted emulator hyperparameters are:")
         self.experiment.print_stats()
 
@@ -299,7 +313,7 @@ class GPEmulator:
         y_pred = predictions.mean
         return [m(y_pred, y).cpu() for m in self.metrics]
 
-    def predict(self, X_new):
+    def predict(self, X_new, with_covar=False):
         self.model.eval()
         self.model.likelihood.eval()
 
@@ -311,12 +325,35 @@ class GPEmulator:
             predictions = self.model.likelihood(self.model(X_new))
             y_mean = predictions.mean.cpu().numpy()
             y_std = numpy.sqrt(predictions.variance.cpu().numpy())
+            y_covar = (
+                predictions.covariance_matrix.cpu().detach().numpy()
+            )  # WHY should detach here since other don't need it?!
+            covar_sign = numpy.sign(y_covar)
 
         y_mean, y_std = self.scaled_data.scy.inverse_transform(
             y_mean, ystd_=y_std
         )
 
-        return y_mean, y_std
+        # trick here to backtransform a full covariance matrix:
+        y_covar_as_vec = numpy.sqrt(
+            numpy.abs(
+                y_covar.reshape(
+                    len(y_std) ** 2,
+                )
+            )
+        )
+        _, y_covar_as_vec = self.scaled_data.scy.inverse_transform(
+            y_mean, ystd_=y_covar_as_vec
+        )
+        y_covar = covar_sign * numpy.power(
+            y_covar_as_vec.reshape(len(y_std), len(y_std)), 2
+        )
+
+        output = (y_mean, y_std)
+        if with_covar:
+            output += (y_covar,)
+
+        return output
 
     def sample(self, X_new):
         self.model.eval()
