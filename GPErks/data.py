@@ -16,7 +16,8 @@ class ScaledData:
         self.y_train: Tensor = tensorize(self.scy.transform(y_train))
         self.sample_size = (
             self.X_train.shape[0]
-            if len(self.X_train.shape) > 1 else len(X_train)
+            if len(self.X_train.shape) > 1
+            else len(X_train)
         )
         self.input_size = (
             self.X_train.shape[1] if len(self.X_train.shape) > 1 else 1

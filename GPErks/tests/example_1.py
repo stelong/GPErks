@@ -13,8 +13,10 @@ from torchmetrics import MeanSquaredError, R2Score
 from GPErks.emulator import GPEmulator
 from GPErks.experiment import GPExperiment
 from GPErks.plots.plot_training import plot_training_stats
-from GPErks.snapshotting import EveryEpochSnapshottingCriterion, \
-    EveryNEpochsSnapshottingCriterion
+from GPErks.snapshotting import (
+    EveryEpochSnapshottingCriterion,
+    EveryNEpochsSnapshottingCriterion,
+)
 from GPErks.utils.earlystopping import NoEarlyStoppingCriterion
 from GPErks.utils.inference import Inference
 from GPErks.utils.log import get_logger
@@ -74,7 +76,7 @@ def main():
     snapshot_dir = posix_path(here, "snapshot", example_name)
     os.makedirs(snapshot_dir, exist_ok=True)
     snapshotting_criterion = EveryEpochSnapshottingCriterion(
-    # snapshotting_criterion = EveryNEpochsSnapshottingCriterion(
+        # snapshotting_criterion = EveryNEpochsSnapshottingCriterion(
         posix_path(snapshot_dir, "restart_{restart}"),
         "epoch_{epoch}.pth",
         # 5,

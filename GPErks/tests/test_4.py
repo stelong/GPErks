@@ -9,8 +9,12 @@ import matplotlib.pyplot as plt
 import numpy
 import numpy as np
 import torch
-from gpytorch.kernels import MaternKernel, RBFKernel, ScaleKernel, \
-    PeriodicKernel
+from gpytorch.kernels import (
+    MaternKernel,
+    PeriodicKernel,
+    RBFKernel,
+    ScaleKernel,
+)
 from gpytorch.means import LinearMean
 from scipy.stats import qmc
 from sklearn.model_selection import train_test_split

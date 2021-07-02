@@ -1,6 +1,8 @@
 import numpy
+
 # import matplotlib.gridspec as grsp
 from matplotlib import pyplot as plt
+
 # plt.switch_backend('TkAgg')
 from GPErks.utils.train_stats import TrainStats
 
@@ -37,7 +39,9 @@ def plot_training_stats(train_stats: TrainStats):
             label="validation",
         )
 
-        for metric_name, axis in zip(train_stats.val_metrics_score, axes.flat[1:]):
+        for metric_name, axis in zip(
+            train_stats.val_metrics_score, axes.flat[1:]
+        ):
             # metric_name = get_metric_name(metric)
             axis.plot(
                 numpy.arange(1, loss_len + 1),
