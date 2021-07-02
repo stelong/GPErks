@@ -5,11 +5,11 @@ from pathlib import Path
 from typing import List, Optional
 
 import gpytorch
-
 import numpy
 import torch
 import torchmetrics
 
+from GPErks.constants import N_DRAWS
 from GPErks.data import ScaledData
 from GPErks.experiment import GPExperiment
 from GPErks.snapshotting import SnapshottingCriterion
@@ -170,8 +170,7 @@ class GPEmulator:
             f"Loading best train stats (restart: {best_restart}, epoch: {best_epoch})..."
         )
         best_train_stats_file = posix_path(
-            Path(best_model_file).parent.as_posix(),
-            "train_stats.json"
+            Path(best_model_file).parent.as_posix(), "train_stats.json"
         )
         best_train_stats = load_train_stats_from_file(best_train_stats_file)
         best_train_stats_link = posix_path(
@@ -186,7 +185,9 @@ class GPEmulator:
         except FileNotFoundError:
             pass  # nothing to do
         os.symlink(best_train_stats_file, best_train_stats_link)
-        log.debug(f"Linked best train stats {best_train_stats_file} to {best_train_stats_link}.")
+        log.debug(
+            f"Linked best train stats {best_train_stats_file} to {best_train_stats_link}."
+        )
 
         log.info("The fitted emulator hyperparameters are:")
         self.experiment.print_stats()
@@ -303,7 +304,7 @@ class GPEmulator:
                 snapshotting_criterion.snapshot_dir.format(
                     restart=self.restart_idx
                 ),
-                "train_stats.json"
+                "train_stats.json",
             )
         )
         snapshotting_criterion.keep_snapshots_until(
@@ -344,9 +345,7 @@ class GPEmulator:
             # contexts.
             # ref: https://github.com/pytorch/pytorch/issues/11390
             y_std = numpy.sqrt(predictions.variance.cpu().detach().numpy())
-            y_covar = (
-                predictions.covariance_matrix.cpu().detach().numpy()
-            )
+            y_covar = predictions.covariance_matrix.cpu().detach().numpy()
             covar_sign = numpy.sign(y_covar)
 
         y_mean, y_std = self.scaled_data.scy.inverse_transform(
@@ -374,7 +373,7 @@ class GPEmulator:
 
         return output
 
-    def sample(self, X_new):
+    def sample(self, X_new: numpy.ndarray, n_draws: int = N_DRAWS):
         self.model.eval()
         self.model.likelihood.eval()
 
@@ -386,17 +385,14 @@ class GPEmulator:
             predictions = self.model.likelihood(self.model(X_new))
             y_std = numpy.sqrt(predictions.variance.cpu().numpy())
             y_samples = (
-                predictions.sample(
-                    sample_shape=torch.Size([self.experiment.n_draws])
-                )
+                predictions.sample(sample_shape=torch.Size([n_draws]))
                 .cpu()
                 .numpy()
             )
 
-        for i in range(self.experiment.n_draws):
+        for i in range(n_draws):
             y_samples[i] = self.scaled_data.scy.inverse_transform(
                 y_samples[i], ystd_=y_std
             )[0]
 
         return y_samples
-

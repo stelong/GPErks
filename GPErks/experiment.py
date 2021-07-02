@@ -29,7 +29,6 @@ class GPExperiment:
         metrics: Optional[List[torchmetrics.Metric]] = None,
         X_val: numpy.ndarray = None,
         y_val: numpy.ndarray = None,
-        n_draws: int = 1000,
         learn_noise: bool = True,
     ):
         set_seed(seed)  # set immediately, for reproducible initialization
@@ -51,7 +50,6 @@ class GPExperiment:
         else:
             self.metrics: List[torchmetrics.Metric] = []
 
-        self.n_draws: int = n_draws
         self.learn_noise: bool = learn_noise
 
         self.model: ExactGPModel = ExactGPModel(
@@ -88,7 +86,6 @@ class GPExperiment:
         config["GPExperiment"] = {}
         config["GPExperiment"]["n_restarts"] = str(self.n_restarts)
         config["GPExperiment"]["seed"] = str(self.seed)
-        config["GPExperiment"]["n_draws"] = str(self.n_draws)
         config["GPExperiment"]["learn_noise"] = str(self.learn_noise)
 
         for i, metric in enumerate(self.metrics):
@@ -114,7 +111,6 @@ def load_experiment_from_config_file(
     gpexperiment = config["GPExperiment"]
     n_restarts = gpexperiment.getint("n_restarts")
     seed = gpexperiment.getint("seed")
-    n_draws = gpexperiment.getint("n_draws")
     learn_noise = gpexperiment.getboolean("learn_noise")
 
     set_seed(seed)
@@ -144,6 +140,5 @@ def load_experiment_from_config_file(
         metrics=metrics,
         X_val=X_val,
         y_val=y_val,
-        n_draws=n_draws,
         learn_noise=learn_noise,
     )
