@@ -2,17 +2,10 @@ import numpy as np
 
 
 def get_minmax(X):
-    n_features = X.shape[1]
-    return np.hstack(
-        (
-            np.array([np.min(X[:, j]) for j in range(n_features)]).reshape(
-                -1, 1
-            ),
-            np.array([np.max(X[:, j]) for j in range(n_features)]).reshape(
-                -1, 1
-            ),
-        )
-    )
+    minmax = []
+    for x in X.T:
+        minmax.append([x.min(), x.max()])
+    return np.array(minmax)
 
 
 def lhd(I, n_samples):
