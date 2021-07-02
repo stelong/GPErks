@@ -3,6 +3,8 @@ import numpy as np
 import pandas as pd
 from scipy import linalg, stats
 
+from GPErks.emulator import GPEmulator
+
 
 class Diagnostics:
     """
@@ -11,7 +13,9 @@ class Diagnostics:
     Ref: L.S. Bastos and A. O’Hagan (2009) doi:10.1198/TECH.2009.08019
     """
 
-    def __init__(self, emulator, X_test, y_test):
+    def __init__(
+        self, emulator: GPEmulator, X_test: np.ndarray, y_test: np.ndarray
+    ):
         self.emulator = emulator
         self.X_test = X_test
         self.y_test = y_test
@@ -25,7 +29,8 @@ class Diagnostics:
         self.q = self.emulator.scaled_data.input_size
         self.m = (
             self.X_test.shape[0]
-            if len(self.X_test.shape) > 1 else len(self.X_test)
+            if len(self.X_test.shape) > 1
+            else len(self.X_test)
         )
 
     def chi_squared(self):
@@ -85,7 +90,7 @@ class Diagnostics:
         )
         print(df)
 
-    def plot(self, uncorrelated=True):
+    def plot(self, uncorrelated: bool = True):
         if uncorrelated:
             errors = list(DG(self.y_test, self.y_pred_mean, self.y_pred_covar))
             ylab = "$D^{G}(y^{*})$"
@@ -138,28 +143,33 @@ class Diagnostics:
         plt.show()
 
 
-def DI(y_true, y_pred_mean, y_pred_std):
+def DI(y_true: np.ndarray, y_pred_mean: np.ndarray, y_pred_std: np.ndarray):
     return (y_true - y_pred_mean) / y_pred_std
 
 
-def DChi2(y_true, y_pred_mean, y_pred_std):
+def DChi2(y_true: np.ndarray, y_pred_mean: np.ndarray, y_pred_std: np.ndarray):
     x = DI(y_true, y_pred_mean, y_pred_std)
     return np.sum(np.power(x, 2))
 
 
-def DMD(y_true, y_pred_mean, y_pred_covar):
+def DMD(y_true: np.ndarray, y_pred_mean: np.ndarray, y_pred_covar: np.ndarray):
     x = (y_true - y_pred_mean).reshape(-1, 1)
     G = linalg.cho_factor(y_pred_covar)
     return np.squeeze(np.matmul(x.T, linalg.cho_solve(G, x)))
 
 
-def DG(y_true, y_pred_mean, y_pred_covar):
+def DG(y_true: np.ndarray, y_pred_mean: np.ndarray, y_pred_covar: np.ndarray):
     x = (y_true - y_pred_mean).reshape(-1, 1)
     G = linalg.cholesky(y_pred_covar, lower=True)
     return np.squeeze(linalg.solve(G, x))
 
 
-def DCI(y_true, y_pred_mean, y_pred_std, marginal_credible_interval=95):
-    Z = stats.norm.ppf(0.5 + 0.01 * marginal_credible_interval / 2)
+def DCI(
+    y_true: np.ndarray,
+    y_pred_mean: np.ndarray,
+    y_pred_std: np.ndarray,
+    marginal_credible_interval: float = 95.0,
+):
+    z = stats.norm.ppf(0.5 + 0.01 * marginal_credible_interval / 2)
     x = DI(y_true, y_pred_mean, y_pred_std)
-    return len(np.where(np.abs(x) < Z)[0]) / len(x)
+    return len(np.where(np.abs(x) < z)[0]) / len(x)

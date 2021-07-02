@@ -1,13 +1,25 @@
+from typing import List
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import torchmetrics
 
+from GPErks.constants import HEIGHT, WIDTH
+from GPErks.emulator import GPEmulator
+from GPErks.utils.design import get_minmax
 from GPErks.utils.metrics import get_metric_name
 from GPErks.utils.tensor import tensorize
 
 
 class Inference:
-    def __init__(self, emulator, X_test, y_test, metrics):
+    def __init__(
+        self,
+        emulator: GPEmulator,
+        X_test: np.ndarray,
+        y_test: np.ndarray,
+        metrics: List[torchmetrics.Metric],
+    ):
         self.emulator = emulator
         self.X_test = X_test
         self.y_test = y_test
@@ -30,10 +42,8 @@ class Inference:
         )
         print(df)
 
-    def plot(self, is_input_2D=False):
-        height = 9.36111
-        width = 5.91667
-        fig, axis = plt.subplots(1, 1, figsize=(2 * width, 2 * height / 3))
+    def plot(self, is_input_2D: bool = False):
+        fig, axis = plt.subplots(1, 1, figsize=(2 * WIDTH, 2 * HEIGHT / 3))
 
         l = np.argsort(
             self.y_pred_mean
@@ -73,7 +83,7 @@ class Inference:
         fig.tight_layout()
         plt.show()
 
-    def interpolate_2Dgrid(self, f=None):
+    def interpolate_2Dgrid(self, f=None):  # missing type here
         if self.X_test.shape[1] != 2:
             raise ValueError("Not a 2D input!")
 
@@ -97,10 +107,8 @@ class Inference:
             y_grid = y_grid.reshape(n, n)
             err = np.abs(np.ones((n, n), dtype=float) - y_pred_mean / y_grid)
 
-        height = 9.36111
-        width = 5.91667
         fig, axes = plt.subplots(
-            1, n_subplots, figsize=(2 * width, 2 * height / 6)
+            1, n_subplots, figsize=(2 * WIDTH, 2 * HEIGHT / 6)
         )
 
         PC0 = axes[0].pcolormesh(
@@ -125,10 +133,3 @@ class Inference:
 
         fig.tight_layout()
         plt.show()
-
-
-def get_minmax(X):
-    minmax = []
-    for x in X.T:
-        minmax.append([x.min(), x.max()])
-    return np.array(minmax)
