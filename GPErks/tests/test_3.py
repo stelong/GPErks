@@ -9,7 +9,7 @@ from gpytorch.kernels import RBFKernel, ScaleKernel
 from gpytorch.means import LinearMean
 from torchmetrics import MeanSquaredError, R2Score
 
-from GPErks.experiment import GPExperiment
+from GPErks.gp.experiment import GPExperiment
 from GPErks.train.early_stop import PkEarlyStoppingCriterion
 from GPErks.train.emulator import GPEmulator
 from GPErks.train.snapshot import EveryEpochSnapshottingCriterion

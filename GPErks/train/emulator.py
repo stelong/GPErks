@@ -10,8 +10,8 @@ import torch
 import torchmetrics
 
 from GPErks.constants import N_DRAWS
-from GPErks.data import ScaledData
-from GPErks.experiment import GPExperiment
+from GPErks.gp.data import ScaledData
+from GPErks.gp.experiment import GPExperiment
 from GPErks.train.early_stop import EarlyStoppingCriterion
 from GPErks.train.snapshot import SnapshottingCriterion
 from GPErks.train.train_stats import TrainStats, load_train_stats_from_file

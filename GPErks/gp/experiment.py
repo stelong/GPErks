@@ -7,8 +7,8 @@ import torch
 import torchmetrics
 from gpytorch.kernels import ScaleKernel
 
-from GPErks.data import ScaledData
-from GPErks.models import ExactGPModel
+from GPErks.gp.data import ScaledData
+from GPErks.gp.model import ExactGPModel
 from GPErks.utils.config import get_repeatable_section, read_config
 from GPErks.utils.random import set_seed
 from GPErks.utils.runtime import build_instance, dump_instance

@@ -10,8 +10,8 @@ from gpytorch.means import LinearMean
 from scipy.stats import qmc
 from torchmetrics import MeanSquaredError, R2Score
 
-from GPErks.experiment import GPExperiment
-from GPErks.plot.plot_training import plot_training_stats
+from GPErks.gp.experiment import GPExperiment
+from GPErks.plot.training import plot_training_stats
 from GPErks.train.early_stop import NoEarlyStoppingCriterion
 from GPErks.train.emulator import GPEmulator
 from GPErks.train.snapshot import EveryEpochSnapshottingCriterion

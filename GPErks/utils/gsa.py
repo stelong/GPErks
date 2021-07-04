@@ -8,7 +8,7 @@ from scipy.special import binom
 from scipy.stats import norm
 
 from GPErks.constants import N_DRAWS, THRESHOLD, N
-from GPErks.plot.plot_gsa import boxplot, donut, heatmap, network
+from GPErks.plot.gsa import boxplot, donut, heatmap, network
 from GPErks.train.emulator import GPEmulator
 from GPErks.utils.design import get_minmax
 
