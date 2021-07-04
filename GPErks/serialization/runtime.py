@@ -1,7 +1,7 @@
 import importlib
 from ast import literal_eval
 
-from GPErks.utils.log import get_logger
+from GPErks.log.logger import get_logger
 
 log = get_logger()
 

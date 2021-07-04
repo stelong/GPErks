@@ -1,7 +1,7 @@
 import configparser
 from itertools import count
 
-from GPErks.utils.log import get_logger
+from GPErks.log.logger import get_logger
 
 log = get_logger()
 

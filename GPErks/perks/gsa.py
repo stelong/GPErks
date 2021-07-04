@@ -39,6 +39,7 @@ class SobolGSA:
                 self.emulator.scaled_data.X_train.cpu().numpy()
             )
         )  # porcata atomica, questo perche' X_train, y_train originali non sono GPExperiment class attributes
+        # TODO: save original (unscaled) data
 
         self.ST = np.zeros((0, self.d), dtype=float)
         self.S1 = np.zeros((0, self.d), dtype=float)

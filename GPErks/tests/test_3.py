@@ -10,11 +10,11 @@ from gpytorch.means import LinearMean
 from torchmetrics import MeanSquaredError, R2Score
 
 from GPErks.gp.experiment import GPExperiment
+from GPErks.log.logger import get_logger
 from GPErks.train.early_stop import PkEarlyStoppingCriterion
 from GPErks.train.emulator import GPEmulator
 from GPErks.train.snapshot import EveryEpochSnapshottingCriterion
 from GPErks.utils.array import tensorize
-from GPErks.utils.log import get_logger
 from GPErks.utils.metrics import IndependentStandardError as ISE
 from GPErks.utils.random import set_seed
 

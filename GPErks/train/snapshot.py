@@ -6,8 +6,8 @@ from typing import Optional
 import gpytorch
 import torch
 
+from GPErks.log.logger import get_logger
 from GPErks.train.train_stats import TrainStats
-from GPErks.utils.log import get_logger
 
 log = get_logger()
 

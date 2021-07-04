@@ -11,13 +11,12 @@ from scipy.stats import qmc
 from torchmetrics import MeanSquaredError, R2Score
 
 from GPErks.gp.experiment import GPExperiment
-from GPErks.plot.training import plot_training_stats
+from GPErks.log.logger import get_logger
+from GPErks.perks.inference import Inference
+from GPErks.serialization.path import posix_path
 from GPErks.train.early_stop import NoEarlyStoppingCriterion
 from GPErks.train.emulator import GPEmulator
 from GPErks.train.snapshot import EveryEpochSnapshottingCriterion
-from GPErks.utils.inference import Inference
-from GPErks.utils.log import get_logger
-from GPErks.utils.path import posix_path
 from GPErks.utils.random import set_seed
 from GPErks.utils.test_functions import forrester
 
@@ -88,7 +87,7 @@ def main():
     )
 
     # plot graphs
-    plot_training_stats(best_train_stats)
+    best_train_stats.plot()
 
     # test model
     inference = Inference(emul, X_test, y_test, metrics)

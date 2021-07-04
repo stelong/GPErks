@@ -11,16 +11,15 @@ from sklearn.model_selection import train_test_split
 from torchmetrics import MeanSquaredError, R2Score
 
 from GPErks.gp.experiment import GPExperiment
-from GPErks.plot.training import plot_training_stats
+from GPErks.log.logger import get_logger
+from GPErks.perks.diagnostics import Diagnostics
+from GPErks.perks.gsa import SobolGSA
+from GPErks.perks.inference import Inference
 from GPErks.serialization.labels import read_labels_from_file
+from GPErks.serialization.path import posix_path
 from GPErks.train.early_stop import GLEarlyStoppingCriterion
 from GPErks.train.emulator import GPEmulator
 from GPErks.train.snapshot import EveryEpochSnapshottingCriterion
-from GPErks.utils.diagnostics import Diagnostics
-from GPErks.utils.gsa import SobolGSA
-from GPErks.utils.inference import Inference
-from GPErks.utils.log import get_logger
-from GPErks.utils.path import posix_path
 from GPErks.utils.random import set_seed
 from GPErks.utils.test_functions import forrester
 
@@ -97,7 +96,7 @@ def main():
     )
 
     # plot training statistics (train loss, val loss, metrics)
-    plot_training_stats(best_train_stats)
+    best_train_stats.plot()
 
     # test model: diagnostics
     diagnostics = Diagnostics(emul, X_test, y_test)

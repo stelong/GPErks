@@ -10,12 +10,12 @@ from scipy.stats import qmc
 from torchmetrics import ExplainedVariance, MeanSquaredError, R2Score
 
 from GPErks.gp.experiment import GPExperiment
+from GPErks.log.logger import get_logger
+from GPErks.perks.diagnostics import Diagnostics
+from GPErks.perks.inference import Inference
 from GPErks.train.early_stop import PkEarlyStoppingCriterion
 from GPErks.train.emulator import GPEmulator
 from GPErks.train.snapshot import EveryEpochSnapshottingCriterion
-from GPErks.utils.diagnostics import Diagnostics
-from GPErks.utils.inference import Inference
-from GPErks.utils.log import get_logger
 from GPErks.utils.random import set_seed
 from GPErks.utils.test_functions import forrester
 
