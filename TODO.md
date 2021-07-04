@@ -8,3 +8,4 @@
 # doc, with step-by-step
 # GSA with salib
 # Handle nested object e.g. Product Kernel, Sum
+# Extend Plottable whenever possible and implement default plot()

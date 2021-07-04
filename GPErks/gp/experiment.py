@@ -2,7 +2,6 @@ from configparser import ConfigParser
 from typing import List, Optional
 
 import gpytorch
-import numpy
 import torch
 import torchmetrics
 from gpytorch.kernels import ScaleKernel
@@ -97,10 +96,7 @@ class GPExperiment:
 
 def load_experiment_from_config_file(
     experiment_file_path,
-    X_train: numpy.ndarray,
-    y_train: numpy.ndarray,
-    X_val: numpy.ndarray = None,
-    y_val: numpy.ndarray = None,
+    dataset: Dataset,
 ) -> GPExperiment:
     config = read_config(experiment_file_path)
 
@@ -125,17 +121,13 @@ def load_experiment_from_config_file(
     kernel = ScaleKernel(
         build_instance(**{k: v for k, v in config["Kernel"].items()})
     )
-    # TODO: fix serialization (handle dataset)
     return GPExperiment(
-        X_train,
-        y_train,
+        dataset,
         likelihood,
         mean,
         kernel,
         n_restarts=n_restarts,
         seed=seed,
         metrics=metrics,
-        X_val=X_val,
-        y_val=y_val,
         learn_noise=learn_noise,
     )

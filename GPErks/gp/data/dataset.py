@@ -4,9 +4,11 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from GPErks.constants import HEIGHT, WIDTH
+from GPErks.plot.options import PlotOptions
+from GPErks.plot.plottable import Plottable
 
 
-class Dataset:
+class Dataset(Plottable):
     def __init__(
         self,
         X_train: np.ndarray,
@@ -15,25 +17,27 @@ class Dataset:
         y_test: np.ndarray,
         X_val: Optional[np.ndarray] = None,
         y_val: Optional[np.ndarray] = None,
-        xlabels: Optional[List[str]] = None,
-        ylabel: Optional[str] = None,
+        x_labels: Optional[List[str]] = None,
+        y_label: Optional[str] = None,
+        plot_options: PlotOptions = PlotOptions(),
     ):
-        self.X_train = X_train
-        self.y_train = y_train
-        self.X_test = X_test
-        self.y_test = y_test
-        self.X_val = X_val
-        self.y_val = y_val
-        self.with_val = X_val is not None and y_val is not None
+        super(Dataset, self).__init__(plot_options)
+        self.X_train: np.ndarray = X_train
+        self.y_train: np.ndarray = y_train
+        self.X_test: np.ndarray = X_test
+        self.y_test: np.ndarray = y_test
+        self.X_val: Optional[np.ndarray] = X_val
+        self.y_val: Optional[np.ndarray] = y_val
+        self.with_val: bool = X_val is not None and y_val is not None
 
         self.input_size = self.X_train.shape[1]
 
-        self.xlabels = (
-            xlabels
-            if xlabels is not None
+        self.x_labels: List[str] = (
+            x_labels
+            if x_labels
             else [f"p{i+1}" for i in range(self.input_size)]
         )
-        self.ylabel = ylabel if ylabel is not None else "Output"
+        self.y_label: str = y_label if y_label else "Output"
 
     def plot(self):
         self.plot_train()
@@ -62,8 +66,8 @@ class Dataset:
         )
         for i, axis in enumerate(axes.flat):
             axis.scatter(X[:, i], y, facecolor="C0", edgecolor="C0")
-            axis.set_xlabel(self.xlabels[i], fontsize=12)
-        axes[0].set_ylabel(self.ylabel, fontsize=12)
+            axis.set_xlabel(self.x_labels[i], fontsize=12)
+        axes[0].set_ylabel(self.y_label, fontsize=12)
 
         plt.suptitle(f"Sample dimension = {self.n} points", fontsize=12)
         plt.show()
@@ -87,9 +91,9 @@ class Dataset:
             else:
                 axis.set_axis_off()
             if i == 0:
-                axis.set_ylabel(self.xlabels[j])
+                axis.set_ylabel(self.x_labels[j])
             if j == self.d - 1:
-                axis.set_xlabel(self.xlabels[i])
+                axis.set_xlabel(self.x_labels[i])
 
         plt.suptitle(f"Sample dimension = {self.n} points", fontsize=12)
         plt.show()

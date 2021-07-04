@@ -9,11 +9,13 @@ from scipy.stats import norm
 
 from GPErks.constants import N_DRAWS, THRESHOLD, N
 from GPErks.plot.gsa import boxplot, donut, heatmap, network
+from GPErks.plot.options import PlotOptions
+from GPErks.plot.plottable import Plottable
 from GPErks.train.emulator import GPEmulator
 from GPErks.utils.array import get_minmax
 
 
-class SobolGSA:
+class SobolGSA(Plottable):
     def __init__(
         self,
         emulator: GPEmulator,
@@ -21,7 +23,9 @@ class SobolGSA:
         seed: Optional[int] = None,
         xlabels: Optional[List[str]] = None,
         ylabel: Optional[str] = None,
+        plot_options: PlotOptions = PlotOptions(),
     ):
+        super(SobolGSA, self).__init__(plot_options)
         self.emulator = emulator
         self.n = n
         self.seed = seed
@@ -110,20 +114,25 @@ class SobolGSA:
             l = np.where(Q1 < threshold)[0]
             S[:, l] = np.zeros((S.shape[0], len(l)), dtype=float)
 
-    def plot(self, kind: str = "boxplot"):
-        if kind == "boxplot":
-            fun = boxplot
-        elif kind == "donut":
-            fun = donut
-        elif kind == "heatmap":
-            fun = heatmap
-        elif kind == "network":
-            fun = network
-        else:
-            raise ValueError(
-                "Not a valid plotting format! Available formats are: 'boxplot', 'donut', 'heatmap, 'network'."
-            )
+    def plot(self):
+        self.plot_boxplot()
 
-        fun(
+    def plot_boxplot(self):
+        boxplot(
+            self.ST, self.S1, self.S2, self.index_i, self.index_ij, self.ylabel
+        )
+
+    def plot_donut(self):
+        donut(
+            self.ST, self.S1, self.S2, self.index_i, self.index_ij, self.ylabel
+        )
+
+    def plot_heatmap(self):
+        heatmap(
+            self.ST, self.S1, self.S2, self.index_i, self.index_ij, self.ylabel
+        )
+
+    def plot_network(self):
+        network(
             self.ST, self.S1, self.S2, self.index_i, self.index_ij, self.ylabel
         )

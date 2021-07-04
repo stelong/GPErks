@@ -13,7 +13,7 @@ from sklearn.model_selection import train_test_split
 from torchmetrics import MeanSquaredError, R2Score
 
 from GPErks.gp.data.dataset import Dataset
-from GPErks.gp.experiment import GPExperiment
+from GPErks.gp.experiment import GPExperiment, load_experiment_from_config_file
 from GPErks.log.logger import get_logger
 from GPErks.serialization.labels import read_labels_from_file
 from GPErks.train.early_stop import GLEarlyStoppingCriterion
@@ -93,13 +93,10 @@ def main():
     experiment.save_to_config_file(config_file)
 
     # Alternatively, load from file
-    # experiment = load_experiment_from_config_file(
-    #     config_file,
-    #     X_train,
-    #     y_train,
-    #     X_val,
-    #     y_val,
-    # )
+    experiment = load_experiment_from_config_file(
+        config_file,
+        dataset,
+    )
 
     here = os.path.abspath(os.path.dirname(__file__))
     # snapc = NeverSaveSnapshottingCriterion(
@@ -195,7 +192,7 @@ def main():
 
     axis.set_xticks([])
     axis.set_xticklabels([])
-    axis.set_ylabel(dataset.ylabel, fontsize=12)
+    axis.set_ylabel(dataset.y_label, fontsize=12)
     axis.set_title(f"R2Score = {r2s:.4f} | ISE = {ise:.2f} %", fontsize=12)
     axis.legend(loc="upper left")
 

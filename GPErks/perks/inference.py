@@ -15,13 +15,11 @@ class Inference:
     def __init__(
         self,
         emulator: GPEmulator,
-        X_test: np.ndarray,
-        y_test: np.ndarray,
         metrics: List[torchmetrics.Metric],
     ):
         self.emulator = emulator
-        self.X_test = X_test
-        self.y_test = y_test
+        self.X_test = self.emulator.experiment.dataset.X_test
+        self.y_test = self.emulator.experiment.dataset.y_test
         self.metrics = metrics
         self.y_pred_mean, self.y_pred_std = self.emulator.predict(self.X_test)
 
