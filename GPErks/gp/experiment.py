@@ -9,9 +9,9 @@ from gpytorch.kernels import ScaleKernel
 
 from GPErks.gp.data import ScaledData
 from GPErks.gp.model import ExactGPModel
-from GPErks.utils.config import get_repeatable_section, read_config
+from GPErks.serialization.config import get_repeatable_section, read_config
+from GPErks.serialization.runtime import build_instance, dump_instance
 from GPErks.utils.random import set_seed
-from GPErks.utils.runtime import build_instance, dump_instance
 from GPErks.utils.scaler import StandardScaler, UnitCubeScaler
 
 

@@ -11,7 +11,7 @@ def execute_task_in_parallel(
     task_fn, inputs, max_workers=multiprocessing.cpu_count()
 ):
     results = {}
-    with get_process_pool_executor(max_workers) as executor:
+    with _get_process_pool_executor(max_workers) as executor:
         future_results = {
             executor.submit(task_fn, *value): key
             for key, value in inputs.items()
@@ -21,5 +21,5 @@ def execute_task_in_parallel(
     return results
 
 
-def get_process_pool_executor(max_workers=multiprocessing.cpu_count()):
+def _get_process_pool_executor(max_workers=multiprocessing.cpu_count()):
     return concurrent.futures.ProcessPoolExecutor(max_workers)
