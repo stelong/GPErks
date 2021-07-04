@@ -7,9 +7,10 @@ import torch
 import torchmetrics
 from gpytorch.kernels import ScaleKernel
 
-from GPErks.gp.data_scaler import StandardScaler, UnitCubeScaler
+from GPErks.gp.data.data_scaler import StandardScaler, UnitCubeScaler
+from GPErks.gp.data.dataset import Dataset
+from GPErks.gp.data.scaled_data import ScaledData
 from GPErks.gp.model import ExactGPModel
-from GPErks.gp.scaled_data import ScaledData
 from GPErks.serialization.config import get_repeatable_section, read_config
 from GPErks.serialization.runtime import build_instance, dump_instance
 from GPErks.utils.random import set_seed
@@ -18,8 +19,7 @@ from GPErks.utils.random import set_seed
 class GPExperiment:
     def __init__(
         self,
-        X_train: numpy.ndarray,
-        y_train: numpy.ndarray,
+        dataset: Dataset,
         likelihood: gpytorch.likelihoods.Likelihood,
         mean_module: gpytorch.means.Mean,
         covar_module: gpytorch.kernels.Kernel,
@@ -27,21 +27,17 @@ class GPExperiment:
         n_restarts: int = 10,
         seed: Optional[int] = None,
         metrics: Optional[List[torchmetrics.Metric]] = None,
-        X_val: numpy.ndarray = None,
-        y_val: numpy.ndarray = None,
         learn_noise: bool = True,
     ):
         set_seed(seed)  # set immediately, for reproducible initialization
         self.seed: Optional[int] = seed
 
+        self.dataset = dataset
         # scale data by default
         self.scaled_data: ScaledData = ScaledData(
-            X_train,
-            y_train,
+            self.dataset,
             UnitCubeScaler(),
             StandardScaler(),
-            X_val,
-            y_val,
         )
         self.n_restarts: int = n_restarts
 
@@ -129,6 +125,7 @@ def load_experiment_from_config_file(
     kernel = ScaleKernel(
         build_instance(**{k: v for k, v in config["Kernel"].items()})
     )
+    # TODO: fix serialization (handle dataset)
     return GPExperiment(
         X_train,
         y_train,

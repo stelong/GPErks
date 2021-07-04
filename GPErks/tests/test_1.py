@@ -12,6 +12,7 @@ from gpytorch.means import LinearMean
 from sklearn.model_selection import train_test_split
 from torchmetrics import MeanSquaredError, R2Score
 
+from GPErks.gp.data.dataset import Dataset
 from GPErks.gp.experiment import GPExperiment
 from GPErks.log.logger import get_logger
 from GPErks.serialization.labels import read_labels_from_file
@@ -61,10 +62,10 @@ def main():
     savepath = sys.argv[3].rstrip("/") + "/" + idx_feature + "/"
     Path(savepath).mkdir(parents=True, exist_ok=True)
 
-    np.savetxt(savepath + "X_train.txt", X_train, fmt="%.6f")
-    np.savetxt(savepath + "y_train.txt", y_train, fmt="%.6f")
-    np.savetxt(savepath + "X_val.txt", X_val, fmt="%.6f")
-    np.savetxt(savepath + "y_val.txt", y_val, fmt="%.6f")
+    # np.savetxt(savepath + "X_train.txt", X_train, fmt="%.6f")
+    # np.savetxt(savepath + "y_train.txt", y_train, fmt="%.6f")
+    # np.savetxt(savepath + "X_val.txt", X_val, fmt="%.6f")
+    # np.savetxt(savepath + "y_val.txt", y_val, fmt="%.6f")
 
     likelihood = gpytorch.likelihoods.GaussianLikelihood()
 
@@ -77,16 +78,21 @@ def main():
     # metrics = [ExplainedVariance(), MeanSquaredError(), R2Score()]
     metrics = [R2Score(), MeanSquaredError()]
 
-    experiment = GPExperiment(
+    dataset = Dataset(
         X_train,
         y_train,
+        X_test,
+        y_test,
+        X_val,
+        y_val,
+    )
+    experiment = GPExperiment(
+        dataset,
         likelihood,
         mean_function,
         kernel,
         n_restarts=3,
         metrics=metrics,
-        X_val=X_val,
-        y_val=y_val,
         seed=seed,
     )
     config_file = __file__.replace(".py", ".ini")
