@@ -8,4 +8,3 @@
 # doc, with step-by-step
 # GSA with salib
 # Handle nested object e.g. Product Kernel, Sum
-# Plot pair-wise missing

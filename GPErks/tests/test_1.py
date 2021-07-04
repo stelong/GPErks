@@ -33,21 +33,14 @@ def main():
     # ================================================================
     # (1) Loading and visualising dataset
     # ================================================================
+    # (2) Building example train, test, val sets
+    # ================================================================
     loadpath = sys.argv[1].rstrip("/") + "/"
     X = np.loadtxt(loadpath + "X.txt", dtype=float)
     Y = np.loadtxt(loadpath + "Y.txt", dtype=float)
 
-    # xlabels = read_labels_from_file(loadpath + "xlabels.txt")
-    ylabels = read_labels_from_file(loadpath + "ylabels.txt")
-    # plot_dataset(X, Y, xlabels, ylabels)
-
-    # ================================================================
-    # (2) Building example training and validation datasets
-    # ================================================================
-    idx_feature = sys.argv[2]
-    print(f"\n{ylabels[int(idx_feature)]} feature selected for emulation.")
-
-    y = np.copy(Y[:, int(idx_feature)])
+    target_label_idx = int(sys.argv[2])
+    y = np.copy(Y[:, target_label_idx])
 
     X_, X_test, y_, y_test = train_test_split(
         X, y, test_size=0.2, random_state=seed
@@ -56,10 +49,19 @@ def main():
         X_, y_, test_size=0.2, random_state=seed
     )
 
+    xlabels = read_labels_from_file(loadpath + "xlabels.txt")
+    ylabel = read_labels_from_file(loadpath + "ylabels.txt")[target_label_idx]
+
+    dataset = Dataset(
+        X_train, y_train, X_test, y_test, X_val, y_val, xlabels, ylabel
+    )
+    dataset.plot()
+    dataset.plot_pairwise()
+
     # ================================================================
     # (3) Training GPE
     # ================================================================
-    savepath = sys.argv[3].rstrip("/") + "/" + idx_feature + "/"
+    savepath = sys.argv[3].rstrip("/") + "/" + str(target_label_idx) + "/"
     Path(savepath).mkdir(parents=True, exist_ok=True)
 
     # np.savetxt(savepath + "X_train.txt", X_train, fmt="%.6f")
@@ -69,7 +71,7 @@ def main():
 
     likelihood = gpytorch.likelihoods.GaussianLikelihood()
 
-    input_size = X_train.shape[1]
+    input_size = dataset.input_size
     mean_function = LinearMean(input_size=input_size)
     kernel = ScaleKernel(
         # MaternKernel(ard_num_dims=input_size),
@@ -78,14 +80,6 @@ def main():
     # metrics = [ExplainedVariance(), MeanSquaredError(), R2Score()]
     metrics = [R2Score(), MeanSquaredError()]
 
-    dataset = Dataset(
-        X_train,
-        y_train,
-        X_test,
-        y_test,
-        X_val,
-        y_val,
-    )
     experiment = GPExperiment(
         dataset,
         likelihood,
@@ -201,7 +195,7 @@ def main():
 
     axis.set_xticks([])
     axis.set_xticklabels([])
-    axis.set_ylabel(ylabels[int(idx_feature)], fontsize=12)
+    axis.set_ylabel(dataset.ylabel, fontsize=12)
     axis.set_title(f"R2Score = {r2s:.4f} | ISE = {ise:.2f} %", fontsize=12)
     axis.legend(loc="upper left")
 
