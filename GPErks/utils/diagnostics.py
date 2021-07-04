@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from scipy import linalg, stats
 
-from GPErks.emulator import GPEmulator
+from GPErks.train.emulator import GPEmulator
 
 
 class Diagnostics:

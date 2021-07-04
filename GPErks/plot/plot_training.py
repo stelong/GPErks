@@ -4,7 +4,7 @@ import numpy
 from matplotlib import pyplot as plt
 
 # plt.switch_backend('TkAgg')
-from GPErks.utils.train_stats import TrainStats
+from GPErks.train.train_stats import TrainStats
 
 
 def plot_training_stats(train_stats: TrainStats):

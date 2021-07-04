@@ -6,7 +6,7 @@ import pandas as pd
 import torchmetrics
 
 from GPErks.constants import HEIGHT, WIDTH
-from GPErks.emulator import GPEmulator
+from GPErks.train.emulator import GPEmulator
 from GPErks.utils.design import get_minmax
 from GPErks.utils.metrics import get_metric_name
 from GPErks.utils.tensor import tensorize

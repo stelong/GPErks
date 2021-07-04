@@ -1,31 +1,18 @@
 #!/usr/bin/env python3
 import os
-import random
-import sys
-from pathlib import Path
 
 import gpytorch
 import matplotlib.pyplot as plt
-import numpy
 import numpy as np
 import torch
-from gpytorch.kernels import MaternKernel, RBFKernel, ScaleKernel
+from gpytorch.kernels import RBFKernel, ScaleKernel
 from gpytorch.means import LinearMean
-from sklearn.model_selection import train_test_split
-from torchmetrics import ExplainedVariance, MeanSquaredError, R2Score
+from torchmetrics import MeanSquaredError, R2Score
 
-from GPErks.emulator import GPEmulator
 from GPErks.experiment import GPExperiment
-from GPErks.snapshotting import (
-    EveryEpochSnapshottingCriterion,
-    NeverSaveSnapshottingCriterion,
-)
-from GPErks.utils.design import read_labels
-from GPErks.utils.earlystopping import (
-    GLEarlyStoppingCriterion,
-    NoEarlyStoppingCriterion,
-    PkEarlyStoppingCriterion,
-)
+from GPErks.train.early_stop import PkEarlyStoppingCriterion
+from GPErks.train.emulator import GPEmulator
+from GPErks.train.snapshot import EveryEpochSnapshottingCriterion
 from GPErks.utils.log import get_logger
 from GPErks.utils.metrics import IndependentStandardError as ISE
 from GPErks.utils.random import set_seed

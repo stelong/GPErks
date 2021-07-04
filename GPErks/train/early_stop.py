@@ -5,8 +5,8 @@ from typing import Any, Dict, List, Optional, Tuple
 import gpytorch
 import numpy
 
+from GPErks.train.train_stats import TrainStats
 from GPErks.utils.log import get_logger
-from GPErks.utils.train_stats import TrainStats
 
 log = get_logger()
 

@@ -7,23 +7,16 @@ import numpy as np
 import torch
 from gpytorch.kernels import RBFKernel, ScaleKernel
 from gpytorch.means import LinearMean
-from scipy.stats import qmc
 from sklearn.model_selection import train_test_split
 from torchmetrics import MeanSquaredError, R2Score
 
-from GPErks.emulator import GPEmulator
 from GPErks.experiment import GPExperiment
-from GPErks.plots.plot_training import plot_training_stats
-from GPErks.snapshotting import (
-    EveryEpochSnapshottingCriterion,
-    EveryNEpochsSnapshottingCriterion,
-)
+from GPErks.plot.plot_training import plot_training_stats
+from GPErks.train.early_stop import GLEarlyStoppingCriterion
+from GPErks.train.emulator import GPEmulator
+from GPErks.train.snapshot import EveryEpochSnapshottingCriterion
 from GPErks.utils.design import read_labels
 from GPErks.utils.diagnostics import Diagnostics
-from GPErks.utils.earlystopping import (
-    GLEarlyStoppingCriterion,
-    NoEarlyStoppingCriterion,
-)
 from GPErks.utils.gsa import SobolGSA
 from GPErks.utils.inference import Inference
 from GPErks.utils.log import get_logger
