@@ -30,7 +30,7 @@ class SobolGSA:
         self.index_i = (
             xlabels
             if xlabels is not None
-            else [f"p_${i+1}$" for i in range(self.d)]
+            else [f"p{i+1}$" for i in range(self.d)]
         )
         self.index_ij = [list(c) for c in combinations(self.index_i, 2)]
         self.ylabel = ylabel if ylabel is not None else "Output"

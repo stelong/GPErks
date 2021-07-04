@@ -31,7 +31,7 @@ class Dataset:
         self.xlabels = (
             xlabels
             if xlabels is not None
-            else [f"p_${i+1}$" for i in range(self.input_size)]
+            else [f"p{i+1}" for i in range(self.input_size)]
         )
         self.ylabel = ylabel if ylabel is not None else "Output"
 

@@ -8,12 +8,13 @@ import numpy as np
 import seaborn as sns
 import torch
 from scipy.stats import norm
-from test_functions import (
+from GPErks.utils.test_functions_gsa import (
     Ishigami,
     Ishigami_theoretical_Si,
     SobolGstar,
     SobolGstar_theoretical_Si,
 )
+
 
 np.set_printoptions(formatter={"all": lambda x: "{:.4f}".format(x)})
 
