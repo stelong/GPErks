@@ -15,10 +15,10 @@ from GPErks.gp.experiment import GPExperiment
 from GPErks.train.early_stop import EarlyStoppingCriterion
 from GPErks.train.snapshot import SnapshottingCriterion
 from GPErks.train.train_stats import TrainStats, load_train_stats_from_file
+from GPErks.utils.array import tensorize
 from GPErks.utils.log import get_logger
 from GPErks.utils.metrics import get_metric_name
 from GPErks.utils.path import posix_path
-from GPErks.utils.tensor import tensorize
 
 log = get_logger()
 

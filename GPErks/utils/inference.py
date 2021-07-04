@@ -7,9 +7,8 @@ import torchmetrics
 
 from GPErks.constants import HEIGHT, WIDTH
 from GPErks.train.emulator import GPEmulator
-from GPErks.utils.design import get_minmax
+from GPErks.utils.array import get_minmax, tensorize
 from GPErks.utils.metrics import get_metric_name
-from GPErks.utils.tensor import tensorize
 
 
 class Inference:

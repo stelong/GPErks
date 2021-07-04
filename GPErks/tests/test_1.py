@@ -13,14 +13,14 @@ from sklearn.model_selection import train_test_split
 from torchmetrics import MeanSquaredError, R2Score
 
 from GPErks.gp.experiment import GPExperiment
+from GPErks.serialization.labels import read_labels_from_file
 from GPErks.train.early_stop import GLEarlyStoppingCriterion
 from GPErks.train.emulator import GPEmulator
 from GPErks.train.snapshot import EveryEpochSnapshottingCriterion
-from GPErks.utils.design import read_labels
+from GPErks.utils.array import tensorize
 from GPErks.utils.log import get_logger
 from GPErks.utils.metrics import IndependentStandardError as ISE
 from GPErks.utils.random import set_seed
-from GPErks.utils.tensor import tensorize
 
 log = get_logger()
 
@@ -36,8 +36,8 @@ def main():
     X = np.loadtxt(loadpath + "X.txt", dtype=float)
     Y = np.loadtxt(loadpath + "Y.txt", dtype=float)
 
-    # xlabels = read_labels(loadpath + "xlabels.txt")
-    ylabels = read_labels(loadpath + "ylabels.txt")
+    # xlabels = read_labels_from_file(loadpath + "xlabels.txt")
+    ylabels = read_labels_from_file(loadpath + "ylabels.txt")
     # plot_dataset(X, Y, xlabels, ylabels)
 
     # ================================================================

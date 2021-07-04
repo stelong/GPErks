@@ -12,10 +12,10 @@ from torchmetrics import MeanSquaredError, R2Score
 
 from GPErks.gp.experiment import GPExperiment
 from GPErks.plot.training import plot_training_stats
+from GPErks.serialization.labels import read_labels_from_file
 from GPErks.train.early_stop import GLEarlyStoppingCriterion
 from GPErks.train.emulator import GPEmulator
 from GPErks.train.snapshot import EveryEpochSnapshottingCriterion
-from GPErks.utils.design import read_labels
 from GPErks.utils.diagnostics import Diagnostics
 from GPErks.utils.gsa import SobolGSA
 from GPErks.utils.inference import Inference
@@ -111,8 +111,8 @@ def main():
 
     # gsa
     path_to_labels_dir = "data/nkmodel/"
-    xlabels = read_labels(path_to_labels_dir + "xlabels.txt")
-    ylabels = read_labels(path_to_labels_dir + "ylabels.txt")
+    xlabels = read_labels_from_file(path_to_labels_dir + "xlabels.txt")
+    ylabels = read_labels_from_file(path_to_labels_dir + "ylabels.txt")
     idx_emulated_feature = 0
     ylabel = ylabels[idx_emulated_feature]
 

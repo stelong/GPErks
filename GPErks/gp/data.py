@@ -1,6 +1,6 @@
 from torch import Tensor
 
-from GPErks.utils.tensor import tensorize
+from GPErks.utils.array import tensorize
 
 
 class ScaledData:
