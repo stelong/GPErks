@@ -13,6 +13,7 @@ DEFAULT_LOG_FORMAT = (
 
 # gsa constants:
 N = 1024
+N_BOOTSTRAP = 100
 N_DRAWS = 1000
 THRESHOLD = 0.01
 

@@ -13,10 +13,10 @@ class Dataset(Plottable):
         self,
         X_train: np.ndarray,
         y_train: np.ndarray,
-        X_test: np.ndarray,
-        y_test: np.ndarray,
         X_val: Optional[np.ndarray] = None,
         y_val: Optional[np.ndarray] = None,
+        X_test: Optional[np.ndarray] = None,
+        y_test: Optional[np.ndarray] = None,
         x_labels: Optional[List[str]] = None,
         y_label: Optional[str] = None,
         plot_options: PlotOptions = PlotOptions(),
@@ -24,12 +24,13 @@ class Dataset(Plottable):
         super(Dataset, self).__init__(plot_options)
         self.X_train: np.ndarray = X_train
         self.y_train: np.ndarray = y_train
-        self.X_test: np.ndarray = X_test
-        self.y_test: np.ndarray = y_test
         self.X_val: Optional[np.ndarray] = X_val
         self.y_val: Optional[np.ndarray] = y_val
+        self.X_test: Optional[np.ndarray] = X_test
+        self.y_test: Optional[np.ndarray] = y_test
         self.with_val: bool = X_val is not None and y_val is not None
 
+        self.sample_size = self.X_train.shape[0]
         self.input_size = self.X_train.shape[1]
 
         self.x_labels: List[str] = (

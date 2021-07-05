@@ -1,9 +1,6 @@
-from typing import List
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import torchmetrics
 
 from GPErks.constants import HEIGHT, WIDTH
 from GPErks.train.emulator import GPEmulator
@@ -12,23 +9,25 @@ from GPErks.utils.metrics import get_metric_name
 
 
 class Inference:
-    def __init__(
-        self,
-        emulator: GPEmulator,
-        metrics: List[torchmetrics.Metric],
-    ):
+    def __init__(self, emulator: GPEmulator):
         self.emulator = emulator
         self.X_test = self.emulator.experiment.dataset.X_test
         self.y_test = self.emulator.experiment.dataset.y_test
-        self.metrics = metrics
+        self.metrics = self.emulator.experiment.metrics
         self.y_pred_mean, self.y_pred_std = self.emulator.predict(self.X_test)
+        self.scores_dct = {}
 
     def summary(self):
         metrics_names = list(map(get_metric_name, self.metrics))
         metrics_scores = list(
-            m(tensorize(self.y_pred_mean), tensorize(self.y_test)).cpu()
+            m(tensorize(self.y_pred_mean), tensorize(self.y_test))
+            .cpu()
+            .numpy()
             for m in self.metrics
         )
+        self.scores_dct = {
+            key: val for key, val in zip(metrics_names, metrics_scores)
+        }
 
         df = pd.DataFrame(
             data=np.around(np.array(metrics_scores), decimals=4).reshape(
@@ -39,7 +38,7 @@ class Inference:
         )
         print(df)
 
-    def plot(self, is_input_2D: bool = False):
+    def plot(self):
         fig, axis = plt.subplots(1, 1, figsize=(2 * WIDTH, 2 * HEIGHT / 3))
 
         l = np.argsort(

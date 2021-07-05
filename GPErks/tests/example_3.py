@@ -21,7 +21,11 @@ from GPErks.perks.gsa import SobolGSA
 from GPErks.perks.inference import Inference
 from GPErks.serialization.labels import read_labels_from_file
 from GPErks.serialization.path import posix_path
-from GPErks.train.early_stop import GLEarlyStoppingCriterion
+from GPErks.train.early_stop import (
+    GLEarlyStoppingCriterion,
+    PkEarlyStoppingCriterion,
+    UPEarlyStoppingCriterion,
+)
 from GPErks.train.emulator import GPEmulator
 from GPErks.train.snapshot import EveryEpochSnapshottingCriterion
 from GPErks.utils.random import set_seed
@@ -52,7 +56,7 @@ def main():
 
     sampler = qmc.LatinHypercube(d=D, seed=seed)
 
-    n_train_samples = 10 * D
+    n_train_samples = 20 * D
     n_val_samples = 2 * D
     n_test_samples = 5 * D
 
@@ -64,7 +68,15 @@ def main():
     y_test = f(X_test)
     y_val = f(X_val)
 
-    dataset = Dataset(X_train, y_train, X_test, y_test, X_val, y_val)
+    dataset = Dataset(
+        X_train,
+        y_train,
+        X_val=X_val,
+        y_val=y_val,
+        X_test=X_test,
+        y_test=y_test,
+    )
+    dataset.plot()
     dataset.plot_pairwise()
 
     # define experiment options
@@ -91,10 +103,13 @@ def main():
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     max_epochs = 500
-    # early_stopping_criterion = NoEarlyStoppingCriterion(max_epochs)
-    early_stopping_criterion = GLEarlyStoppingCriterion(
-        max_epochs, alpha=1.0, patience=8
+    # early_stopping_criterion = GLEarlyStoppingCriterion(max_epochs, alpha=1.0, patience=8)
+    early_stopping_criterion = UPEarlyStoppingCriterion(
+        max_epochs, strip_length=20, successive_strips=4
     )
+    # early_stopping_criterion = PkEarlyStoppingCriterion(
+    #     max_epochs, alpha=1.0, patience=8, strip_length=20
+    # )
 
     here = os.path.abspath(os.path.dirname(__file__))
     example_name = Path(__file__).name.replace(".py", "")
@@ -116,15 +131,15 @@ def main():
     )
 
     # plot training statistics (train loss, val loss, metrics)
-    best_train_stats.plot()
+    best_train_stats.plot(overlay_criterion=True)
 
     # test model: diagnostics
-    diagnostics = Diagnostics(emul, X_test, y_test)
+    diagnostics = Diagnostics(emul)
     diagnostics.summary()
     diagnostics.plot()
 
     # test model: inference
-    inference = Inference(emul, X_test, y_test, metrics)
+    inference = Inference(emul)
     inference.summary()
     inference.plot()
 
@@ -137,7 +152,7 @@ def main():
     gsa = SobolGSA(emul, n=1024, seed=seed)
     gsa.estimate_Sobol_indices(n_draws=1000)
     gsa.correct_Sobol_indices(threshold=0.01)
-    gsa.plot(kind="boxplot")
+    gsa.plot()
 
     ##-----------------------------------------------------------------------------
     ## first attempt below (went really bad, need to understand why)

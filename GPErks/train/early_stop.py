@@ -143,7 +143,9 @@ class PkEarlyStoppingCriterion(EarlyStoppingCriterion):
         else:
             self.Pk.append(0.0)
 
+        self.train_stats.criterion_evaluations.append(self.Pk[-1])
         log.debug(f"Pk[-1]={self.Pk[-1]}, alpha={self.alpha}")
+
         if self.Pk[-1] > self.alpha:
             self.counter += 1
             log.debug(
@@ -203,6 +205,7 @@ class GLEarlyStoppingCriterion(EarlyStoppingCriterion):
         self.GL.append(
             100 * numpy.abs(1 - self.train_stats.val_loss[-1] / self.Eva_opt)
         )
+        self.train_stats.criterion_evaluations.append(self.GL[-1])
 
         log.debug(f"GL[-1]={self.GL[-1]}, alpha={self.alpha}")
         if self.GL[-1] > self.alpha:
@@ -228,3 +231,82 @@ class GLEarlyStoppingCriterion(EarlyStoppingCriterion):
 
     def _on_continue(self):
         log.debug("GLEpochEarlyStoppingCriterion on_continue().")
+
+
+class UPEarlyStoppingCriterion(EarlyStoppingCriterion):
+    # ref: https://page.mi.fu-berlin.de/prechelt/Biblio/stop_tricks1997.pdf
+    # note: uses validation data
+
+    def __init__(
+        self,
+        max_epochs: int,
+        strip_length: int,
+        successive_strips: int,
+    ):
+        super().__init__(max_epochs)
+        self.strip_length: int = strip_length
+        self.strip_counter: int = 0
+        self.computation_enabled: bool = False
+        self.successive_strips: int = successive_strips
+        self.sstrips_counter: int = 0
+        self.UP: List = []
+        self.current_best_state_dict: Dict[Any, Any] = {}
+
+    def enable(
+        self,
+        model: gpytorch.models.ExactGP,
+        train_stats: TrainStats,
+    ):
+        super(UPEarlyStoppingCriterion, self).enable(
+            model,
+            train_stats,
+        )
+
+    def _reset(self):
+        self.strip_counter: int = 0
+        self.computation_enabled: bool = False
+        self.sstrips_counter: int = 0
+        self.UP: List = []
+
+    def _should_stop(self) -> bool:
+        self.strip_counter += 1
+        if self.strip_counter % self.strip_length == 0:
+            self.computation_enabled = True
+
+        if self.computation_enabled:
+            self.UP.append(
+                numpy.sign(
+                    self.train_stats.val_loss[-1]
+                    - self.train_stats.val_loss[-self.strip_length]
+                )
+            )
+            if self.UP[-1] == 1:
+                self.sstrips_counter += 1
+                log.debug(
+                    f"Triggered UPEpochEarlyStoppingCriterion {self.sstrips_counter}/{self.successive_strips}"
+                )
+            else:
+                self.sstrips_counter = 0
+                self.current_best_state_dict = deepcopy(
+                    self.model.state_dict()
+                )
+        else:
+            self.UP.append(0.0)
+
+        self.train_stats.criterion_evaluations.append(self.UP[-1])
+        log.debug(f"UP[-1]={self.UP[-1]}")
+
+        return self.sstrips_counter == self.successive_strips
+
+    def _on_stop(self) -> Tuple[int, gpytorch.models.ExactGP]:
+        super()._on_stop()
+        log.debug("UPEpochEarlyStoppingCriterion on_stop().")
+        self.model.load_state_dict(self.current_best_state_dict)
+        return (
+            self.train_stats.current_epoch
+            - (self.strip_length + self.successive_strips - 1),
+            self.model,
+        )
+
+    def _on_continue(self):
+        log.debug("UPEpochEarlyStoppingCriterion on_continue().")

@@ -50,9 +50,7 @@ def boxplot(ST, S1, S2, index_i, index_ij, ylabel):
     plt.show()
 
 
-def donut(
-    ST, S1, S2, index_i, index_ij, ylabel
-):  # FIX ME: S2 not needed here but outside we want to have a generalized call
+def donut(ST, S1, index_i, ylabel):
     ST_mean = np.mean(ST, axis=0)
     S1_mean = np.mean(S1, axis=0)
 
@@ -99,7 +97,7 @@ def donut(
     plt.show()
 
 
-def heatmap(ST, S1, S2, index_i, index_ij, ylabel):  # same here
+def heatmap(ST, S1, index_i, ylabel):
     ST_mean = np.mean(ST, axis=0).reshape(1, -1)
     S1_mean = np.mean(S1, axis=0).reshape(1, -1)
 

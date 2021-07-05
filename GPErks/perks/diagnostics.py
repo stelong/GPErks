@@ -14,19 +14,20 @@ class Diagnostics:
     """
 
     def __init__(
-        self, emulator: GPEmulator, X_test: np.ndarray, y_test: np.ndarray
+        self,
+        emulator: GPEmulator,
     ):
         self.emulator = emulator
-        self.X_test = X_test
-        self.y_test = y_test
+        self.X_test = self.emulator.experiment.dataset.X_test
+        self.y_test = self.emulator.experiment.dataset.y_test
         (
             self.y_pred_mean,
             self.y_pred_std,
             self.y_pred_covar,
         ) = self.emulator.predict(self.X_test, with_covar=True)
 
-        self.n = self.emulator.scaled_data.sample_size
-        self.q = self.emulator.scaled_data.input_size
+        self.n = self.emulator.experiment.dataset.sample_size
+        self.q = self.emulator.experiment.dataset.input_size
         self.m = (
             self.X_test.shape[0]
             if len(self.X_test.shape) > 1

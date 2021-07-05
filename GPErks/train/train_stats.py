@@ -4,6 +4,8 @@ from typing import Dict, List
 import numpy
 from matplotlib import pyplot as plt
 
+from GPErks.constants import HEIGHT, WIDTH
+
 
 class TrainStats:
     def __init__(self, metrics_names):
@@ -17,26 +19,28 @@ class TrainStats:
         self.val_metrics_score: Dict[str, List[float]] = {
             metric_name: [] for metric_name in metrics_names
         }
+        self.criterion_evaluations: List[
+            float
+        ] = (
+            []
+        )  # NoEarlyStoppingCriterion will not fill this list: does this need a fix?
 
     def save_to_file(self, output_file):
         with open(output_file, "w") as out_f:
             json.dump(self.__dict__, out_f)
 
-    def plot(self):
+    def plot(self, overlay_criterion: bool = False):
+        figsize = (2 * WIDTH, 2 * HEIGHT / 4)
         with_val = len(self.val_loss) > 0
         if with_val:
             fig, axes = plt.subplots(
                 1,
                 1 + len(self.train_metrics_score),
+                figsize=figsize,
             )
         else:
-            fig, axis = plt.subplots(1, 1)
+            fig, axis = plt.subplots(1, 1, figsize=figsize)
             axes = [axis]
-
-        # TODO: recompute figsize (with constants)
-        # height = 9.36111
-        # width = 5.91667
-        # figsize = (2 * width / (4 - n), 2 * height / 3))
 
         loss_len = len(self.train_loss)
 
@@ -49,6 +53,16 @@ class TrainStats:
         axes[0].axvline(self.best_epoch, c="r", ls="--", lw=0.8, zorder=2)
         axes[0].set_ylabel("Loss", fontsize=12, zorder=1)
         axes[0].set_xlabel("Epoch", fontsize=12)
+
+        if overlay_criterion:
+            axis = axes[0].twinx()
+            axis.tick_params(axis="y", labelcolor="C2")
+            axis.plot(
+                numpy.arange(1, loss_len + 1),
+                self.criterion_evaluations,
+                c="C2",
+            )
+            axis.set_ylabel("Criterion", color="C2", fontsize=12)
 
         if with_val:
             axes[0].plot(
@@ -69,7 +83,7 @@ class TrainStats:
                 axis.set_xlabel("Epoch", fontsize=12)
                 axis.set_ylabel(metric_name, fontsize=12)
 
-        axes[0].legend()
+        axes[0].legend(loc="upper center")
 
         fig.tight_layout()
         # TODO: provide otpion to customize plot behaviour (e.g. dump files)

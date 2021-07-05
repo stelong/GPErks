@@ -1,5 +1,5 @@
 from itertools import combinations
-from typing import List, Optional
+from typing import Optional
 
 import numpy as np
 from SALib.analyze import sobol
@@ -7,7 +7,7 @@ from SALib.sample import saltelli
 from scipy.special import binom
 from scipy.stats import norm
 
-from GPErks.constants import N_DRAWS, THRESHOLD, N
+from GPErks.constants import N_BOOTSTRAP, N_DRAWS, THRESHOLD, N
 from GPErks.plot.gsa import boxplot, donut, heatmap, network
 from GPErks.plot.options import PlotOptions
 from GPErks.plot.plottable import Plottable
@@ -21,8 +21,6 @@ class SobolGSA(Plottable):
         emulator: GPEmulator,
         n: int = N,
         seed: Optional[int] = None,
-        xlabels: Optional[List[str]] = None,
-        ylabel: Optional[str] = None,
         plot_options: PlotOptions = PlotOptions(),
     ):
         super(SobolGSA, self).__init__(plot_options)
@@ -30,20 +28,11 @@ class SobolGSA(Plottable):
         self.n = n
         self.seed = seed
 
-        self.d = self.emulator.scaled_data.input_size
-        self.index_i = (
-            xlabels
-            if xlabels is not None
-            else [f"p{i+1}$" for i in range(self.d)]
-        )
+        self.d = self.emulator.experiment.dataset.input_size
+        self.index_i = self.emulator.experiment.dataset.x_labels
         self.index_ij = [list(c) for c in combinations(self.index_i, 2)]
-        self.ylabel = ylabel if ylabel is not None else "Output"
-        self.minmax = get_minmax(
-            self.emulator.scaled_data.scx.inverse_transform(
-                self.emulator.scaled_data.X_train.cpu().numpy()
-            )
-        )  # porcata atomica, questo perche' X_train, y_train originali non sono GPExperiment class attributes
-        # TODO: save original (unscaled) data
+        self.ylabel = self.emulator.experiment.dataset.y_label
+        self.minmax = get_minmax(self.emulator.experiment.dataset.X_train)
 
         self.ST = np.zeros((0, self.d), dtype=float)
         self.S1 = np.zeros((0, self.d), dtype=float)
@@ -64,7 +53,7 @@ class SobolGSA(Plottable):
             self.n,
             calc_second_order=True,
             skip_values=0,
-        )  # X will have n * (2*d + 2) rows
+        )
         return problem, X
 
     def estimate_Sobol_indices(self, n_draws: int = N_DRAWS):
@@ -81,7 +70,7 @@ class SobolGSA(Plottable):
                 problem,
                 y,
                 calc_second_order=True,
-                num_resamples=100,
+                num_resamples=N_BOOTSTRAP,
                 conf_level=conf_level,
                 parallel=False,
                 n_processors=None,
@@ -123,14 +112,10 @@ class SobolGSA(Plottable):
         )
 
     def plot_donut(self):
-        donut(
-            self.ST, self.S1, self.S2, self.index_i, self.index_ij, self.ylabel
-        )
+        donut(self.ST, self.S1, self.index_i, self.ylabel)
 
     def plot_heatmap(self):
-        heatmap(
-            self.ST, self.S1, self.S2, self.index_i, self.index_ij, self.ylabel
-        )
+        heatmap(self.ST, self.S1, self.index_i, self.ylabel)
 
     def plot_network(self):
         network(
