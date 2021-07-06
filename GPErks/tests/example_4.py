@@ -135,7 +135,7 @@ if __name__ == "__main__":
             max_epochs, alpha=1.0, patience=8, strip_length=5
         ),
     ]
-    n_splits = 50
+    n_splits = 10
     keys = ["GL", "UP", "PQ"]
     best_epochs = {}
     r2score = {}

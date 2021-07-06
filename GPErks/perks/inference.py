@@ -1,3 +1,5 @@
+from typing import Callable, Optional
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -79,12 +81,14 @@ class Inference:
         fig.tight_layout()
         plt.show()
 
-    def interpolate_2Dgrid(self, f=None):  # missing type here
+    def interpolate_2Dgrid(
+        self, f: Optional[Callable[[np.ndarray], np.ndarray]] = None
+    ):
         if self.X_test.shape[1] != 2:
             raise ValueError("Not a 2D input!")
 
         n = 50
-        X_train = self.emulator.experiment.scaled_data.X_train
+        X_train = self.emulator.experiment.dataset.X_train
         minmax = get_minmax(X_train)
 
         x1 = np.linspace(minmax[0, 0], minmax[0, 1], n)
@@ -99,7 +103,7 @@ class Inference:
         n_subplots = 2
         if f is not None:
             n_subplots = 3
-            y_grid = f(X_grid)
+            y_grid = np.array([f(xg) for xg in X_grid])
             y_grid = y_grid.reshape(n, n)
             err = np.abs(np.ones((n, n), dtype=float) - y_pred_mean / y_grid)
 

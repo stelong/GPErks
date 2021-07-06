@@ -9,6 +9,7 @@ from gpytorch.kernels import RBFKernel, ScaleKernel
 from gpytorch.means import LinearMean
 from torchmetrics import MeanSquaredError, R2Score
 
+from GPErks.gp.data.dataset import Dataset
 from GPErks.gp.experiment import GPExperiment
 from GPErks.log.logger import get_logger
 from GPErks.train.early_stop import PkEarlyStoppingCriterion
@@ -42,6 +43,8 @@ def main():
     x = (b - a) * x + a
     y = np.sin(x)
 
+    dataset = Dataset(x, y)
+
     # ================================================================
     # (2) Building example training and validation datasets
     # ================================================================
@@ -70,32 +73,28 @@ def main():
 
     likelihood = gpytorch.likelihoods.GaussianLikelihood()
 
-    input_size = 1
+    input_size = dataset.input_size
     mean_function = LinearMean(input_size=input_size)
     kernel = ScaleKernel(
         # MaternKernel(ard_num_dims=input_size),
         RBFKernel(ard_num_dims=input_size),
     )
-    # metrics = [ExplainedVariance(), MeanSquaredError(), R2Score()]
     metrics = [R2Score(), MeanSquaredError()]
 
     experiment = GPExperiment(
-        x,
-        y,
+        dataset,
         likelihood,
         mean_function,
         kernel,
         n_restarts=3,
         metrics=metrics,
-        # X_val=X_val,
-        # y_val=y_val,
         seed=seed,
     )
 
     optimizer = torch.optim.Adam(experiment.model.parameters(), lr=0.1)
-    # esc = NoEarlyStoppingCriterion(33)  # TODO: investigate if snapshot is required anyway
+    # early_stopping_criterion = NoEarlyStoppingCriterion(33)  # TODO: investigate if snapshot is required anyway
+
     MAX_EPOCHS = 1000
-    # early_stopping_criterion = GLEarlyStoppingCriterion(MAX_EPOCHS, alpha=1.0, patience=8)
     early_stopping_criterion = PkEarlyStoppingCriterion(
         MAX_EPOCHS, alpha=1.0, patience=8, strip_length=20
     )

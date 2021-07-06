@@ -1,7 +1,8 @@
-from typing import List, Optional
+from typing import Callable, List, Optional
 
 import numpy as np
 from matplotlib import pyplot as plt
+from scipy.stats import qmc
 
 from GPErks.constants import HEIGHT, WIDTH
 from GPErks.plot.options import PlotOptions
@@ -31,7 +32,9 @@ class Dataset(Plottable):
         self.with_val: bool = X_val is not None and y_val is not None
 
         self.sample_size = self.X_train.shape[0]
-        self.input_size = self.X_train.shape[1]
+        self.input_size = (
+            self.X_train.shape[1] if len(self.X_train.shape) > 1 else 1
+        )
 
         self.x_labels: List[str] = (
             x_labels
@@ -98,3 +101,48 @@ class Dataset(Plottable):
 
         plt.suptitle(f"Sample dimension = {self.n} points", fontsize=12)
         plt.show()
+
+    @classmethod
+    def build_from_function(
+        cls,
+        f: Callable[[np.ndarray], np.ndarray],
+        d: int,
+        n_train_samples: int,
+        n_val_samples: int,
+        n_test_samples: int,
+        seed: Optional[int] = None,
+        l_bounds: Optional[List[float]] = None,
+        u_bounds: Optional[List[float]] = None,
+    ):
+        sampler = qmc.Sobol(d=d, scramble=False, seed=seed)
+
+        X_train = sampler.random(n_train_samples)
+        X_val = sampler.random(n_val_samples)
+        X_test = sampler.random(n_test_samples)
+
+        if l_bounds is not None and u_bounds is not None:
+            X_train = qmc.scale(X_train, l_bounds, u_bounds)
+            X_val = qmc.scale(X_val, l_bounds, u_bounds)
+            X_test = qmc.scale(X_test, l_bounds, u_bounds)
+
+        y_train = []
+        for x in X_train:
+            y_train.append(f(x))
+        y_train = np.array(y_train)
+        y_val = []
+        for x in X_val:
+            y_val.append(f(x))
+        y_val = np.array(y_val)
+        y_test = []
+        for x in X_test:
+            y_test.append(f(x))
+        y_test = np.array(y_test)
+
+        return cls(
+            X_train,
+            y_train,
+            X_val=X_val,
+            y_val=y_val,
+            X_test=X_test,
+            y_test=y_test,
+        )

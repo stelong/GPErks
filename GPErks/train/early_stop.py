@@ -203,7 +203,7 @@ class GLEarlyStoppingCriterion(EarlyStoppingCriterion):
         if self.train_stats.val_loss[-1] < self.Eva_opt:
             self.Eva_opt = self.train_stats.val_loss[-1]
         self.GL.append(
-            100 * numpy.abs(1 - self.train_stats.val_loss[-1] / self.Eva_opt)
+            100 * (self.train_stats.val_loss[-1] / self.Eva_opt - 1)
         )
         self.train_stats.criterion_evaluations.append(self.GL[-1])
 

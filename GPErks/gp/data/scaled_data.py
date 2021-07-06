@@ -24,8 +24,9 @@ class ScaledData:
             else len(dataset.X_train)
         )
         self.input_size = (
-            self.X_train.shape[1] if len(self.X_train.shape) > 1 else 1
-        )
+            dataset.input_size
+        )  # do we use ScaledData.input_size somewhere?
+
         self.X_val = None
         self.y_val = None
         self.with_val = dataset.with_val

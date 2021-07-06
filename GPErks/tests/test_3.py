@@ -9,6 +9,7 @@ from gpytorch.kernels import RBFKernel, ScaleKernel
 from gpytorch.means import LinearMean
 from torchmetrics import MeanSquaredError, R2Score
 
+from GPErks.gp.data.dataset import Dataset
 from GPErks.gp.experiment import GPExperiment
 from GPErks.log.logger import get_logger
 from GPErks.train.early_stop import PkEarlyStoppingCriterion
@@ -48,6 +49,8 @@ def main():
 
     y = forrester(x) + np.random.normal(0, 1, N)
 
+    dataset = Dataset(x, y)
+
     # ================================================================
     # (2) Building example training and validation datasets
     # ================================================================
@@ -76,7 +79,7 @@ def main():
 
     likelihood = gpytorch.likelihoods.GaussianLikelihood()
 
-    input_size = 1
+    input_size = dataset.input_size
     mean_function = LinearMean(input_size=input_size)
     kernel = ScaleKernel(
         # MaternKernel(ard_num_dims=input_size),
@@ -86,22 +89,18 @@ def main():
     metrics = [R2Score(), MeanSquaredError()]
 
     experiment = GPExperiment(
-        x,
-        y,
+        dataset,
         likelihood,
         mean_function,
         kernel,
         n_restarts=3,
         metrics=metrics,
-        # X_val=X_val,
-        # y_val=y_val,
         seed=seed,
     )
 
     optimizer = torch.optim.Adam(experiment.model.parameters(), lr=0.1)
     # esc = NoEarlyStoppingCriterion(33)  # TODO: investigate if snapshot is required anyway
-    MAX_EPOCHS = 500
-    # early_stopping_criterion = GLEarlyStoppingCriterion(MAX_EPOCHS, alpha=1.0, patience=8)
+    MAX_EPOCHS = 1000
     early_stopping_criterion = PkEarlyStoppingCriterion(
         MAX_EPOCHS, alpha=1.0, patience=8, strip_length=20
     )
@@ -114,34 +113,8 @@ def main():
     )
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    # emul = GPEmulator(experiment, device)
-    # emul.train(optimizer, early_stopping_criterion, snapshotting_criterion)
-
-    # ================================================================
-    # (5) Loading already trained GPE
-    # ================================================================
-    # NOTE: you need exactly the same training dataset used in (3)
-    # ================================================================
-
-    experiment = GPExperiment(
-        x,
-        y,
-        likelihood,
-        mean_function,
-        kernel,
-        n_restarts=3,
-        metrics=metrics,
-        # X_val=X_val,
-        # y_val=y_val,
-        seed=seed,
-    )
-
-    here = os.path.abspath(os.path.dirname(__file__))
-    model_path = here + f"/snapshot/test_3/best_model.pth"
-
-    experiment.load_model(model_path)
-    device = "cuda" if torch.cuda.is_available() else "cpu"
     emul = GPEmulator(experiment, device)
+    emul.train(optimizer, early_stopping_criterion, snapshotting_criterion)
 
     # ================================================================
     # (6) Testing trained GPE at new input points (inference)
@@ -168,12 +141,14 @@ def main():
     print(f"  R2Score = {r2s:.8f}")
     print(f"  ISE = {ise:.2f} %\n")
 
-    # fig, axis = plt.subplots(1, 1)
-    # axis.fill_between(xx, yy_mean-2*yy_std, yy_mean+2*yy_std, color="C0", alpha=0.15)
-    # axis.plot(xx, yy_mean, c="C0")
-    # axis.scatter(x, y, fc="C0", ec="C0")
-    # axis.scatter(x_test, y_test, fc="C3", ec="C3")
-    # plt.show()
+    fig, axis = plt.subplots(1, 1)
+    axis.fill_between(
+        xx, yy_mean - 2 * yy_std, yy_mean + 2 * yy_std, color="C0", alpha=0.15
+    )
+    axis.plot(xx, yy_mean, c="C0")
+    axis.scatter(x, y, fc="C0", ec="C0")
+    axis.scatter(x_test, y_test, fc="C3", ec="C3")
+    plt.show()
 
     # if experiment.scaled_data.with_val and not np.isclose(
     #     r2s, 0.58630764, rtol=1.0e-5
@@ -183,52 +158,6 @@ def main():
     #     r2s, 0.89883888, rtol=1.0e-5
     # ):
     #     log.error("INCORRECT R2Score")
-
-    # ================================================================
-    # (7) Plotting predictions vs observations
-    # ================================================================
-    height = 9.36111
-    width = 5.91667
-    fig, axis = plt.subplots(1, 1, figsize=(2 * width, 2 * height / 3))
-
-    l = np.argsort(
-        y_pred_mean
-    )  # let's sort predicted values for a better visualisation
-
-    ci = 2  # ~95% confidence interval
-
-    axis.scatter(
-        np.arange(len(l)),
-        y_test[l],
-        facecolors="none",
-        edgecolors="C0",
-        label="observed",
-    )
-    axis.scatter(
-        np.arange(len(l)),
-        y_pred_mean[l],
-        facecolors="C0",
-        s=16,
-        label="predicted",
-    )
-    axis.errorbar(
-        np.arange(len(l)),
-        y_pred_mean[l],
-        yerr=ci * y_pred_std[l],
-        c="C0",
-        ls="none",
-        lw=0.5,
-        label=f"uncertainty ({ci} STD)",
-    )
-
-    axis.set_xticks([])
-    axis.set_xticklabels([])
-    # axis.set_ylabel(ylabels[int(idx_feature)], fontsize=12)
-    axis.set_title(f"R2Score = {r2s:.4f} | ISE = {ise:.2f} %", fontsize=12)
-    axis.legend(loc="upper left")
-
-    fig.tight_layout()
-    plt.show()
 
 
 if __name__ == "__main__":

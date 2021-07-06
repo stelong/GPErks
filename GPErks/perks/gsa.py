@@ -49,8 +49,9 @@ class SobolGSA(Plottable):
             "bounds": self.minmax,
         }
 
-        m = np.floor(np.log2(self.n + 1))
-        skip_values = int(np.power(2, m) - 1)
+        # m = np.floor(np.log2(self.n + 1))
+        # skip_values = int(np.power(2, m) - 1)
+        skip_values = 0
 
         X = saltelli.sample(
             problem,
