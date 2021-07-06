@@ -57,7 +57,7 @@ class TrainStats:
         if overlay_criterion:
             axis = axes[0].twinx()
             axis.tick_params(axis="y", labelcolor="C2")
-            axis.plot(
+            axis.scatter(
                 numpy.arange(1, loss_len + 1),
                 self.criterion_evaluations,
                 c="C2",

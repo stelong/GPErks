@@ -20,6 +20,7 @@ from GPErks.serialization.labels import read_labels_from_file
 from GPErks.train.early_stop import (
     GLEarlyStoppingCriterion,
     PkEarlyStoppingCriterion,
+    PQEarlyStoppingCriterion,
     UPEarlyStoppingCriterion,
 )
 from GPErks.train.emulator import GPEmulator
@@ -63,8 +64,8 @@ def main():
         x_labels=xlabels,
         y_label=ylabel,
     )
-    dataset.plot()
-    dataset.plot_pairwise()
+    # dataset.plot()
+    # dataset.plot_pairwise()
 
     # ================================================================
     # (3) Training GPE
@@ -109,19 +110,17 @@ def main():
     )
 
     optimizer = torch.optim.Adam(experiment.model.parameters(), lr=0.1)
-    # esc = NoEarlyStoppingCriterion(33)  # TODO: investigate if snapshot is required anyway
+
     max_epochs = 1000
-    # esc = PkEarlyStoppingCriterion(
-    #     max_epochs, alpha=1.0, patience=8, strip_length=20
-    # )
-    esc = GLEarlyStoppingCriterion(max_epochs, alpha=1.0, patience=8)
-    # esc = UPEarlyStoppingCriterion(
-    #     max_epochs, strip_length=20, successive_strips=4
-    # )
+    # early_stopping_criterion = NoEarlyStoppingCriterion(max_epochs)  # TODO: investigate if snapshot is required anyway
+    # early_stopping_criterion = PkEarlyStoppingCriterion(max_epochs, alpha=1.0, patience=8, strip_length=20)
+    early_stopping_criterion = GLEarlyStoppingCriterion(max_epochs, alpha=1.0, patience=8)
+    # early_stopping_criterion = UPEarlyStoppingCriterion(max_epochs, strip_length=5, successive_strips=4)
+    # early_stopping_criterion = PQEarlyStoppingCriterion(max_epochs, alpha=1.0, patience=8, strip_length=5)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     emul = GPEmulator(experiment, device)
-    best_model, best_train_stats = emul.train(optimizer, esc, snapc)
+    best_model, best_train_stats = emul.train(optimizer, early_stopping_criterion, snapc)
     best_train_stats.plot(overlay_criterion=True)
 
     # ================================================================
@@ -132,7 +131,7 @@ def main():
 
     inference = Inference(emul)
     inference.summary()
-    inference.plot()
+    # inference.plot()
 
     r2s = inference.scores_dct["R2Score"]
 
