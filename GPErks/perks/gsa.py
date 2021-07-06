@@ -48,11 +48,15 @@ class SobolGSA(Plottable):
             "names": self.index_i,
             "bounds": self.minmax,
         }
+
+        m = np.floor(np.log2(self.n + 1))
+        skip_values = int(np.power(2, m) - 1)
+
         X = saltelli.sample(
             problem,
             self.n,
             calc_second_order=True,
-            skip_values=0,
+            skip_values=skip_values,
         )
         return problem, X
 

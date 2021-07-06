@@ -24,6 +24,7 @@ from GPErks.serialization.path import posix_path
 from GPErks.train.early_stop import (
     GLEarlyStoppingCriterion,
     PkEarlyStoppingCriterion,
+    PQEarlyStoppingCriterion,
     UPEarlyStoppingCriterion,
 )
 from GPErks.train.emulator import GPEmulator
@@ -44,25 +45,29 @@ def main():
     seed = 8
     set_seed(seed)  # reproducible sampling
 
-    # D = 10
-    # a = np.array([0, 0.1, 0.2, 0.3, 0.4, 0.8, 1, 2, 3, 4])
-    # delta = np.random.rand(D)
-    # alpha = np.ones_like(a)
-    # f = lambda X: SobolGstar(X, a, delta, alpha)
+    D = 8
+    a = np.array([0, 1, 4.5, 9, 99, 99, 99, 99])
+    delta = np.random.rand(D)
+    alpha = np.ones_like(a)
+    f = lambda X: SobolGstar(X, a, delta, alpha)
 
-    D = 3
-    l_bounds, u_bounds = D * [-np.pi], D * [np.pi]
-    f = lambda X: Ishigami(X)
+    # D = 3
+    # l_bounds, u_bounds = D * [-np.pi], D * [np.pi]
+    # f = lambda X: Ishigami(X)
 
     sampler = qmc.LatinHypercube(d=D, seed=seed)
 
-    n_train_samples = 20 * D
+    n_train_samples = 50 * D
     n_val_samples = 2 * D
     n_test_samples = 5 * D
 
-    X_train = qmc.scale(sampler.random(n=n_train_samples), l_bounds, u_bounds)
-    X_test = qmc.scale(sampler.random(n=n_test_samples), l_bounds, u_bounds)
-    X_val = qmc.scale(sampler.random(n=n_val_samples), l_bounds, u_bounds)
+    # X_train = qmc.scale(sampler.random(n=n_train_samples), l_bounds, u_bounds)
+    # X_test = qmc.scale(sampler.random(n=n_test_samples), l_bounds, u_bounds)
+    # X_val = qmc.scale(sampler.random(n=n_val_samples), l_bounds, u_bounds)
+
+    X_train = sampler.random(n=n_train_samples)
+    X_test = sampler.random(n=n_test_samples)
+    X_val = sampler.random(n=n_val_samples)
 
     y_train = f(X_train)
     y_test = f(X_test)
@@ -102,10 +107,13 @@ def main():
     optimizer = torch.optim.Adam(experiment.model.parameters(), lr=0.1)
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    max_epochs = 500
+    max_epochs = 1000
     # early_stopping_criterion = GLEarlyStoppingCriterion(max_epochs, alpha=1.0, patience=8)
-    early_stopping_criterion = UPEarlyStoppingCriterion(
-        max_epochs, strip_length=20, successive_strips=4
+    # early_stopping_criterion = UPEarlyStoppingCriterion(
+    #     max_epochs, strip_length=20, successive_strips=4
+    # )
+    early_stopping_criterion = PQEarlyStoppingCriterion(
+        max_epochs, alpha=1.0, patience=8, strip_length=5
     )
     # early_stopping_criterion = PkEarlyStoppingCriterion(
     #     max_epochs, alpha=1.0, patience=8, strip_length=20
@@ -144,7 +152,8 @@ def main():
     inference.plot()
 
     # gsa: analytic solution vs GPE-based GSA
-    df_STi_theo, df_Si_theo, df_Sij_theo = Ishigami_theoretical_Si()
+    df_STi_theo, df_Si_theo, df_Sij_theo = SobolGstar_theoretical_Si(a, delta, alpha)
+    # df_STi_theo, df_Si_theo, df_Sij_theo = Ishigami_theoretical_Si()
     print(df_STi_theo)
     print(df_Si_theo)
     print(df_Sij_theo)
