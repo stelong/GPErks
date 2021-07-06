@@ -10,6 +10,7 @@ from gpytorch.means import LinearMean
 from sklearn.model_selection import train_test_split
 from torchmetrics import MeanSquaredError, R2Score
 
+from GPErks.gp.data.dataset import Dataset
 from GPErks.gp.experiment import GPExperiment
 from GPErks.log.logger import get_logger
 from GPErks.perks.diagnostics import Diagnostics
@@ -27,10 +28,6 @@ from GPErks.train.emulator import GPEmulator
 from GPErks.train.snapshot import EveryEpochSnapshottingCriterion
 from GPErks.utils.random import set_seed
 from GPErks.utils.test_functions import forrester
-from GPErks.serialization.labels import read_labels_from_file
-
-
-from GPErks.gp.data.dataset import Dataset
 
 log = get_logger()
 
@@ -56,13 +53,15 @@ def main():
 
     target_label_idx = 0
     xlabels = read_labels_from_file(path_to_data + "xlabels.txt")
-    ylabel = read_labels_from_file(path_to_data + "ylabels.txt")[target_label_idx]
+    ylabel = read_labels_from_file(path_to_data + "ylabels.txt")[
+        target_label_idx
+    ]
 
     dataset = Dataset(
         X_train,
         y_train,
         X_val=X_val,
-        y_val=y_val, 
+        y_val=y_val,
         X_test=X_test,
         y_test=y_test,
         x_labels=xlabels,
@@ -100,7 +99,9 @@ def main():
 
     max_epochs = 1000
     # early_stopping_criterion = PkEarlyStoppingCriterion(max_epochs, alpha=1.0, patience=8, strip_length=20)
-    early_stopping_criterion = GLEarlyStoppingCriterion(max_epochs, alpha=1.0, patience=8)
+    early_stopping_criterion = GLEarlyStoppingCriterion(
+        max_epochs, alpha=1.0, patience=8
+    )
     # early_stopping_criterion = UPEarlyStoppingCriterion(max_epochs, strip_length=5, successive_strips=4)
     # early_stopping_criterion = PQEarlyStoppingCriterion(max_epochs, alpha=1.0, patience=8, strip_length=5)
 

@@ -114,13 +114,17 @@ def main():
     max_epochs = 1000
     # early_stopping_criterion = NoEarlyStoppingCriterion(max_epochs)  # TODO: investigate if snapshot is required anyway
     # early_stopping_criterion = PkEarlyStoppingCriterion(max_epochs, alpha=1.0, patience=8, strip_length=20)
-    early_stopping_criterion = GLEarlyStoppingCriterion(max_epochs, alpha=1.0, patience=8)
+    early_stopping_criterion = GLEarlyStoppingCriterion(
+        max_epochs, alpha=1.0, patience=8
+    )
     # early_stopping_criterion = UPEarlyStoppingCriterion(max_epochs, strip_length=5, successive_strips=4)
     # early_stopping_criterion = PQEarlyStoppingCriterion(max_epochs, alpha=1.0, patience=8, strip_length=5)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     emul = GPEmulator(experiment, device)
-    best_model, best_train_stats = emul.train(optimizer, early_stopping_criterion, snapc)
+    best_model, best_train_stats = emul.train(
+        optimizer, early_stopping_criterion, snapc
+    )
     best_train_stats.plot(overlay_criterion=True)
 
     # ================================================================

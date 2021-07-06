@@ -2,11 +2,8 @@
 import os
 from pathlib import Path
 
-import matplotlib.pyplot as plt
-
-from GPErks.constants import HEIGHT, WIDTH
-
 import gpytorch
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from gpytorch.kernels import RBFKernel, ScaleKernel
@@ -14,6 +11,8 @@ from gpytorch.means import LinearMean
 from sklearn.model_selection import train_test_split
 from torchmetrics import MeanSquaredError, R2Score
 
+from GPErks.constants import HEIGHT, WIDTH
+from GPErks.gp.data.dataset import Dataset
 from GPErks.gp.experiment import GPExperiment
 from GPErks.log.logger import get_logger
 from GPErks.perks.diagnostics import Diagnostics
@@ -31,10 +30,6 @@ from GPErks.train.emulator import GPEmulator
 from GPErks.train.snapshot import EveryEpochSnapshottingCriterion
 from GPErks.utils.random import set_seed
 from GPErks.utils.test_functions import forrester
-from GPErks.serialization.labels import read_labels_from_file
-
-
-from GPErks.gp.data.dataset import Dataset
 
 log = get_logger()
 
@@ -60,13 +55,15 @@ def main(state, early_stopping_criterion):
 
     target_label_idx = 0
     xlabels = read_labels_from_file(path_to_data + "xlabels.txt")
-    ylabel = read_labels_from_file(path_to_data + "ylabels.txt")[target_label_idx]
+    ylabel = read_labels_from_file(path_to_data + "ylabels.txt")[
+        target_label_idx
+    ]
 
     dataset = Dataset(
         X_train,
         y_train,
         X_val=X_val,
-        y_val=y_val, 
+        y_val=y_val,
         X_test=X_test,
         y_test=y_test,
         x_labels=xlabels,
@@ -131,8 +128,12 @@ if __name__ == "__main__":
     max_epochs = 1000
     early_stopping_criteria = [
         GLEarlyStoppingCriterion(max_epochs, alpha=1.0, patience=8),
-        UPEarlyStoppingCriterion(max_epochs, strip_length=5, successive_strips=4),
-        PQEarlyStoppingCriterion(max_epochs, alpha=1.0, patience=8, strip_length=5)
+        UPEarlyStoppingCriterion(
+            max_epochs, strip_length=5, successive_strips=4
+        ),
+        PQEarlyStoppingCriterion(
+            max_epochs, alpha=1.0, patience=8, strip_length=5
+        ),
     ]
     n_splits = 50
     keys = ["GL", "UP", "PQ"]
@@ -148,7 +149,7 @@ if __name__ == "__main__":
 
     fig, axis = plt.subplots(1, 1, figsize=(2 * WIDTH, 2 * HEIGHT / 3))
     for key in keys:
-        axis.scatter(np.arange(1, n_splits+1), best_epochs[key], label=key)
+        axis.scatter(np.arange(1, n_splits + 1), best_epochs[key], label=key)
     axis.legend()
     axis.set_xlabel("Experiment id", fontsize=12)
     axis.set_ylabel("Best epoch", fontsize=12)
