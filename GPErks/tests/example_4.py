@@ -2,6 +2,10 @@
 import os
 from pathlib import Path
 
+import matplotlib.pyplot as plt
+
+from GPErks.constants import HEIGHT, WIDTH
+
 import gpytorch
 import numpy as np
 import torch
@@ -35,7 +39,7 @@ from GPErks.gp.data.dataset import Dataset
 log = get_logger()
 
 
-def main():
+def main(state, early_stopping_criterion):
     seed = 8
     set_seed(seed)  # reproducible sampling
 
@@ -51,7 +55,7 @@ def main():
     y_ = np.loadtxt(path_to_data + "y_test.txt", dtype=float)
 
     X_test, X_val, y_test, y_val = train_test_split(
-        X_, y_, test_size=0.5, random_state=seed
+        X_, y_, test_size=0.5, random_state=state
     )
 
     target_label_idx = 0
@@ -68,8 +72,6 @@ def main():
         x_labels=xlabels,
         y_label=ylabel,
     )
-    # dataset.plot()
-    # dataset.plot_pairwise()
 
     ##========================================================================
     ## define experiment options
@@ -98,12 +100,6 @@ def main():
     optimizer = torch.optim.Adam(experiment.model.parameters(), lr=0.1)
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    max_epochs = 1000
-    # early_stopping_criterion = PkEarlyStoppingCriterion(max_epochs, alpha=1.0, patience=8, strip_length=20)
-    early_stopping_criterion = GLEarlyStoppingCriterion(max_epochs, alpha=1.0, patience=8)
-    # early_stopping_criterion = UPEarlyStoppingCriterion(max_epochs, strip_length=5, successive_strips=4)
-    # early_stopping_criterion = PQEarlyStoppingCriterion(max_epochs, alpha=1.0, patience=8, strip_length=5)
-
     here = os.path.abspath(os.path.dirname(__file__))
     example_name = Path(__file__).name.replace(".py", "")
     snapshot_dir = posix_path(here, "snapshot", example_name)
@@ -122,28 +118,46 @@ def main():
         early_stopping_criterion,
         snapshotting_criterion,
     )
+    # best_train_stats.plot(overlay_criterion=True)
 
-    ##========================================================================
-    ## training stats, diagnostics, inference
-    ##========================================================================
-    best_train_stats.plot(overlay_criterion=True)
+    # inference = Inference(emul)
+    # inference.summary()
+    # r2s = inference.scores_dct["R2Score"]
 
-    diagnostics = Diagnostics(emul)
-    diagnostics.summary()
-    diagnostics.plot()
-
-    inference = Inference(emul)
-    inference.summary()
-    inference.plot()
-
-    ##========================================================================
-    ## gsa
-    ##========================================================================
-    gsa = SobolGSA(emul, n=1024, seed=seed)
-    gsa.estimate_Sobol_indices(n_draws=1000)
-    gsa.correct_Sobol_indices(threshold=0.01)
-    gsa.plot()
+    return best_train_stats.best_epoch, 0  # 0 --> r2s
 
 
 if __name__ == "__main__":
-    main()
+    max_epochs = 1000
+    early_stopping_criteria = [
+        GLEarlyStoppingCriterion(max_epochs, alpha=1.0, patience=8),
+        UPEarlyStoppingCriterion(max_epochs, strip_length=5, successive_strips=4),
+        PQEarlyStoppingCriterion(max_epochs, alpha=1.0, patience=8, strip_length=5)
+    ]
+    n_splits = 50
+    keys = ["GL", "UP", "PQ"]
+    best_epochs = {}
+    r2score = {}
+    for key, esc in zip(keys, early_stopping_criteria):
+        best_epochs[key] = []
+        r2score[key] = []
+        for i in range(n_splits):
+            a, b = main(i, esc)
+            best_epochs[key].append(a)
+            r2score[key].append(b)
+
+    fig, axis = plt.subplots(1, 1, figsize=(2 * WIDTH, 2 * HEIGHT / 3))
+    for key in keys:
+        axis.scatter(np.arange(1, n_splits+1), best_epochs[key], label=key)
+    axis.legend()
+    axis.set_xlabel("Experiment id", fontsize=12)
+    axis.set_ylabel("Best epoch", fontsize=12)
+    plt.show()
+
+    # fig, axis = plt.subplots(1, 1, figsize=(2 * WIDTH, 2 * HEIGHT / 3))
+    # for key in keys:
+    #     axis.scatter(np.arange(1, n_splits+1), r2score[key], label=key)
+    # axis.legend()
+    # axis.set_xlabel("Experiment id", fontsize=12)
+    # axis.set_ylabel("R2Score on test set", fontsize=12)
+    # plt.show()
