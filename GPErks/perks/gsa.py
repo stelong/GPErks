@@ -68,7 +68,7 @@ class SobolGSA(Plottable):
         conf_level = 0.95
         z = norm.ppf(
             0.5 + conf_level / 2
-        )  # trick here to make SALib return plain and NOT scaled std
+        )  # trick here to make SALib return original and NOT scaled std
 
         for y in Y:
             S = sobol.analyze(

@@ -115,13 +115,8 @@ def main(state, early_stopping_criterion):
         early_stopping_criterion,
         snapshotting_criterion,
     )
-    # best_train_stats.plot(overlay_criterion=True)
 
-    # inference = Inference(emul)
-    # inference.summary()
-    # r2s = inference.scores_dct["R2Score"]
-
-    return best_train_stats.best_epoch, 0  # 0 --> r2s
+    return best_train_stats.best_epoch
 
 
 if __name__ == "__main__":
@@ -135,17 +130,13 @@ if __name__ == "__main__":
             max_epochs, alpha=1.0, patience=8, strip_length=5
         ),
     ]
-    n_splits = 10
+    n_splits = 5
     keys = ["GL", "UP", "PQ"]
     best_epochs = {}
-    r2score = {}
     for key, esc in zip(keys, early_stopping_criteria):
         best_epochs[key] = []
-        r2score[key] = []
         for i in range(n_splits):
-            a, b = main(i, esc)
-            best_epochs[key].append(a)
-            r2score[key].append(b)
+            best_epochs[key].append(main(i, esc))
 
     fig, axis = plt.subplots(1, 1, figsize=(2 * WIDTH, 2 * HEIGHT / 3))
     for key in keys:
@@ -154,11 +145,3 @@ if __name__ == "__main__":
     axis.set_xlabel("Experiment id", fontsize=12)
     axis.set_ylabel("Best epoch", fontsize=12)
     plt.show()
-
-    # fig, axis = plt.subplots(1, 1, figsize=(2 * WIDTH, 2 * HEIGHT / 3))
-    # for key in keys:
-    #     axis.scatter(np.arange(1, n_splits+1), r2score[key], label=key)
-    # axis.legend()
-    # axis.set_xlabel("Experiment id", fontsize=12)
-    # axis.set_ylabel("R2Score on test set", fontsize=12)
-    # plt.show()
