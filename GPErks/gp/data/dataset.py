@@ -9,6 +9,23 @@ from GPErks.plot.options import PlotOptions
 from GPErks.plot.plottable import Plottable
 
 
+class RandomEngine(qmc.QMCEngine):  # TODO: move somewhere else
+    def __init__(self, d, seed=None):
+        super().__init__(d=d, seed=seed)
+
+    def random(self, n=1):
+        self.num_generated += n
+        return self.rng.random((n, self.d))
+
+    def reset(self):
+        super().__init__(d=self.d, seed=self.rng_seed)
+        return self
+
+    def fast_forward(self, n):
+        self.random(n)
+        return self
+
+
 class Dataset(Plottable):
     def __init__(
         self,
@@ -59,12 +76,12 @@ class Dataset(Plottable):
         self._plot(self.X_val, self.y_val)
 
     def _plot(self, X, y):
-        self.n = X.shape[0]
-        self.d = X.shape[1]
+        sample_size = X.shape[0]
+        self.input_size = X.shape[1]
 
         fig, axes = plt.subplots(
             nrows=1,
-            ncols=self.d,
+            ncols=self.input_size,
             sharey="row",
             figsize=(2 * WIDTH, 2 * HEIGHT / 5),
         )
@@ -73,23 +90,23 @@ class Dataset(Plottable):
             axis.set_xlabel(self.x_labels[i], fontsize=12)
         axes[0].set_ylabel(self.y_label, fontsize=12)
 
-        plt.suptitle(f"Sample dimension = {self.n} points", fontsize=12)
+        plt.suptitle(f"Sample dimension = {sample_size} points", fontsize=12)
         plt.show()
 
     def _plot_pairwise(self, X):
-        self.n = X.shape[0]
-        self.d = X.shape[1]
+        sample_size = X.shape[0]
+        self.input_size
 
         fig, axes = plt.subplots(
-            nrows=self.d,
-            ncols=self.d,
+            nrows=self.input_size,
+            ncols=self.input_size,
             sharex="col",
             sharey="row",
             figsize=(2 * WIDTH, 2 * HEIGHT / 2),
         )
         for t, axis in enumerate(axes.flat):
-            i = t % self.d
-            j = t // self.d
+            i = t % self.input_size
+            j = t // self.input_size
             if j >= i:
                 axis.scatter(X[:, i], X[:, j], facecolor="C0", edgecolor="C0")
             else:
@@ -99,7 +116,7 @@ class Dataset(Plottable):
             if j == self.d - 1:
                 axis.set_xlabel(self.x_labels[i])
 
-        plt.suptitle(f"Sample dimension = {self.n} points", fontsize=12)
+        plt.suptitle(f"Sample dimension = {sample_size} points", fontsize=12)
         plt.show()
 
     @classmethod
@@ -110,33 +127,36 @@ class Dataset(Plottable):
         n_train_samples: int,
         n_val_samples: int,
         n_test_samples: int,
+        design: str = "lhs",
         seed: Optional[int] = None,
         l_bounds: Optional[List[float]] = None,
         u_bounds: Optional[List[float]] = None,
     ):
-        sampler = qmc.Sobol(d=d, scramble=False, seed=seed)
 
-        X_train = sampler.random(n_train_samples)
-        X_val = sampler.random(n_val_samples)
-        X_test = sampler.random(n_test_samples)
+        if design == "srs":
+            sampler = RandomEngine(d=d, seed=seed)
+        elif design == "lhs":
+            sampler = qmc.LatinHypercube(d=d, seed=seed)
+        elif design == "sobol":
+            sampler = qmc.Sobol(d=d, scramble=True, seed=seed)
+        else:
+            raise ValueError(
+                "Not a valid sampling design! Choose between 'srs', 'lhs', 'sobol'"
+            )
+
+        X_train = sampler.random(n=n_train_samples)
+        X_val = sampler.random(n=n_val_samples)
+        X_test = sampler.random(n=n_test_samples)
 
         if l_bounds is not None and u_bounds is not None:
             X_train = qmc.scale(X_train, l_bounds, u_bounds)
             X_val = qmc.scale(X_val, l_bounds, u_bounds)
             X_test = qmc.scale(X_test, l_bounds, u_bounds)
 
-        y_train = []
-        for x in X_train:
-            y_train.append(f(x))
-        y_train = np.array(y_train)
-        y_val = []
-        for x in X_val:
-            y_val.append(f(x))
-        y_val = np.array(y_val)
-        y_test = []
-        for x in X_test:
-            y_test.append(f(x))
-        y_test = np.array(y_test)
+        fvec = lambda X: np.array([f(x) for x in X])
+        y_train = fvec(X_train)
+        y_val = fvec(X_val)
+        y_test = fvec(X_test)
 
         return cls(
             X_train,
