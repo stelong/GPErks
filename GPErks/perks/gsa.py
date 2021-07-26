@@ -2,12 +2,20 @@ from itertools import combinations
 from typing import Optional
 
 import numpy as np
+import pandas as pd
 from SALib.analyze import sobol
 from SALib.sample import saltelli
 from scipy.special import binom
-from scipy.stats import norm
 
-from GPErks.constants import N_BOOTSTRAP, N_DRAWS, THRESHOLD, N
+from GPErks.constants import (
+    CONF_LEVEL,
+    N_BOOTSTRAP,
+    N_DRAWS,
+    SKIP_VALUES,
+    THRESHOLD,
+    N,
+    Z,
+)
 from GPErks.plot.gsa import boxplot, donut, heatmap, network
 from GPErks.plot.options import PlotOptions
 from GPErks.plot.plottable import Plottable
@@ -48,16 +56,11 @@ class SobolGSA(Plottable):
             "names": self.index_i,
             "bounds": self.minmax,
         }
-
-        # m = np.floor(np.log2(self.n + 1))
-        # skip_values = int(np.power(2, m) - 1)
-        skip_values = 0
-
         X = saltelli.sample(
             problem,
             self.n,
             calc_second_order=True,
-            skip_values=skip_values,
+            skip_values=SKIP_VALUES,
         )
         return problem, X
 
@@ -65,18 +68,13 @@ class SobolGSA(Plottable):
         problem, X = self.assemble_Saltelli_space()
         Y = self.emulator.sample(X, n_draws)
 
-        conf_level = 0.95
-        z = norm.ppf(
-            0.5 + conf_level / 2
-        )  # trick here to make SALib return original and NOT scaled std
-
         for y in Y:
             S = sobol.analyze(
                 problem,
                 y,
                 calc_second_order=True,
                 num_resamples=N_BOOTSTRAP,
-                conf_level=conf_level,
+                conf_level=CONF_LEVEL,
                 parallel=False,
                 n_processors=None,
                 seed=self.seed,
@@ -90,15 +88,15 @@ class SobolGSA(Plottable):
             )
 
             self.ST_std = np.vstack(
-                (self.ST_std, T_Si["ST_conf"].reshape(1, -1) / z)
+                (self.ST_std, T_Si["ST_conf"].reshape(1, -1) / Z)
             )
             self.S1_std = np.vstack(
-                (self.S1_std, first_Si["S1_conf"].reshape(1, -1) / z)
+                (self.S1_std, first_Si["S1_conf"].reshape(1, -1) / Z)
             )
             self.S2_std = np.vstack(
                 (
                     self.S2_std,
-                    (np.array(second_Si["S2_conf"]).reshape(1, -1) / z),
+                    (np.array(second_Si["S2_conf"]).reshape(1, -1) / Z),
                 )
             )
 
@@ -107,6 +105,29 @@ class SobolGSA(Plottable):
             Q1 = np.percentile(S, q=25, axis=0)
             l = np.where(Q1 < threshold)[0]
             S[:, l] = np.zeros((S.shape[0], len(l)), dtype=float)
+
+    def summary(self):
+        self.correct_Sobol_indices()
+        df_STi = pd.DataFrame(
+            data=np.round(np.median(self.ST, axis=0), 6).reshape(-1, 1),
+            index=self.index_i,
+            columns=["STi"],
+        )
+        df_Si = pd.DataFrame(
+            data=np.round(np.median(self.S1, axis=0), 6).reshape(-1, 1),
+            index=self.index_i,
+            columns=["Si"],
+        )
+        df_Sij = pd.DataFrame(
+            data=np.round(np.median(self.S2, axis=0), 6).reshape(-1, 1),
+            index=[
+                "(" + elem[0] + ", " + elem[1] + ")" for elem in self.index_ij
+            ],
+            columns=["Sij"],
+        )
+        print(df_STi)
+        print(df_Si)
+        print(df_Sij)
 
     def plot(self):
         self.plot_boxplot()
