@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from scipy.stats import norm
+
 APPLICATION_NAME = "GPErks"
 
 # logging
@@ -12,9 +14,14 @@ DEFAULT_LOG_FORMAT = (
 )
 
 # gsa constants:
+CONF_LEVEL = 0.95
+Z = norm.ppf(
+    0.5 + CONF_LEVEL / 2
+)  # needed for making SALib return the original and NOT the scaled std
 N = 1024
 N_BOOTSTRAP = 100
 N_DRAWS = 1000
+SKIP_VALUES = 0
 THRESHOLD = 0.01
 
 # plots constants:
