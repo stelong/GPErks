@@ -30,6 +30,7 @@ from GPErks.train.early_stop import (
     NoEarlyStoppingCriterion,
     PkEarlyStoppingCriterion,
     PQEarlyStoppingCriterion,
+    SimpleEarlyStoppingCriterion,
     UPEarlyStoppingCriterion,
 )
 from GPErks.train.emulator import GPEmulator
@@ -56,27 +57,28 @@ def main(factor):
     ##========================================================================
     ## test functions for analytic Sobol' indices
     ##========================================================================
-    D = 3
-    f = lambda X: Ishigami(X)
-    l_bounds, u_bounds = D * [-np.pi], D * [np.pi]
-    df_STi_theo, df_Si_theo, df_Sij_theo = Ishigami_theoretical_Si()
+    # D = 3
+    # f = lambda X: Ishigami(X)
+    # l_bounds, u_bounds = D * [-np.pi], D * [np.pi]
+    # df_STi_theo, df_Si_theo, df_Sij_theo = Ishigami_theoretical_Si()
 
-    # D = 8
-    # a = np.array([0, 1, 4.5, 9, 99, 99, 99, 99])
-    # delta = np.random.rand(D)
-    # alpha = np.ones_like(a)
-    # f = lambda X: SobolGstar(X, a, delta, alpha)
-    # l_bounds, u_bounds = None, None
-    # df_STi_theo, df_Si_theo, df_Sij_theo = SobolGstar_theoretical_Si(
-    #     a, delta, alpha
-    # )
+    D = 8
+    a = np.array([0, 1, 4.5, 9, 99, 99, 99, 99])
+    delta = np.random.rand(D)
+    alpha = np.ones_like(a)
+    f = lambda X: SobolGstar(X, a, delta, alpha)
+    l_bounds, u_bounds = None, None
+    df_STi_theo, df_Si_theo, df_Sij_theo = SobolGstar_theoretical_Si(
+        a, delta, alpha
+    )
 
     ##========================================================================
     ## build training, validation and testing datasets
     ##========================================================================
-    n_train_samples = factor * D
-    n_val_samples = int(factor / 4 * D)
-    n_test_samples = factor * D
+    n = factor * D
+    n_train_samples = n
+    n_val_samples = int(n / 4)
+    n_test_samples = int(5 * n / 16)
 
     dataset = Dataset.build_from_function(
         f,
@@ -84,10 +86,14 @@ def main(factor):
         n_train_samples,
         n_val_samples,
         n_test_samples,
-        seed,
-        l_bounds,
-        u_bounds,
+        design="lhs",
+        seed=seed,
+        l_bounds=l_bounds,
+        u_bounds=u_bounds,
     )
+    # dataset.X_val = None
+    # dataset.y_val = None
+    # dataset.with_val = False
     # dataset.plot()
     # dataset.plot_pairwise()
 
@@ -107,7 +113,7 @@ def main(factor):
         likelihood,
         mean_function,
         kernel,
-        n_restarts=3,
+        n_restarts=5,
         metrics=metrics,
         seed=seed,
     )
@@ -118,21 +124,24 @@ def main(factor):
     optimizer = torch.optim.Adam(experiment.model.parameters(), lr=0.1)
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    max_epochs = 500
+    max_epochs = 1000
 
+    early_stopping_criterion = SimpleEarlyStoppingCriterion(
+        max_epochs, patience=20
+    )
     # early_stopping_criterion = GLEarlyStoppingCriterion(
-    #     max_epochs, alpha=1.0, patience=8
+    #     max_epochs, alpha=0.0, patience=20
     # )
     # early_stopping_criterion = UPEarlyStoppingCriterion(
     #     max_epochs, strip_length=5, successive_strips=4
     # )
     # early_stopping_criterion = PQEarlyStoppingCriterion(
-    #     max_epochs, alpha=1.0, patience=8, strip_length=5
+    #     max_epochs, alpha=0.1, patience=8, strip_length=5
     # )
     # early_stopping_criterion = PkEarlyStoppingCriterion(
-    #     max_epochs, alpha=1.0, patience=8, strip_length=20
+    #     max_epochs, alpha=0.001, patience=8, strip_length=20
     # )
-    early_stopping_criterion = NoEarlyStoppingCriterion(max_epochs)
+    # early_stopping_criterion = NoEarlyStoppingCriterion(max_epochs)
 
     here = os.path.abspath(os.path.dirname(__file__))
     example_name = Path(__file__).name.replace(".py", "")
@@ -155,79 +164,143 @@ def main(factor):
     ##========================================================================
     ## training stats, diagnostics, inference
     ##========================================================================
-    best_train_stats.plot(overlay_criterion=False)
+    # best_train_stats.criterion_evaluations.append(
+    #     best_train_stats.criterion_evaluations[-1]
+    # )
+    # best_train_stats.plot(overlay_criterion=False)
 
-    diagnostics = Diagnostics(emul)
-    diagnostics.summary()
-    diagnostics.plot()
+    # diagnostics = Diagnostics(emul)
+    # diagnostics.summary()
+    # diagnostics.plot()
 
     inference = Inference(emul)
     inference.summary()
-    inference.plot()
+    # inference.plot()
 
     ##========================================================================
     ## gsa: analytic solution vs GPE-based GSA
     ##========================================================================
     gsa = SobolGSA(emul, n=1024, seed=seed)
     gsa.estimate_Sobol_indices(n_draws=1000)
-    # gsa.correct_Sobol_indices(threshold=0.01)
+    # # gsa.plot(kind="boxplot")
+    # # gsa.correct_Sobol_indices(threshold=0.01)
+    # gsa.summary()
 
-    df_ST = pd.DataFrame(data=gsa.ST, columns=gsa.index_i)
-    df_S1 = pd.DataFrame(data=gsa.S1, columns=gsa.index_i)
-    df_S2 = pd.DataFrame(
-        data=gsa.S2,
-        columns=[
-            "(" + elem[0] + ", " + elem[1] + ")" for elem in gsa.index_ij
-        ],
+    # print("\n================\n")
+    # print(df_STi_theo)
+    # print(df_Si_theo)
+    # print(df_Sij_theo)
+
+    # df_ST = pd.DataFrame(data=gsa.ST, columns=gsa.index_i)
+    # df_S1 = pd.DataFrame(data=gsa.S1, columns=gsa.index_i)
+    # df_S2 = pd.DataFrame(
+    #     data=gsa.S2,
+    #     columns=[
+    #         "(" + elem[0] + ", " + elem[1] + ")" for elem in gsa.index_ij
+    #     ],
+    # )
+
+    # plt.style.use("seaborn")
+    # gs = grsp.GridSpec(2, 2)
+    # fig = plt.figure(figsize=(2 * WIDTH, 2 * HEIGHT / 2))
+
+    # ax0 = fig.add_subplot(gs[0, 0])
+    # sns.boxplot(ax=ax0, data=df_S1)
+    # ax0.set_ylim(0, 1)
+    # ax0.set_title("First-order effect", fontweight="bold", fontsize=12)
+    # ax0.set_xticklabels(
+    #     ax0.get_xticklabels(), rotation=45, horizontalalignment="right"
+    # )
+    # l0 = list(df_Si_theo["Si"])
+    # trans0 = ax0.get_xaxis_transform()
+    # for k, val in enumerate(l0):
+    #     ax0.axhline(val, c="r", lw=1, ls="--")
+    #     # plt.text(8/len(l0)*k, 1-0.01*k, "{:.4f}".format(val), transform=trans0)
+
+    # ax1 = fig.add_subplot(gs[0, 1])
+    # sns.boxplot(ax=ax1, data=df_ST)
+    # ax1.set_ylim(0, 1)
+    # ax1.set_title("Total effect", fontweight="bold", fontsize=12)
+    # ax1.set_xticklabels(
+    #     ax1.get_xticklabels(), rotation=45, horizontalalignment="right"
+    # )
+    # l1 = list(df_STi_theo["STi"])
+    # trans1 = ax1.get_xaxis_transform()
+    # for k, val in enumerate(l1):
+    #     ax1.axhline(val, c="r", lw=1, ls="--")
+    #     # plt.text(8/len(l1)*k, 1-0.01*k, "{:.4f}".format(val), transform=trans1)
+
+    # ax2 = fig.add_subplot(gs[1, :])
+    # sns.boxplot(ax=ax2, data=df_S2)
+    # ax2.set_ylim(0, 1)
+    # ax2.set_title("Second-order effect", fontweight="bold", fontsize=12)
+    # ax2.set_xticklabels(
+    #     ax2.get_xticklabels(), rotation=45, horizontalalignment="right"
+    # )
+    # l2 = list(df_Sij_theo["Sij"])
+    # trans2 = ax2.get_xaxis_transform()
+    # for k, val in enumerate(l2):
+    #     ax2.axhline(val, c="r", lw=1, ls="--")
+    #     # plt.text(32/len(l2)*k, 1-0.01*k, "{:.4f}".format(val), transform=trans2)
+
+    # fig.tight_layout()
+    # plt.show()
+
+    return (
+        inference.scores_dct["R2Score"],
+        gsa,
+        df_Si_theo,
+        df_Sij_theo,
+        df_STi_theo,
     )
-
-    plt.style.use("seaborn")
-    gs = grsp.GridSpec(2, 2)
-    fig = plt.figure(figsize=(2 * WIDTH, 2 * HEIGHT / 2))
-
-    ax0 = fig.add_subplot(gs[0, 0])
-    sns.boxplot(ax=ax0, data=df_S1)
-    ax0.set_ylim(0, 1)
-    ax0.set_title("First-order effect", fontweight="bold", fontsize=12)
-    ax0.set_xticklabels(
-        ax0.get_xticklabels(), rotation=45, horizontalalignment="right"
-    )
-    l0 = list(df_Si_theo["Si"])
-    trans0 = ax0.get_xaxis_transform()
-    for k, val in enumerate(l0):
-        ax0.axhline(val, c="r", lw=1, ls="--")
-        # plt.text(8/len(l0)*k, 1-0.01*k, "{:.4f}".format(val), transform=trans0)
-
-    ax1 = fig.add_subplot(gs[0, 1])
-    sns.boxplot(ax=ax1, data=df_ST)
-    ax1.set_ylim(0, 1)
-    ax1.set_title("Total effect", fontweight="bold", fontsize=12)
-    ax1.set_xticklabels(
-        ax1.get_xticklabels(), rotation=45, horizontalalignment="right"
-    )
-    l1 = list(df_STi_theo["STi"])
-    trans1 = ax1.get_xaxis_transform()
-    for k, val in enumerate(l1):
-        ax1.axhline(val, c="r", lw=1, ls="--")
-        # plt.text(8/len(l1)*k, 1-0.01*k, "{:.4f}".format(val), transform=trans1)
-
-    ax2 = fig.add_subplot(gs[1, :])
-    sns.boxplot(ax=ax2, data=df_S2)
-    ax2.set_ylim(0, 1)
-    ax2.set_title("Second-order effect", fontweight="bold", fontsize=12)
-    ax2.set_xticklabels(
-        ax2.get_xticklabels(), rotation=45, horizontalalignment="right"
-    )
-    l2 = list(df_Sij_theo["Sij"])
-    trans2 = ax2.get_xaxis_transform()
-    for k, val in enumerate(l2):
-        ax2.axhline(val, c="r", lw=1, ls="--")
-        # plt.text(32/len(l2)*k, 1-0.01*k, "{:.4f}".format(val), transform=trans2)
-
-    fig.tight_layout()
-    plt.show()
 
 
 if __name__ == "__main__":
-    factor = 10
-    main(factor)
+    # main(10)
+
+    # sns.set_style()
+    # fig, axes = plt.subplots(1, 3, sharey=True)
+
+    # factors = [10, 20, 30, 40, 50] #, 60, 70, 80, 90, 100]
+
+    # stringa = "R2Score: "
+
+    # for f in factors:
+    #     r2s, gsa, df_Si_theo, df_STi_theo = main(f)
+    #     stringa += f"{r2s:.4f} | "
+
+    #     if f == 10:
+    #         l = list(df_Si_theo["Si"])
+    #         for i, val in enumerate(l):
+    #             axes[i].axhline(val, c="r", lw=1, ls="--")
+    #             axes[i].set_ylim([0, 1])
+
+    #     for i in range(3):
+    #         axes[i].boxplot(gsa.ST[:, i], positions=[f])
+
+    # plt.suptitle(stringa)
+    # plt.show()
+
+    factors = [10, 20, 30, 40, 50, 60, 70]  # , 80, 90, 100]
+
+    h = []
+    for f in factors:
+        r2s, gsa, df_Si_theo, df_Sij_theo, df_STi_theo = main(f)
+
+        S1 = np.median(gsa.S1, axis=0)
+        S2 = np.median(gsa.S2, axis=0)
+        ST = np.median(gsa.ST, axis=0)
+
+        theo_S1 = np.array(list(df_Si_theo["Si"]))
+        theo_S2 = np.array(list(df_Sij_theo["Sij"]))
+        theo_ST = np.array(list(df_STi_theo["STi"]))
+
+        e1 = np.linalg.norm(S1 - theo_S1)
+        e2 = np.linalg.norm(S2 - theo_S2)
+        eT = np.linalg.norm(ST - theo_ST)
+        h.append(e1 + e2 + eT)
+
+    plt.bar(factors, h, width=1.0)
+    plt.xticks(factors)
+    plt.ylim([0, 5])
+    plt.show()
