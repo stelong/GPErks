@@ -113,7 +113,7 @@ class Dataset(Plottable):
                 axis.set_axis_off()
             if i == 0:
                 axis.set_ylabel(self.x_labels[j])
-            if j == self.d - 1:
+            if j == self.input_size - 1:
                 axis.set_xlabel(self.x_labels[i])
 
         plt.suptitle(f"Sample dimension = {sample_size} points", fontsize=12)
