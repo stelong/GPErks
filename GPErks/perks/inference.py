@@ -103,7 +103,7 @@ class Inference:
         n_subplots = 2
         if f is not None:
             n_subplots = 3
-            y_grid = np.array([f(xg) for xg in X_grid])
+            y_grid = f(X_grid)
             y_grid = y_grid.reshape(n, n)
             err = np.abs(np.ones((n, n), dtype=float) - y_pred_mean / y_grid)
 
