@@ -25,6 +25,7 @@ from GPErks.train.early_stop import (
     PkEarlyStoppingCriterion,
     PQEarlyStoppingCriterion,
     UPEarlyStoppingCriterion,
+    SimpleEarlyStoppingCriterion,
 )
 from GPErks.train.emulator import GPEmulator
 from GPErks.train.snapshot import EveryEpochSnapshottingCriterion
@@ -122,6 +123,9 @@ def main(state, early_stopping_criterion):
 if __name__ == "__main__":
     max_epochs = 1000
     early_stopping_criteria = [
+        SimpleEarlyStoppingCriterion(
+            max_epochs, patience=8
+        ),
         GLEarlyStoppingCriterion(max_epochs, alpha=1.0, patience=8),
         UPEarlyStoppingCriterion(
             max_epochs, strip_length=5, successive_strips=4
@@ -131,7 +135,7 @@ if __name__ == "__main__":
         ),
     ]
     n_splits = 5
-    keys = ["GL", "UP", "PQ"]
+    keys = ["SC", "GL", "UP", "PQ"]
     best_epochs = {}
     for key, esc in zip(keys, early_stopping_criteria):
         best_epochs[key] = []

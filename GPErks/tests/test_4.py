@@ -42,13 +42,19 @@ def main():
 
     D = 2
     factor = 10
-    f = lambda X: currin_exp(X)
+    f = lambda X: np.array([currin_exp(x) for x in X])
     n_train_samples = factor * D
     n_val_samples = int(factor / 4 * D)
     n_test_samples = factor * D
 
     dataset = Dataset.build_from_function(
-        f, D, n_train_samples, n_val_samples, n_test_samples, seed
+        f,
+        D,
+        n_train_samples,
+        n_val_samples,
+        n_test_samples,
+        design="lhs",
+        seed=8,
     )
 
     # ================================================================
