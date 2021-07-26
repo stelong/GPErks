@@ -153,10 +153,9 @@ class Dataset(Plottable):
             X_val = qmc.scale(X_val, l_bounds, u_bounds)
             X_test = qmc.scale(X_test, l_bounds, u_bounds)
 
-        fvec = lambda X: np.array([f(x) for x in X])
-        y_train = fvec(X_train)
-        y_val = fvec(X_val)
-        y_test = fvec(X_test)
+        y_train = f(X_train)
+        y_val = f(X_val)
+        y_test = f(X_test)
 
         return cls(
             X_train,
