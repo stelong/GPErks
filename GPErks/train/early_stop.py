@@ -146,7 +146,7 @@ class PkEarlyStoppingCriterion(EarlyStoppingCriterion):
         self.train_stats.criterion_evaluations.append(self.Pk[-1])
         log.debug(f"Pk[-1]={self.Pk[-1]}, alpha={self.alpha}")
 
-        if self.Pk[-1] > self.alpha:
+        if self.computation_enabled and self.Pk[-1] < self.alpha:
             self.counter += 1
             log.debug(
                 f"Triggered PkEpochEarlyStoppingCriterion {self.counter}/{self.patience}"
@@ -169,6 +169,62 @@ class PkEarlyStoppingCriterion(EarlyStoppingCriterion):
 
     def _on_continue(self):
         log.debug("PkEpochEarlyStoppingCriterion on_continue().")
+
+
+class SimpleEarlyStoppingCriterion(EarlyStoppingCriterion):
+    # https://github.com/Bjarten/early-stopping-pytorch/blob/master/pytorchtools.py
+    # note: uses validation data
+
+    def __init__(self, max_epochs: int, patience: int):
+        super().__init__(max_epochs)
+        self.patience: int = patience
+        self.counter: int = 0
+        self.Eva_opt: float = numpy.infty
+        self.current_best_state_dict: Dict[Any, Any] = {}
+
+    def enable(
+        self,
+        model: gpytorch.models.ExactGP,
+        train_stats: TrainStats,
+    ):
+        super(SimpleEarlyStoppingCriterion, self).enable(
+            model,
+            train_stats,
+        )
+
+    def _reset(self):
+        self.counter: int = 0
+        self.Eva_opt: float = numpy.infty
+
+    def _should_stop(self) -> bool:
+        if self.train_stats.val_loss[-1] < self.Eva_opt:
+            self.Eva_opt = self.train_stats.val_loss[-1]
+
+            self.current_best_state_dict = deepcopy(self.model.state_dict())
+            if self.counter > 0:
+                log.debug(
+                    "Resetting SimpleEpochEarlyStoppingCriterion countdown."
+                )
+                self.counter = 0
+
+                log.debug(
+                    f"The best epoch I will return is: {self.train_stats.current_epoch}"
+                )
+        else:
+            self.counter += 1
+            log.debug(
+                f"Triggered SimpleEpochEarlyStoppingCriterion {self.counter}/{self.patience}"
+            )
+        return self.counter == self.patience
+
+    def _on_stop(self) -> Tuple[int, gpytorch.models.ExactGP]:
+        super()._on_stop()
+        log.debug("SimpleEpochEarlyStoppingCriterion on_stop().")
+        self.model.load_state_dict(self.current_best_state_dict)
+        return self.train_stats.current_epoch - self.patience, self.model
+
+    def _on_continue(self):
+        log.debug("SimpleEpochEarlyStoppingCriterion on_continue().")
 
 
 class GLEarlyStoppingCriterion(EarlyStoppingCriterion):
@@ -203,7 +259,7 @@ class GLEarlyStoppingCriterion(EarlyStoppingCriterion):
         if self.train_stats.val_loss[-1] < self.Eva_opt:
             self.Eva_opt = self.train_stats.val_loss[-1]
         self.GL.append(
-            100 * (self.train_stats.val_loss[-1] / self.Eva_opt - 1)
+            numpy.abs(100 * (self.train_stats.val_loss[-1] / self.Eva_opt - 1))
         )
         self.train_stats.criterion_evaluations.append(self.GL[-1])
 
@@ -359,27 +415,30 @@ class PQEarlyStoppingCriterion(EarlyStoppingCriterion):
         if self.train_stats.val_loss[-1] < self.Eva_opt:
             self.Eva_opt = self.train_stats.val_loss[-1]
         self.GL.append(
-            100 * (self.train_stats.val_loss[-1] / self.Eva_opt - 1)
+            numpy.abs(100 * (self.train_stats.val_loss[-1] / self.Eva_opt - 1))
         )
-
         self.strip_counter += 1
         if self.strip_counter % self.strip_length == 0:
             self.computation_enabled = True
 
         if self.computation_enabled:
             self.Pk.append(
-                1000
-                * (
-                    numpy.sum(
-                        self.train_stats.train_loss[-self.strip_length :]
-                    )
-                    / (
-                        self.strip_length
-                        * numpy.min(
+                numpy.abs(
+                    1000
+                    * (
+                        numpy.sum(
                             self.train_stats.train_loss[-self.strip_length :]
                         )
+                        / (
+                            self.strip_length
+                            * numpy.min(
+                                self.train_stats.train_loss[
+                                    -self.strip_length :
+                                ]
+                            )
+                        )
+                        - 1
                     )
-                    - 1
                 )
             )
             self.PQ.append(self.GL[-1] / self.Pk[-1])
