@@ -15,7 +15,10 @@ from GPErks.gp.experiment import GPExperiment
 from GPErks.log.logger import get_logger
 from GPErks.perks.inference import Inference
 from GPErks.serialization.path import posix_path
-from GPErks.train.early_stop import NoEarlyStoppingCriterion, PkEarlyStoppingCriterion
+from GPErks.train.early_stop import (
+    NoEarlyStoppingCriterion,
+    PkEarlyStoppingCriterion,
+)
 from GPErks.train.emulator import GPEmulator
 from GPErks.train.snapshot import EveryEpochSnapshottingCriterion
 from GPErks.utils.random import set_seed
@@ -69,10 +72,7 @@ def main():
     max_epochs = 100
     # early_stopping_criterion = NoEarlyStoppingCriterion(max_epochs)
     early_stopping_criterion = PkEarlyStoppingCriterion(
-        max_epochs,
-        alpha=0.01,
-        patience=8,
-        strip_length=20
+        max_epochs, alpha=0.01, patience=8, strip_length=20
     )
 
     here = os.path.abspath(os.path.dirname(__file__))
