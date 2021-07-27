@@ -11,3 +11,4 @@ GPErks/tests/temp/
 GPErks/tests/snapshot/
 GPErks/tests/output/
 .pypirc
+mypy_result.xml
