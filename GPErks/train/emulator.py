@@ -242,7 +242,7 @@ class GPEmulator:
         )
 
         max_epochs: int = early_stopping_criterion.max_epochs
-        while True:
+        while not early_stopping_criterion.is_verified:
             train_stats.current_epoch += 1
             train_loss = self.train_step(X_train, y_train, optimizer)
             train_stats.train_loss.append(train_loss)
@@ -288,7 +288,6 @@ class GPEmulator:
             if early_stopping_criterion.is_verified:
                 snapshotting_criterion.model = best_model
                 snapshotting_criterion.save(self.restart_idx, best_epoch)
-                break
 
         train_stats.best_epoch = best_epoch
         train_stats.save_to_file(
