@@ -218,19 +218,20 @@ class GPEmulator:
             )  # TODO: make range customizable
             hyperparameters = {
                 "covar_module.base_kernel.raw_lengthscale": (
-                    theta_sup - theta_inf
-                )
-                * torch.rand(self.scaled_data.input_size)
-                + theta_inf,
-                "covar_module.raw_outputscale": (theta_sup - theta_inf)
-                * torch.rand(1)
-                + theta_inf,
+                    (theta_sup - theta_inf)
+                    * torch.rand(self.scaled_data.input_size)
+                    + theta_inf
+                ).to(self.device),
+                "covar_module.raw_outputscale": (
+                    (theta_sup - theta_inf) * torch.rand(1) + theta_inf
+                ).to(self.device),
             }
             self.model.initialize(**hyperparameters)
             if self.learn_noise:
                 self.model.likelihood.initialize(
-                    raw_noise=(theta_sup - theta_inf) * torch.rand(1)
-                    + theta_inf
+                    raw_noise=(
+                        (theta_sup - theta_inf) * torch.rand(1) + theta_inf
+                    ).to(self.device)
                 )
 
         self.model.to(self.device)
@@ -327,7 +328,7 @@ class GPEmulator:
     def evaluate_metrics(self, X, y):
         predictions = self.model.likelihood(self.model(X))
         y_pred = predictions.mean
-        return [m(y_pred, y).cpu() for m in self.metrics]
+        return [m(y_pred.cpu(), y.cpu()) for m in self.metrics]
 
     def predict(self, X_new, with_covar=False):
         self.model.eval()
