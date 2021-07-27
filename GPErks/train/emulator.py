@@ -2,7 +2,7 @@ import os
 from collections import defaultdict
 from copy import deepcopy
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import gpytorch
 import numpy
@@ -45,6 +45,11 @@ class GPEmulator:
         self.init_state = deepcopy(self.model.state_dict())
 
         self.metrics: List[torchmetrics.Metric] = experiment.metrics
+
+        self.restart_idx = None
+        self.criterion = None
+        self.best_train_metrics_score: Dict[str, float] = {}
+        self.best_val_metrics_score: Dict[str, float] = {}
 
     def train(
         self,
@@ -102,38 +107,24 @@ class GPEmulator:
             ]
             best_overall_loss_idx = numpy.argmin(val_loss_list)
 
-        train_metrics_score_list = defaultdict(list)
-        for train_stats, best_epoch in zip(
-            restarts_train_stats, restarts_best_epochs
-        ):
-            for (
-                metric_name,
-                metric_values,
-            ) in train_stats.train_metrics_score.items():
-                train_metrics_score_list[metric_name].append(
-                    metric_values[best_epoch - 1]
-                )
-        self.best_train_metrics_score = {
-            metric_name: best_values[best_overall_loss_idx]
-            for metric_name, best_values in train_metrics_score_list.items()
-        }
+        self.best_train_metrics_score = _get_best_metrics_score(
+            restarts_best_epochs,
+            best_overall_loss_idx,
+            [
+                train_stats.train_metrics_score
+                for train_stats in restarts_train_stats
+            ],
+        )
 
         if self.scaled_data.with_val:
-            val_metrics_score_list = defaultdict(list)
-            for train_stats, best_epoch in zip(
-                restarts_train_stats, restarts_best_epochs
-            ):
-                for (
-                    metric_name,
-                    metric_values,
-                ) in train_stats.val_metrics_score.items():
-                    val_metrics_score_list[metric_name].append(
-                        metric_values[best_epoch - 1]
-                    )
-            self.best_val_metrics_score = {
-                metric_name: best_values[best_overall_loss_idx]
-                for metric_name, best_values in val_metrics_score_list.items()
-            }
+            self.best_val_metrics_score = _get_best_metrics_score(
+                restarts_best_epochs,
+                best_overall_loss_idx,
+                [
+                    train_stats.val_metrics_score
+                    for train_stats in restarts_train_stats
+                ],
+            )
 
         best_restart = best_overall_loss_idx + 1
         best_epoch = restarts_best_epochs[best_overall_loss_idx]
@@ -397,3 +388,20 @@ class GPEmulator:
             )[0]
 
         return y_samples
+
+
+def _get_best_metrics_score(
+    restarts_best_epochs,
+    best_overall_loss_idx,
+    metrics_scores: List[Dict[str, List[float]]],
+):
+    metrics_score_list = defaultdict(list)
+    for metrics_score, best_epoch in zip(metrics_scores, restarts_best_epochs):
+        for metric_name, metric_values in metrics_score.items():
+            metrics_score_list[metric_name].append(
+                metric_values[best_epoch - 1]
+            )
+    return {
+        metric_name: best_values[best_overall_loss_idx]
+        for metric_name, best_values in metrics_score_list.items()
+    }
