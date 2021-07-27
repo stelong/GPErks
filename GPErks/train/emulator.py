@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 import gpytorch
+import gpytorch.constraints
 import numpy
 import torch
 import torchmetrics
