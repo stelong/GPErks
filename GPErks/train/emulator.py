@@ -75,7 +75,7 @@ class GPEmulator:
         while current_restart <= self.experiment.n_restarts:
             log.info(f"Running restart {current_restart}...")
             self.restart_idx = current_restart
-            (restart_train_stats, restart_best_epoch,) = self.train_once(
+            (restart_train_stats, restart_best_epoch,) = self._train_once(
                 X_train,
                 y_train,
                 optimizer,
@@ -191,7 +191,7 @@ class GPEmulator:
 
         return best_model, best_train_stats
 
-    def train_once(
+    def _train_once(
         self,
         X_train,
         y_train,
@@ -244,7 +244,7 @@ class GPEmulator:
         max_epochs: int = early_stopping_criterion.max_epochs
         while not early_stopping_criterion.is_verified:
             train_stats.current_epoch += 1
-            train_loss = self.train_step(X_train, y_train, optimizer)
+            train_loss = self._train_step(X_train, y_train, optimizer)
             train_stats.train_loss.append(train_loss)
             msg = (
                 f"[{train_stats.current_epoch:>{len(str(max_epochs))}}/"
@@ -259,7 +259,7 @@ class GPEmulator:
 
             self.model.eval()
             with torch.no_grad(), gpytorch.settings.fast_pred_var():
-                metric_scores = self.evaluate_metrics(X_train, y_train)
+                metric_scores = self._evaluate_metrics(X_train, y_train)
                 for metric, metric_score in zip(self.metrics, metric_scores):
                     metric_name = get_metric_name(metric)
                     msg += f" - {metric_name}: {metric_score:.4f}"
@@ -268,10 +268,10 @@ class GPEmulator:
                     )
 
                 if self.scaled_data.with_val:
-                    val_loss = self.val_step(X_val, y_val)
+                    val_loss = self._val_step(X_val, y_val)
                     train_stats.val_loss.append(val_loss)
                     msg += f" | Validation Loss: {val_loss:.4f}"
-                    metric_scores = self.evaluate_metrics(X_val, y_val)
+                    metric_scores = self._evaluate_metrics(X_val, y_val)
                     for metric, metric_score in zip(
                         self.metrics, metric_scores
                     ):
@@ -303,7 +303,7 @@ class GPEmulator:
         )
         return train_stats, best_epoch
 
-    def train_step(self, X_train, y_train, optimizer):
+    def _train_step(self, X_train, y_train, optimizer):
         self.model.train()
         optimizer.zero_grad()
         train_loss = -self.criterion(self.model(X_train), y_train)
@@ -311,11 +311,11 @@ class GPEmulator:
         optimizer.step()
         return train_loss.item()
 
-    def val_step(self, X_val, y_val):
+    def _val_step(self, X_val, y_val):
         val_loss = -self.criterion(self.model(X_val), y_val)
         return val_loss.item()
 
-    def evaluate_metrics(self, X, y):
+    def _evaluate_metrics(self, X, y):
         predictions = self.model.likelihood(self.model(X))
         y_pred = predictions.mean
         return [m(y_pred.cpu(), y.cpu()) for m in self.metrics]
