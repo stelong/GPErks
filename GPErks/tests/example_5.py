@@ -114,7 +114,7 @@ def main(early_stopping_criterion, X_train, y_train, X_val=None, y_val=None):
     ## train model
     ##========================================================================
     emul = GPEmulator(experiment, device)
-    best_model, best_train_stats = emul.train(
+    best_model, best_train_stats, _ = emul.train(
         optimizer,
         early_stopping_criterion,
         snapshotting_criterion,
