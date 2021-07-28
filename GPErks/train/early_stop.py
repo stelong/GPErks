@@ -18,6 +18,7 @@ class EarlyStoppingCriterion(metaclass=ABCMeta):
         self.train_stats: Optional[TrainStats] = None
         self.save_path = None
         self.is_verified = False
+        self.evaluations: List[float] = []
 
     def enable(
         self,
@@ -27,14 +28,27 @@ class EarlyStoppingCriterion(metaclass=ABCMeta):
         self.model = model
         self.train_stats = train_stats
         self.is_verified = False
+        self.evaluations = []
 
     def evaluate(
         self,
     ) -> Tuple[Optional[int], Optional[gpytorch.models.ExactGP]]:
-        if (
-            self.train_stats.current_epoch == self.max_epochs
-            or self._should_stop()
-        ):
+        must_stop = self.train_stats.current_epoch == self.max_epochs
+
+        should_stop = False
+        if must_stop:
+            # Since self.max_epochs has been reached, there is no need to
+            # evaluate the early stopping criterion.
+            # In this case, self.evaluations will contain (self.max_epochs - 1)
+            # items, which is not desirable from a practical point of view
+            # (e.g. while plotting data).
+            # For convenience, we duplicate the last evaluation.
+            self.evaluations.append(self.evaluations[-1])
+        else:
+            should_stop, evaluation = self._should_stop()
+            self.evaluations.append(evaluation)
+
+        if must_stop or should_stop:
             log.debug(
                 f"Early stopping: calling on_stop() at epoch "
                 f"{self.train_stats.current_epoch}"
@@ -53,7 +67,7 @@ class EarlyStoppingCriterion(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def _should_stop(self) -> bool:
+    def _should_stop(self) -> Tuple[bool, float]:
         pass
 
     @abstractmethod
@@ -72,8 +86,8 @@ class NoEarlyStoppingCriterion(EarlyStoppingCriterion):
     def _reset(self):
         pass
 
-    def _should_stop(self) -> bool:
-        return False
+    def _should_stop(self) -> Tuple[bool, float]:
+        return False, 0
 
     def _on_stop(self) -> Tuple[int, gpytorch.models.ExactGP]:
         super()._on_stop()
@@ -120,7 +134,7 @@ class PkEarlyStoppingCriterion(EarlyStoppingCriterion):
         self.computation_enabled: bool = False
         self.Pk: List = []
 
-    def _should_stop(self) -> bool:
+    def _should_stop(self) -> Tuple[bool, float]:
         self.strip_counter += 1
         if self.strip_counter % self.strip_length == 0:
             self.computation_enabled = True
@@ -143,7 +157,6 @@ class PkEarlyStoppingCriterion(EarlyStoppingCriterion):
         else:
             self.Pk.append(0.0)
 
-        self.train_stats.criterion_evaluations.append(self.Pk[-1])
         log.debug(f"Pk[-1]={self.Pk[-1]}, alpha={self.alpha}")
 
         if self.computation_enabled and self.Pk[-1] < self.alpha:
@@ -159,7 +172,7 @@ class PkEarlyStoppingCriterion(EarlyStoppingCriterion):
             )
             self.current_best_state_dict = deepcopy(self.model.state_dict())
             self.counter = 0
-        return self.counter == self.patience
+        return self.counter == self.patience, self.Pk[-1]
 
     def _on_stop(self) -> Tuple[int, gpytorch.models.ExactGP]:
         super()._on_stop()
@@ -196,7 +209,7 @@ class SimpleEarlyStoppingCriterion(EarlyStoppingCriterion):
         self.counter: int = 0
         self.Eva_opt: float = numpy.infty
 
-    def _should_stop(self) -> bool:
+    def _should_stop(self) -> Tuple[bool, float]:
         if self.train_stats.val_loss[-1] < self.Eva_opt:
             self.Eva_opt = self.train_stats.val_loss[-1]
 
@@ -215,7 +228,7 @@ class SimpleEarlyStoppingCriterion(EarlyStoppingCriterion):
             log.debug(
                 f"Triggered SimpleEpochEarlyStoppingCriterion {self.counter}/{self.patience}"
             )
-        return self.counter == self.patience
+        return self.counter == self.patience, self.train_stats.val_loss[-1]
 
     def _on_stop(self) -> Tuple[int, gpytorch.models.ExactGP]:
         super()._on_stop()
@@ -255,13 +268,12 @@ class GLEarlyStoppingCriterion(EarlyStoppingCriterion):
         self.Eva_opt: float = numpy.infty
         self.GL: List = []
 
-    def _should_stop(self) -> bool:
+    def _should_stop(self) -> Tuple[bool, float]:
         if self.train_stats.val_loss[-1] < self.Eva_opt:
             self.Eva_opt = self.train_stats.val_loss[-1]
         self.GL.append(
             numpy.abs(100 * (self.train_stats.val_loss[-1] / self.Eva_opt - 1))
         )
-        self.train_stats.criterion_evaluations.append(self.GL[-1])
 
         log.debug(f"GL[-1]={self.GL[-1]}, alpha={self.alpha}")
         if self.GL[-1] > self.alpha:
@@ -277,7 +289,7 @@ class GLEarlyStoppingCriterion(EarlyStoppingCriterion):
             )
             self.counter = 0
             self.current_best_state_dict = deepcopy(self.model.state_dict())
-        return self.counter == self.patience
+        return self.counter == self.patience, self.GL[-1]
 
     def _on_stop(self) -> Tuple[int, gpytorch.models.ExactGP]:
         super()._on_stop()
@@ -324,7 +336,7 @@ class UPEarlyStoppingCriterion(EarlyStoppingCriterion):
         self.sstrips_counter: int = 0
         self.UP: List = []
 
-    def _should_stop(self) -> bool:
+    def _should_stop(self) -> Tuple[bool, float]:
         self.strip_counter += 1
         if self.strip_counter % self.strip_length == 0:
             self.computation_enabled = True
@@ -349,10 +361,9 @@ class UPEarlyStoppingCriterion(EarlyStoppingCriterion):
         else:
             self.UP.append(0.0)
 
-        self.train_stats.criterion_evaluations.append(self.UP[-1])
         log.debug(f"UP[-1]={self.UP[-1]}")
 
-        return self.sstrips_counter == self.successive_strips
+        return self.sstrips_counter == self.successive_strips, self.UP[-1]
 
     def _on_stop(self) -> Tuple[int, gpytorch.models.ExactGP]:
         super()._on_stop()
@@ -411,7 +422,7 @@ class PQEarlyStoppingCriterion(EarlyStoppingCriterion):
         self.Pk: List = []
         self.PQ: List = []
 
-    def _should_stop(self) -> bool:
+    def _should_stop(self) -> Tuple[bool, float]:
         if self.train_stats.val_loss[-1] < self.Eva_opt:
             self.Eva_opt = self.train_stats.val_loss[-1]
         self.GL.append(
@@ -445,7 +456,6 @@ class PQEarlyStoppingCriterion(EarlyStoppingCriterion):
         else:
             self.Pk.append(0.0)
             self.PQ.append(0.0)
-        self.train_stats.criterion_evaluations.append(self.PQ[-1])
 
         log.debug(f"PQ[-1]={self.PQ[-1]}, alpha={self.alpha}")
         if self.PQ[-1] > self.alpha:
@@ -461,7 +471,7 @@ class PQEarlyStoppingCriterion(EarlyStoppingCriterion):
             )
             self.counter = 0
             self.current_best_state_dict = deepcopy(self.model.state_dict())
-        return self.counter == self.patience
+        return self.counter == self.patience, self.PQ[-1]
 
     def _on_stop(self) -> Tuple[int, gpytorch.models.ExactGP]:
         super()._on_stop()

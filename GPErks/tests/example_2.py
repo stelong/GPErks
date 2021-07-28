@@ -118,7 +118,11 @@ def main():
     ## train model
     ##========================================================================
     emul = GPEmulator(experiment, device)
-    best_model, best_train_stats = emul.train(
+    (
+        best_model,
+        best_train_stats,
+        best_early_stopping_criterion_evaluations,
+    ) = emul.train(
         optimizer,
         early_stopping_criterion,
         snapshotting_criterion,
@@ -127,7 +131,11 @@ def main():
     ##========================================================================
     ## training stats, diagnostics, inference
     ##========================================================================
-    best_train_stats.plot(overlay_criterion=True)
+    best_train_stats.plot(
+        early_stopping_criterion_evaluations=best_early_stopping_criterion_evaluations
+    )
+    if True:
+        exit(0)
 
     diagnostics = Diagnostics(emul)
     diagnostics.summary()

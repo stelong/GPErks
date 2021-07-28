@@ -122,10 +122,14 @@ def main():
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     emul = GPEmulator(experiment, device)
-    best_model, best_train_stats = emul.train(
-        optimizer, early_stopping_criterion, snapc
+    (
+        best_model,
+        best_train_stats,
+        best_early_stopping_criterion_evaluations,
+    ) = emul.train(optimizer, early_stopping_criterion, snapc)
+    best_train_stats.plot(
+        early_stopping_criterion_evaluations=best_early_stopping_criterion_evaluations
     )
-    best_train_stats.plot(overlay_criterion=True)
 
     # ================================================================
     # (6) Testing trained GPE at new input points (inference)
