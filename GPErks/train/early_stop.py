@@ -37,16 +37,16 @@ class EarlyStoppingCriterion(metaclass=ABCMeta):
         if must_stop:
             # Since self.max_epochs has been reached, there is no need to
             # evaluate the early stopping criterion.
-            # In this case, self.train_stats.evaluations will contain
+            # In this case, early_stopping_criterion_evaluations will contain
             # (self.max_epochs - 1) items, which is not desirable from a
             # practical point of view (e.g. while plotting data).
             # For convenience, we duplicate the last evaluation.
-            self.train_stats.evaluations.append(
-                self.train_stats.evaluations[-1]
+            self.train_stats.early_stopping_criterion_evaluations.append(
+                self.train_stats.early_stopping_criterion_evaluations[-1]
             )
         else:
             should_stop, evaluation = self._should_stop()
-            self.train_stats.evaluations.append(evaluation)
+            self.train_stats.early_stopping_criterion_evaluations.append(evaluation)
 
         if must_stop or should_stop:
             log.debug(

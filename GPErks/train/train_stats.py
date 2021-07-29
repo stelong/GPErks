@@ -19,7 +19,7 @@ class TrainStats:
         self.val_metrics_score: Dict[str, List[float]] = {
             metric_name: [] for metric_name in metrics_names
         }
-        self.evaluations: List[float] = []
+        self.early_stopping_criterion_evaluations: List[float] = []
 
     def save_to_file(self, output_file):
         with open(output_file, "w") as out_f:
@@ -55,7 +55,7 @@ class TrainStats:
             axis.tick_params(axis="y", labelcolor="C2")
             axis.plot(
                 numpy.arange(1, loss_len + 1),
-                self.evaluations,
+                self.early_stopping_criterion_evaluations,
                 c="C2",
             )
             axis.set_ylabel("Criterion", color="C2", fontsize=12)
