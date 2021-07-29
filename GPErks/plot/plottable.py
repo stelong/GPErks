@@ -4,9 +4,9 @@ from GPErks.plot.options import PlotOptions
 
 
 class Plottable(metaclass=ABCMeta):
-    def __init__(self, options: PlotOptions):
-        self.plot_options: options
+    def __init__(self):
+        pass
 
     @abstractmethod
-    def plot(self):
+    def plot(self, plot_options: PlotOptions = PlotOptions()):
         pass

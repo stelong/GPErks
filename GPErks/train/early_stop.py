@@ -46,7 +46,9 @@ class EarlyStoppingCriterion(metaclass=ABCMeta):
             )
         else:
             should_stop, evaluation = self._should_stop()
-            self.train_stats.early_stopping_criterion_evaluations.append(evaluation)
+            self.train_stats.early_stopping_criterion_evaluations.append(
+                evaluation
+            )
 
         if must_stop or should_stop:
             log.debug(

@@ -10,3 +10,4 @@ torchvision
 torch
 SALib
 torchmetrics
+typing-extensions==3.7.4.3  # TODO: remove temporary workaround

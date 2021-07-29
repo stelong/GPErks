@@ -25,7 +25,7 @@ with open(os.path.join(here, 'README.md')) as f:
 
 setup(
     name='GPErks',
-    version='0.0.2',
+    version='0.1.0',
     url=home_page,
     author="Stefano Longobardi, Gianvito Taneburgo",
     author_email="stefano.longobardi.8@gmail.com, taneburgo+shadowtemplate@gmail.com",

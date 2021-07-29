@@ -5,3 +5,6 @@ mypy
 pip-tools
 tox
 twine
+jupyter
+decorator==4.4.2  # TODO: remove temporary workaround
+python-dateutil==2.8.1  # TODO: remove temporary workaround

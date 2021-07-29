@@ -12,3 +12,7 @@ GPErks/tests/snapshot/
 GPErks/tests/output/
 .pypirc
 mypy_result.xml
+GPErks/tests/test_4.ini
+notebooks/snapshot/
+notebooks/.ipynb_checkpoints/
+

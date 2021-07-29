@@ -142,8 +142,8 @@ def main():
     ##========================================================================
     ## gsa
     ##========================================================================
-    gsa = SobolGSA(emul, n=1024, seed=seed)
-    gsa.estimate_Sobol_indices(n_draws=1000)
+    gsa = SobolGSA(dataset, n=1024, seed=seed)
+    gsa.estimate_Sobol_indices_with_emulator(emul, n_draws=1000)
     gsa.correct_Sobol_indices(threshold=0.01)
     gsa.plot()
 

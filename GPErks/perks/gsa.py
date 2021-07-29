@@ -16,6 +16,7 @@ from GPErks.constants import (
     N,
     Z,
 )
+from GPErks.gp.data.dataset import Dataset
 from GPErks.plot.gsa import boxplot, donut, heatmap, network
 from GPErks.plot.options import PlotOptions
 from GPErks.plot.plottable import Plottable
@@ -26,21 +27,19 @@ from GPErks.utils.array import get_minmax
 class SobolGSA(Plottable):
     def __init__(
         self,
-        emulator: GPEmulator,
+        dataset: Dataset,
         n: int = N,
         seed: Optional[int] = None,
-        plot_options: PlotOptions = PlotOptions(),
     ):
-        super(SobolGSA, self).__init__(plot_options)
-        self.emulator = emulator
+        super(SobolGSA, self).__init__()
         self.n = n
         self.seed = seed
 
-        self.d = self.emulator.experiment.dataset.input_size
-        self.index_i = self.emulator.experiment.dataset.x_labels
+        self.d = dataset.input_size
+        self.index_i = dataset.x_labels
         self.index_ij = [list(c) for c in combinations(self.index_i, 2)]
-        self.ylabel = self.emulator.experiment.dataset.y_label
-        self.minmax = get_minmax(self.emulator.experiment.dataset.X_train)
+        self.ylabel = dataset.y_label
+        self.minmax = get_minmax(dataset.X_train)
 
         self.ST = np.zeros((0, self.d), dtype=float)
         self.S1 = np.zeros((0, self.d), dtype=float)
@@ -64,10 +63,21 @@ class SobolGSA(Plottable):
         )
         return problem, X
 
-    def estimate_Sobol_indices(self, n_draws: int = N_DRAWS):
+    def estimate_Sobol_indices_with_emulator(
+        self,
+        emulator: GPEmulator,
+        n_draws: int = N_DRAWS,
+    ):
         problem, X = self.assemble_Saltelli_space()
-        Y = self.emulator.sample(X, n_draws)
+        Y = emulator.sample(X, n_draws)
+        self._estimate_Sobol_indices_from_evaluations(problem, Y)
 
+    def estimate_Sobol_indices_from_model_evaluations(self, y):
+        problem, X = self.assemble_Saltelli_space()
+        Y = np.squeeze(y).reshape(1, -1)
+        self._estimate_Sobol_indices_from_evaluations(problem, Y)
+
+    def _estimate_Sobol_indices_from_evaluations(self, problem, Y):
         for y in Y:
             S = sobol.analyze(
                 problem,
@@ -129,7 +139,7 @@ class SobolGSA(Plottable):
         print(df_Si)
         print(df_Sij)
 
-    def plot(self):
+    def plot(self, plot_options: PlotOptions = PlotOptions()):
         self.plot_boxplot()
 
     def plot_boxplot(self):

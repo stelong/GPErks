@@ -7,23 +7,7 @@ from scipy.stats import qmc
 from GPErks.constants import HEIGHT, WIDTH
 from GPErks.plot.options import PlotOptions
 from GPErks.plot.plottable import Plottable
-
-
-class RandomEngine(qmc.QMCEngine):  # TODO: move somewhere else
-    def __init__(self, d, seed=None):
-        super().__init__(d=d, seed=seed)
-
-    def random(self, n=1):
-        self.num_generated += n
-        return self.rng.random((n, self.d))
-
-    def reset(self):
-        super().__init__(d=self.d, seed=self.rng_seed)
-        return self
-
-    def fast_forward(self, n):
-        self.random(n)
-        return self
+from GPErks.utils.random import RandomEngine
 
 
 class Dataset(Plottable):
@@ -37,9 +21,8 @@ class Dataset(Plottable):
         y_test: Optional[np.ndarray] = None,
         x_labels: Optional[List[str]] = None,
         y_label: Optional[str] = None,
-        plot_options: PlotOptions = PlotOptions(),
     ):
-        super(Dataset, self).__init__(plot_options)
+        super(Dataset, self).__init__()
         self.X_train: np.ndarray = X_train
         self.y_train: np.ndarray = y_train
         self.X_val: Optional[np.ndarray] = X_val
@@ -60,7 +43,7 @@ class Dataset(Plottable):
         )
         self.y_label: str = y_label if y_label else "Output"
 
-    def plot(self):
+    def plot(self, plot_options: PlotOptions = PlotOptions()):
         self.plot_train()
 
     def plot_pairwise(self):
@@ -95,7 +78,6 @@ class Dataset(Plottable):
 
     def _plot_pairwise(self, X):
         sample_size = X.shape[0]
-        self.input_size
 
         fig, axes = plt.subplots(
             nrows=self.input_size,
@@ -132,7 +114,6 @@ class Dataset(Plottable):
         l_bounds: Optional[List[float]] = None,
         u_bounds: Optional[List[float]] = None,
     ):
-
         if design == "srs":
             sampler = RandomEngine(d=d, seed=seed)
         elif design == "lhs":

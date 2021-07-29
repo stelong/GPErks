@@ -88,8 +88,10 @@ torchmetrics==0.2.0
     # via -r requirements.in
 torchvision==0.10.0
     # via -r requirements.in
-typing-extensions==3.10.0.0
-    # via torch
+typing-extensions==3.7.4.3
+    # via
+    #   -r requirements.in
+    #   torch
 wheel==0.36.2
     # via salib
 
