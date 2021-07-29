@@ -1,5 +1,5 @@
 import json
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 import numpy
 from matplotlib import pyplot as plt
@@ -19,15 +19,13 @@ class TrainStats:
         self.val_metrics_score: Dict[str, List[float]] = {
             metric_name: [] for metric_name in metrics_names
         }
+        self.evaluations: List[float] = []
 
     def save_to_file(self, output_file):
         with open(output_file, "w") as out_f:
             json.dump(self.__dict__, out_f)
 
-    def plot(
-        self,
-        early_stopping_criterion_evaluations: Optional[List[float]] = None,
-    ):
+    def plot(self, with_early_stopping_criterion: bool = False):
         figsize = (2 * WIDTH, 2 * HEIGHT / 4)
         with_val = len(self.val_loss) > 0
         if with_val:
@@ -52,12 +50,12 @@ class TrainStats:
         axes[0].set_ylabel("Loss", fontsize=12, zorder=1)
         axes[0].set_xlabel("Epoch", fontsize=12)
 
-        if early_stopping_criterion_evaluations:
+        if with_early_stopping_criterion:
             axis = axes[0].twinx()
             axis.tick_params(axis="y", labelcolor="C2")
             axis.plot(
                 numpy.arange(1, loss_len + 1),
-                early_stopping_criterion_evaluations,
+                self.evaluations,
                 c="C2",
             )
             axis.set_ylabel("Criterion", color="C2", fontsize=12)

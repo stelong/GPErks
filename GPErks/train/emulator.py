@@ -71,17 +71,12 @@ class GPEmulator:
 
         restarts_train_stats: List[TrainStats] = []
         restarts_best_epochs = []
-        restarts_early_stopping_criterion_evaluations = []
 
         current_restart = 1
         while current_restart <= self.experiment.n_restarts:
             log.info(f"Running restart {current_restart}...")
             self.restart_idx = current_restart
-            (
-                restart_train_stats,
-                restart_best_epoch,
-                restart_criterion_evaluations,
-            ) = self._train_once(
+            restart_train_stats, restart_best_epoch = self._train_once(
                 X_train,
                 y_train,
                 optimizer,
@@ -92,9 +87,6 @@ class GPEmulator:
             )
             restarts_train_stats.append(restart_train_stats)
             restarts_best_epochs.append(restart_best_epoch)
-            restarts_early_stopping_criterion_evaluations.append(
-                restart_criterion_evaluations
-            )
             log.info(f"Run restart {current_restart}.")
             current_restart += 1
 
@@ -137,11 +129,6 @@ class GPEmulator:
 
         best_restart = best_overall_loss_idx + 1
         best_epoch = restarts_best_epochs[best_overall_loss_idx]
-        best_early_stopping_criterion_evaluations = (
-            restarts_early_stopping_criterion_evaluations[
-                best_overall_loss_idx
-            ]
-        )
 
         log.info(
             f"Loading best model (restart: {best_restart}, epoch: {best_epoch})..."
@@ -203,11 +190,7 @@ class GPEmulator:
                 msg += f"{metric_name}: {best_value:.4f}\n"
             print(msg)
 
-        return (
-            best_model,
-            best_train_stats,
-            best_early_stopping_criterion_evaluations,
-        )
+        return best_model, best_train_stats
 
     def _train_once(
         self,
@@ -319,7 +302,7 @@ class GPEmulator:
         snapshotting_criterion.keep_snapshots_until(
             self.restart_idx, best_epoch
         )
-        return train_stats, best_epoch, early_stopping_criterion.evaluations
+        return train_stats, best_epoch
 
     def _train_step(self, X_train, y_train, optimizer):
         self.model.train()
