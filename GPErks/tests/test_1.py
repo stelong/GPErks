@@ -125,11 +125,8 @@ def main():
     (
         best_model,
         best_train_stats,
-        best_early_stopping_criterion_evaluations,
     ) = emul.train(optimizer, early_stopping_criterion, snapc)
-    best_train_stats.plot(
-        early_stopping_criterion_evaluations=best_early_stopping_criterion_evaluations
-    )
+    best_train_stats.plot(with_early_stopping_criterion=True)
 
     # ================================================================
     # (6) Testing trained GPE at new input points (inference)

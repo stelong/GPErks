@@ -155,7 +155,7 @@ def main(factor):
     ## train model
     ##========================================================================
     emul = GPEmulator(experiment, device)
-    best_model, best_train_stats, _ = emul.train(
+    best_model, best_train_stats = emul.train(
         optimizer,
         early_stopping_criterion,
         snapshotting_criterion,
