@@ -2,16 +2,24 @@ from pathlib import Path
 
 from scipy.stats import norm
 
+from GPErks.serialization.path import posix_path
+from GPErks.utils.time import now, pretty_str
+
 APPLICATION_NAME = "GPErks"
 
 # logging
-DEFAULT_LOGGING_FILE = (
-    Path.home() / Path(f"{APPLICATION_NAME}.log")
-).as_posix()
+DEFAULT_LOG_FILE = (Path.home() / Path(f"{APPLICATION_NAME}.log")).as_posix()
 DEFAULT_LOG_FORMAT = (
     "%(levelname)s:%(asctime)s:%(module)s:%(funcName)s:"
     "L%(lineno)d: %(message)s"
 )
+
+# training
+DEFAULT_TRAIN_MAX_EPOCH = 100
+DEFAULT_TRAIN_SNAPSHOT_FREQUENCY = DEFAULT_TRAIN_MAX_EPOCH / 20
+DEFAULT_TRAIN_SNAPSHOT_DIR = posix_path(".", "snapshot", pretty_str(now()))
+DEFAULT_TRAIN_SNAPSHOT_RESTART_TEMPLATE = "restart_{restart}"
+DEFAULT_TRAIN_SNAPSHOT_FILE_TEMPLATE = "epoch_{epoch}.pth"
 
 # gsa constants:
 CONF_LEVEL = 0.95

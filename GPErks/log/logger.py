@@ -2,8 +2,8 @@ import logging
 
 from GPErks.constants import (
     APPLICATION_NAME,
+    DEFAULT_LOG_FILE,
     DEFAULT_LOG_FORMAT,
-    DEFAULT_LOGGING_FILE,
 )
 
 
@@ -11,7 +11,7 @@ def get_logger(
     name=APPLICATION_NAME,
     log_format=DEFAULT_LOG_FORMAT,
     stdout_level=logging.INFO,
-    file_name=DEFAULT_LOGGING_FILE,
+    file_name=DEFAULT_LOG_FILE,
     file_level=logging.INFO,
 ):
     logging.basicConfig(level=stdout_level, format=log_format)
