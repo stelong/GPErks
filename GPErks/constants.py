@@ -1,3 +1,4 @@
+import multiprocessing
 from pathlib import Path
 
 from scipy.stats import norm
@@ -7,21 +8,30 @@ from GPErks.utils.time import now, pretty_str
 
 APPLICATION_NAME = "GPErks"
 
-# logging
+
+# LOGGING
 DEFAULT_LOG_FILE = (Path.home() / Path(f"{APPLICATION_NAME}.log")).as_posix()
 DEFAULT_LOG_FORMAT = (
     "%(levelname)s:%(asctime)s:%(module)s:%(funcName)s:"
     "L%(lineno)d: %(message)s"
 )
 
-# training
+
+# TRAINING
 DEFAULT_TRAIN_MAX_EPOCH = 100
 DEFAULT_TRAIN_SNAPSHOT_FREQUENCY = DEFAULT_TRAIN_MAX_EPOCH / 20
 DEFAULT_TRAIN_SNAPSHOT_DIR = posix_path(".", "snapshot", pretty_str(now()))
+DEFAULT_TRAIN_SNAPSHOT_SPLIT_TEMPLATE = "split_{split}"
 DEFAULT_TRAIN_SNAPSHOT_RESTART_TEMPLATE = "restart_{restart}"
-DEFAULT_TRAIN_SNAPSHOT_FILE_TEMPLATE = "epoch_{epoch}.pth"
+DEFAULT_TRAIN_SNAPSHOT_EPOCH_TEMPLATE = "epoch_{epoch}.pth"
 
-# gsa constants:
+
+# CROSS VALIDATION
+DEFAULT_CROSS_VALIDATION_N_SPLITS = 5
+DEFAULT_CROSS_VALIDATION_MAX_WORKERS = multiprocessing.cpu_count()
+
+
+# GSA
 CONF_LEVEL = 0.95
 Z = norm.ppf(
     0.5 + CONF_LEVEL / 2
@@ -32,6 +42,7 @@ N_DRAWS = 1000
 SKIP_VALUES = 0
 THRESHOLD = 0.01
 
-# plots constants:
+
+# PLOT
 HEIGHT = 9.36111
 WIDTH = 5.91667

@@ -38,6 +38,11 @@ class GPExperiment:
             UnitCubeScaler(),
             StandardScaler(),
         )
+
+        self.likelihood: gpytorch.likelihoods.Likelihood = likelihood
+        self.mean_module: gpytorch.means.Mean = mean_module
+        self.covar_module: gpytorch.kernels.Kernel = covar_module
+
         self.n_restarts: int = n_restarts
 
         if metrics:
@@ -50,9 +55,9 @@ class GPExperiment:
         self.model: ExactGPModel = ExactGPModel(
             self.scaled_data.X_train,
             self.scaled_data.y_train,
-            likelihood,
-            mean_module,
-            covar_module,
+            self.likelihood,
+            self.mean_module,
+            self.covar_module,
         )
 
     def load_model(

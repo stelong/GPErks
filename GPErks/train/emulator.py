@@ -13,7 +13,7 @@ import torchmetrics
 from GPErks.constants import (
     DEFAULT_TRAIN_MAX_EPOCH,
     DEFAULT_TRAIN_SNAPSHOT_DIR,
-    DEFAULT_TRAIN_SNAPSHOT_FILE_TEMPLATE,
+    DEFAULT_TRAIN_SNAPSHOT_EPOCH_TEMPLATE,
     DEFAULT_TRAIN_SNAPSHOT_FREQUENCY,
     DEFAULT_TRAIN_SNAPSHOT_RESTART_TEMPLATE,
     N_DRAWS,
@@ -31,13 +31,14 @@ from GPErks.train.snapshot import (
     SnapshottingCriterion,
 )
 from GPErks.train.train_stats import TrainStats, load_train_stats_from_file
+from GPErks.train.trainable import Trainable
 from GPErks.utils.array import tensorize
 from GPErks.utils.metrics import get_metric_name
 
 log = get_logger()
 
 
-class GPEmulator:
+class GPEmulator(Trainable):
     def __init__(
         self,
         experiment: GPExperiment,
@@ -48,14 +49,13 @@ class GPEmulator:
         self.device: torch.device = torch.device(device)
         self.learn_noise: bool = experiment.learn_noise
 
+        self.model: gpytorch.models.ExactGP = experiment.model
         if not self.learn_noise:
             self.model.likelihood.noise_covar.register_constraint(
                 "raw_noise", gpytorch.constraints.GreaterThan(1e-6)
             )
             self.model.likelihood.noise = 1e-4
             self.model.likelihood.noise_covar.raw_noise.requires_grad_(False)
-
-        self.model: gpytorch.models.ExactGP = experiment.model
         self.init_state = deepcopy(self.model.state_dict())
 
         self.metrics: List[torchmetrics.Metric] = experiment.metrics
@@ -68,15 +68,15 @@ class GPEmulator:
     def train(
         self,
         optimizer,
-        early_stopping_criterion=NoEarlyStoppingCriterion(
+        early_stopping_criterion: EarlyStoppingCriterion = NoEarlyStoppingCriterion(
             DEFAULT_TRAIN_MAX_EPOCH
         ),
-        snapshotting_criterion=EveryNEpochsSnapshottingCriterion(
+        snapshotting_criterion: SnapshottingCriterion = EveryNEpochsSnapshottingCriterion(
             posix_path(
                 DEFAULT_TRAIN_SNAPSHOT_DIR,
                 DEFAULT_TRAIN_SNAPSHOT_RESTART_TEMPLATE,
             ),
-            DEFAULT_TRAIN_SNAPSHOT_FILE_TEMPLATE,
+            DEFAULT_TRAIN_SNAPSHOT_EPOCH_TEMPLATE,
             DEFAULT_TRAIN_SNAPSHOT_FREQUENCY,
         ),
     ):

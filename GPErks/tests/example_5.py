@@ -15,6 +15,7 @@ from GPErks.constants import HEIGHT, WIDTH
 from GPErks.gp.data.dataset import Dataset
 from GPErks.gp.experiment import GPExperiment
 from GPErks.log.logger import get_logger
+from GPErks.perks.cross_validation import KFoldCrossValidation
 from GPErks.perks.diagnostics import Diagnostics
 from GPErks.perks.gsa import SobolGSA
 from GPErks.perks.inference import Inference
@@ -36,7 +37,7 @@ from GPErks.utils.test_functions import forrester
 log = get_logger()
 
 
-def main(early_stopping_criterion, X_train, y_train, X_val=None, y_val=None):
+def main():
     seed = 8
     set_seed(seed)  # reproducible sampling
 
@@ -44,6 +45,10 @@ def main(early_stopping_criterion, X_train, y_train, X_val=None, y_val=None):
     ## load dataset
     ##========================================================================
     path_to_data = "data/nkmodel/"
+    X_train = np.loadtxt(path_to_data + "X_train.txt", dtype=float)
+    y_train = np.loadtxt(path_to_data + "y_train.txt", dtype=float)
+    X_val = None
+    y_val = None
     X_test = np.loadtxt(path_to_data + "X_test.txt", dtype=float)
     y_test = np.loadtxt(path_to_data + "y_test.txt", dtype=float)
 
@@ -53,26 +58,16 @@ def main(early_stopping_criterion, X_train, y_train, X_val=None, y_val=None):
         target_label_idx
     ]
 
-    if X_val is not None and y_val is not None:
-        dataset = Dataset(
-            X_train,
-            y_train,
-            X_val=X_val,
-            y_val=y_val,
-            X_test=X_test,
-            y_test=y_test,
-            x_labels=xlabels,
-            y_label=ylabel,
-        )
-    else:
-        dataset = Dataset(
-            X_train,
-            y_train,
-            X_test=X_test,
-            y_test=y_test,
-            x_labels=xlabels,
-            y_label=ylabel,
-        )
+    dataset = Dataset(
+        X_train,
+        y_train,
+        X_val=X_test,
+        y_val=y_test,
+        X_test=X_test,
+        y_test=y_test,
+        x_labels=xlabels,
+        y_label=ylabel,
+    )
 
     ##========================================================================
     ## define experiment options
@@ -90,7 +85,7 @@ def main(early_stopping_criterion, X_train, y_train, X_val=None, y_val=None):
         likelihood,
         mean_function,
         kernel,
-        n_restarts=1,
+        n_restarts=2,
         metrics=metrics,
         seed=seed,  # reproducible training
     )
@@ -99,7 +94,8 @@ def main(early_stopping_criterion, X_train, y_train, X_val=None, y_val=None):
     ## define training options
     ##========================================================================
     optimizer = torch.optim.Adam(experiment.model.parameters(), lr=0.1)
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    # device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = "cpu"
 
     here = os.path.abspath(os.path.dirname(__file__))
     example_name = Path(__file__).name.replace(".py", "")
@@ -110,52 +106,22 @@ def main(early_stopping_criterion, X_train, y_train, X_val=None, y_val=None):
         "epoch_{epoch}.pth",
     )
 
-    ##========================================================================
-    ## train model
-    ##========================================================================
-    emul = GPEmulator(experiment, device)
-    best_model, best_train_stats = emul.train(
-        optimizer,
-        early_stopping_criterion,
-        snapshotting_criterion,
-    )
+    KFoldCrossValidation(experiment, ["cpu"], 5, 5).train(optimizer)
 
-    inference = Inference(emul)
-    inference.summary()
-
-    return best_train_stats.best_epoch
+    # ##========================================================================
+    # ## train model
+    # ##========================================================================
+    # emul = GPEmulator(experiment, device)
+    # best_model, best_train_stats = emul.train(
+    #     optimizer,
+    #     early_stopping_criterion,
+    #     snapshotting_criterion,
+    # )
+    #
+    # inference = Inference(emul)
+    # inference.summary()
+    # return best_train_stats.best_epoch
 
 
 if __name__ == "__main__":
-    path_to_data = "data/nkmodel/"
-    X = np.loadtxt(path_to_data + "X_train.txt", dtype=float)
-    y = np.loadtxt(path_to_data + "y_train.txt", dtype=float)
-
-    FOLD = 5
-    kf = KFold(n_splits=FOLD, shuffle=False, random_state=None)
-
-    max_epochs = 500
-    early_stopping_criterion = UPEarlyStoppingCriterion(
-        max_epochs,
-        strip_length=5,
-        successive_strips=4,
-    )
-
-    inputs = {
-        split: (
-            early_stopping_criterion,
-            X[idx_train],
-            y[idx_train],
-            X[idx_val],
-            y[idx_val],
-        )
-        for split, (idx_train, idx_val) in enumerate(kf.split(X))
-    }
-    outputs = execute_task_in_parallel(main, inputs)
-
-    epochs = [outputs[i] for i in range(FOLD)]
-    mean_epoch = int(np.mean(epochs))
-    print(mean_epoch, epochs)
-
-    early_stopping_criterion = NoEarlyStoppingCriterion(mean_epoch)
-    main(early_stopping_criterion, X, y)
+    main()
