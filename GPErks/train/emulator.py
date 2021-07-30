@@ -10,13 +10,26 @@ import numpy
 import torch
 import torchmetrics
 
-from GPErks.constants import N_DRAWS
+from GPErks.constants import (
+    DEFAULT_TRAIN_MAX_EPOCH,
+    DEFAULT_TRAIN_SNAPSHOT_DIR,
+    DEFAULT_TRAIN_SNAPSHOT_FILE_TEMPLATE,
+    DEFAULT_TRAIN_SNAPSHOT_FREQUENCY,
+    DEFAULT_TRAIN_SNAPSHOT_RESTART_TEMPLATE,
+    N_DRAWS,
+)
 from GPErks.gp.data.scaled_data import ScaledData
 from GPErks.gp.experiment import GPExperiment
 from GPErks.log.logger import get_logger
 from GPErks.serialization.path import posix_path
-from GPErks.train.early_stop import EarlyStoppingCriterion
-from GPErks.train.snapshot import SnapshottingCriterion
+from GPErks.train.early_stop import (
+    EarlyStoppingCriterion,
+    NoEarlyStoppingCriterion,
+)
+from GPErks.train.snapshot import (
+    EveryNEpochsSnapshottingCriterion,
+    SnapshottingCriterion,
+)
 from GPErks.train.train_stats import TrainStats, load_train_stats_from_file
 from GPErks.utils.array import tensorize
 from GPErks.utils.metrics import get_metric_name
@@ -55,8 +68,17 @@ class GPEmulator:
     def train(
         self,
         optimizer,
-        early_stopping_criterion,
-        snapshotting_criterion,
+        early_stopping_criterion=NoEarlyStoppingCriterion(
+            DEFAULT_TRAIN_MAX_EPOCH
+        ),
+        snapshotting_criterion=EveryNEpochsSnapshottingCriterion(
+            posix_path(
+                DEFAULT_TRAIN_SNAPSHOT_DIR,
+                DEFAULT_TRAIN_SNAPSHOT_RESTART_TEMPLATE,
+            ),
+            DEFAULT_TRAIN_SNAPSHOT_FILE_TEMPLATE,
+            DEFAULT_TRAIN_SNAPSHOT_FREQUENCY,
+        ),
     ):
         log.info("Training emulator...")
 
