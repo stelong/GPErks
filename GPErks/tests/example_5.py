@@ -26,7 +26,7 @@ from GPErks.train.early_stop import (
     NoEarlyStoppingCriterion,
     PkEarlyStoppingCriterion,
     PQEarlyStoppingCriterion,
-    UPEarlyStoppingCriterion,
+    UPEarlyStoppingCriterion, SimpleEarlyStoppingCriterion,
 )
 from GPErks.train.emulator import GPEmulator
 from GPErks.train.snapshot import EveryEpochSnapshottingCriterion
@@ -63,8 +63,8 @@ def main():
         y_train,
         X_val=X_test,
         y_val=y_test,
-        X_test=X_test,
-        y_test=y_test,
+        # X_test=X_test,
+        # y_test=y_test,
         x_labels=xlabels,
         y_label=ylabel,
     )
@@ -85,7 +85,7 @@ def main():
         likelihood,
         mean_function,
         kernel,
-        n_restarts=2,
+        n_restarts=3,
         metrics=metrics,
         seed=seed,  # reproducible training
     )
@@ -106,20 +106,34 @@ def main():
         "epoch_{epoch}.pth",
     )
 
-    KFoldCrossValidation(experiment, ["cpu"], 5, 5).train(optimizer)
+    early_stopping_criterion = PkEarlyStoppingCriterion(
+        1000, alpha=0.001, patience=8, strip_length=20
+    )
+    # 
+    # early_stopping_criterion = SimpleEarlyStoppingCriterion(
+    #     1000, patience=8
+    # )
+
+
+    KFoldCrossValidation(experiment, ["cpu"], 2, 1).train(optimizer, 
+                                                          # early_stopping_criterion=early_stopping_criterion
+                                                          )
+    
 
     # ##========================================================================
     # ## train model
     # ##========================================================================
-    # emul = GPEmulator(experiment, device)
-    # best_model, best_train_stats = emul.train(
-    #     optimizer,
-    #     early_stopping_criterion,
-    #     snapshotting_criterion,
-    # )
+    emul = GPEmulator(experiment, device)
+    best_model, best_train_stats = emul.train(
+        optimizer,
+        early_stopping_criterion,
+        snapshotting_criterion,
+    )
+    best_train_stats.plot()
     #
-    # inference = Inference(emul)
-    # inference.summary()
+    inference = Inference(emul)
+    inference.summary()
+    print(inference.scores_dct)
     # return best_train_stats.best_epoch
 
 

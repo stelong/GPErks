@@ -15,6 +15,8 @@ from GPErks.constants import (
 )
 from GPErks.gp.data.dataset import Dataset
 from GPErks.gp.experiment import GPExperiment
+from GPErks.log.logger import get_logger
+from GPErks.perks.inference import Inference
 from GPErks.serialization.path import posix_path
 from GPErks.train.early_stop import (
     EarlyStoppingCriterion,
@@ -27,6 +29,9 @@ from GPErks.train.snapshot import (
 )
 from GPErks.train.trainable import Trainable
 from GPErks.utils.concurrency import execute_task_in_parallel
+
+
+log = get_logger()
 
 
 class KFoldCrossValidation(Trainable):
@@ -83,10 +88,12 @@ class KFoldCrossValidation(Trainable):
                 zip(cycle(self.devices), self.split_generator.split(X))
             )
         }
-        results = execute_task_in_parallel(
+        for split, (best_model, best_train_stats, inference_scores_dct) in execute_task_in_parallel(
             self._train_split, splits, self.max_workers
-        )
-        print(results)
+        ).items():
+            print(split)
+            print(inference_scores_dct)
+            best_train_stats.plot()
 
     def _train_split(
         self,
@@ -100,6 +107,7 @@ class KFoldCrossValidation(Trainable):
         X_test,
         y_test,
     ):
+        log.info(f"Running K-fold split {i}...")
         dataset = Dataset(
             X_train,
             y_train,
@@ -139,4 +147,8 @@ class KFoldCrossValidation(Trainable):
             early_stopping_criterion,
             snapshotting_criterion,
         )
-        return best_model, best_train_stats
+        best_train_stats.plot()
+        log.info(f"Run K-fold split {i}.")
+        inference = Inference(emulator)
+        inference.summary()
+        return best_model, best_train_stats, inference.scores_dct
