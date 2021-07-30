@@ -5,3 +5,4 @@
 # doc, with step-by-step
 # Handle nested object e.g. Product Kernel, Sum while (de)serializing
 # Extend Plottable whenever possible and implement default plot()
+# pip-tools-multi for requirements
