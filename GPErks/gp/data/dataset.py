@@ -134,9 +134,9 @@ class Dataset(Plottable):
             X_val = qmc.scale(X_val, l_bounds, u_bounds)
             X_test = qmc.scale(X_test, l_bounds, u_bounds)
 
-        y_train = f(X_train)
-        y_val = f(X_val)
-        y_test = f(X_test)
+        y_train = np.squeeze(f(X_train))
+        y_val = np.squeeze(f(X_val))
+        y_test = np.squeeze(f(X_test))
 
         return cls(
             X_train,
