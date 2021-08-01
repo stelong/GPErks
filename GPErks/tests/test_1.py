@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import os
 import sys
 from pathlib import Path
@@ -39,11 +38,11 @@ def main():
     # ================================================================
     # (2) Building example train, test, val sets
     # ================================================================
-    loadpath = sys.argv[1].rstrip("/") + "/"
+    loadpath = "data/"
     X = np.loadtxt(loadpath + "X.txt", dtype=float)
     Y = np.loadtxt(loadpath + "Y.txt", dtype=float)
 
-    target_label_idx = int(sys.argv[2])
+    target_label_idx = 0
     y = np.copy(Y[:, target_label_idx])
 
     X_, X_test, y_, y_test = train_test_split(
@@ -70,7 +69,7 @@ def main():
     # ================================================================
     # (3) Training GPE
     # ================================================================
-    savepath = sys.argv[3].rstrip("/") + "/" + str(target_label_idx) + "/"
+    savepath = "tmp/" + str(target_label_idx) + "/"
     Path(savepath).mkdir(parents=True, exist_ok=True)
 
     likelihood = gpytorch.likelihoods.GaussianLikelihood()
