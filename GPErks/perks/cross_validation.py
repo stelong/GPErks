@@ -93,7 +93,7 @@ class KFoldCrossValidation(Trainable):
         ).items():
             print(split)
             print(inference_scores_dct)
-            best_train_stats.plot()
+            best_train_stats.plot(with_early_stopping_criterion=True)
 
     def _train_split(
         self,
