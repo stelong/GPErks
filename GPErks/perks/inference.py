@@ -38,7 +38,7 @@ class Inference:
             index=metrics_names,
             columns=["Score"],
         )
-        # print(df)
+        print(df)
 
     def plot(self):
         fig, axis = plt.subplots(1, 1, figsize=(2 * WIDTH, 2 * HEIGHT / 3))
