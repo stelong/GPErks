@@ -30,7 +30,6 @@ from GPErks.train.snapshot import (
 from GPErks.train.trainable import Trainable
 from GPErks.utils.concurrency import execute_task_in_parallel
 
-
 log = get_logger()
 
 
@@ -88,7 +87,11 @@ class KFoldCrossValidation(Trainable):
                 zip(cycle(self.devices), self.split_generator.split(X))
             )
         }
-        for split, (best_model, best_train_stats, inference_scores_dct) in execute_task_in_parallel(
+        for split, (
+            best_model,
+            best_train_stats,
+            inference_scores_dct,
+        ) in execute_task_in_parallel(
             self._train_split, splits, self.max_workers
         ).items():
             print(split)
