@@ -1,5 +1,5 @@
 from itertools import combinations
-from typing import Optional
+from typing import Callable, Optional
 
 import numpy as np
 import pandas as pd
@@ -39,7 +39,16 @@ class SobolGSA(Plottable):
         self.index_i = dataset.x_labels
         self.index_ij = [list(c) for c in combinations(self.index_i, 2)]
         self.ylabel = dataset.y_label
-        self.minmax = get_minmax(dataset.X_train)
+        self.minmax = (
+            get_minmax(dataset.X_train)
+            if (dataset.l_bounds is None and dataset.u_bounds is None)
+            else np.hstack(
+                (
+                    np.array(dataset.l_bounds).reshape(-1, 1),
+                    np.array(dataset.u_bounds).reshape(-1, 1),
+                )
+            )
+        )
 
         self.ST = np.zeros((0, self.d), dtype=float)
         self.S1 = np.zeros((0, self.d), dtype=float)
@@ -72,9 +81,12 @@ class SobolGSA(Plottable):
         Y = emulator.sample(X, n_draws)
         self._estimate_Sobol_indices_from_evaluations(problem, Y)
 
-    def estimate_Sobol_indices_from_model_evaluations(self, y):
+    def estimate_Sobol_indices_with_simulator(
+        self,
+        f: Callable[[np.ndarray], np.ndarray],
+    ):
         problem, X = self.assemble_Saltelli_space()
-        Y = np.squeeze(y).reshape(1, -1)
+        Y = np.squeeze(f(X)).reshape(1, -1)
         self._estimate_Sobol_indices_from_evaluations(problem, Y)
 
     def _estimate_Sobol_indices_from_evaluations(self, problem, Y):
