@@ -57,20 +57,20 @@ def main(factor):
     ##========================================================================
     ## test functions for analytic Sobol' indices
     ##========================================================================
-    D = 3
-    f = lambda X: np.array([Ishigami(x) for x in X])
-    l_bounds, u_bounds = D * [-np.pi], D * [np.pi]
-    df_STi_theo, df_Si_theo, df_Sij_theo = Ishigami_theoretical_Si()
+    # D = 3
+    # f = lambda X: np.array([Ishigami(x) for x in X])
+    # l_bounds, u_bounds = D * [-np.pi], D * [np.pi]
+    # df_STi_theo, df_Si_theo, df_Sij_theo = Ishigami_theoretical_Si()
 
-    # D = 8
-    # a = np.array([0, 1, 4.5, 9, 99, 99, 99, 99])
-    # delta = np.random.rand(D)
-    # alpha = np.ones_like(a)
-    # f = lambda X: SobolGstar(X, a, delta, alpha)
-    # l_bounds, u_bounds = None, None
-    # df_STi_theo, df_Si_theo, df_Sij_theo = SobolGstar_theoretical_Si(
-    #     a, delta, alpha
-    # )
+    D = 8
+    a = np.array([0, 1, 4.5, 9, 99, 99, 99, 99])
+    delta = np.random.rand(D)
+    alpha = np.ones_like(a)
+    f = lambda X: np.array([SobolGstar(x, a, delta, alpha) for x in X])
+    l_bounds, u_bounds = D * [0], D * [1]
+    df_STi_theo, df_Si_theo, df_Sij_theo = SobolGstar_theoretical_Si(
+        a, delta, alpha
+    )
 
     ##========================================================================
     ## build training, validation and testing datasets
@@ -101,12 +101,8 @@ def main(factor):
     ## define experiment options
     ##========================================================================
     likelihood = gpytorch.likelihoods.GaussianLikelihood()
-
-    print(dataset.input_size)
-
-    input_size = dataset.input_size
-    mean_function = LinearMean(input_size=input_size)
-    kernel = ScaleKernel(RBFKernel(ard_num_dims=input_size))
+    mean_function = LinearMean(input_size=dataset.input_size)
+    kernel = ScaleKernel(RBFKernel(ard_num_dims=dataset.input_size))
 
     metrics = [R2Score(), MeanSquaredError()]
 
@@ -157,11 +153,7 @@ def main(factor):
     ## train model
     ##========================================================================
     emul = GPEmulator(experiment, device)
-    (
-        best_model,
-        best_train_stats,
-        best_early_stopping_criterion_evaluations,
-    ) = emul.train(
+    best_model, best_train_stats = emul.train(
         optimizer,
         early_stopping_criterion,
         snapshotting_criterion,
@@ -170,31 +162,30 @@ def main(factor):
     ##========================================================================
     ## training stats, diagnostics, inference
     ##========================================================================
-    best_train_stats.plot(
-        early_stopping_criterion_evaluations=best_early_stopping_criterion_evaluations
-    )
+    # best_train_stats.plot(with_early_stopping_criterion=True)
 
-    diagnostics = Diagnostics(emul)
-    diagnostics.summary()
-    diagnostics.plot()
+    # diagnostics = Diagnostics(emul)
+    # diagnostics.summary()
+    # diagnostics.plot()
 
-    inference = Inference(emul)
-    inference.summary()
-    inference.plot()
+    # inference = Inference(emul)
+    # inference.summary()
+    # inference.plot()
 
     ##========================================================================
     ## gsa: analytic solution vs GPE-based GSA
     ##========================================================================
-    gsa = SobolGSA(emul, n=1024, seed=seed)
-    gsa.estimate_Sobol_indices(n_draws=1000)
+    gsa = SobolGSA(dataset, n=2 * 1024, seed=seed)
+    gsa.estimate_Sobol_indices_with_emulator(emul, n_draws=1000)
+    # gsa.estimate_Sobol_indices_with_simulator(f)
     # gsa.correct_Sobol_indices(threshold=0.01)
     # gsa.plot()
-    gsa.summary()
+    # gsa.summary()
 
-    print("\n================\n")
-    print(df_STi_theo)
-    print(df_Si_theo)
-    print(df_Sij_theo)
+    # print("\n================\n")
+    # print(df_STi_theo)
+    # print(df_Si_theo)
+    # print(df_Sij_theo)
 
     df_ST = pd.DataFrame(data=gsa.ST, columns=gsa.index_i)
     df_S1 = pd.DataFrame(data=gsa.S1, columns=gsa.index_i)
@@ -250,5 +241,5 @@ def main(factor):
 
 
 if __name__ == "__main__":
-    factor = 10
+    factor = 20
     main(factor)
