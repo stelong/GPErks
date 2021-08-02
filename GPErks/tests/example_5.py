@@ -26,7 +26,8 @@ from GPErks.train.early_stop import (
     NoEarlyStoppingCriterion,
     PkEarlyStoppingCriterion,
     PQEarlyStoppingCriterion,
-    UPEarlyStoppingCriterion, SimpleEarlyStoppingCriterion,
+    SimpleEarlyStoppingCriterion,
+    UPEarlyStoppingCriterion,
 )
 from GPErks.train.emulator import GPEmulator
 from GPErks.train.snapshot import EveryEpochSnapshottingCriterion
@@ -109,16 +110,15 @@ def main():
     early_stopping_criterion = PkEarlyStoppingCriterion(
         1000, alpha=0.001, patience=8, strip_length=20
     )
-    # 
+    #
     # early_stopping_criterion = SimpleEarlyStoppingCriterion(
     #     1000, patience=8
     # )
 
-
-    KFoldCrossValidation(experiment, ["cpu"], 2, 1).train(optimizer, 
-                                                          # early_stopping_criterion=early_stopping_criterion
-                                                          )
-    
+    KFoldCrossValidation(experiment, ["cpu"], 2, 1).train(
+        optimizer,
+        # early_stopping_criterion=early_stopping_criterion
+    )
 
     # ##========================================================================
     # ## train model
