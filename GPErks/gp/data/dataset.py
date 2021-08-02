@@ -21,6 +21,8 @@ class Dataset(Plottable):
         y_test: Optional[np.ndarray] = None,
         x_labels: Optional[List[str]] = None,
         y_label: Optional[str] = None,
+        l_bounds: Optional[List[float]] = None,
+        u_bounds: Optional[List[float]] = None,
     ):
         super(Dataset, self).__init__()
         self.X_train: np.ndarray = X_train
@@ -39,9 +41,12 @@ class Dataset(Plottable):
         self.x_labels: List[str] = (
             x_labels
             if x_labels
-            else [f"p{i+1}" for i in range(self.input_size)]
+            else [f"X{i+1}" for i in range(self.input_size)]
         )
-        self.y_label: str = y_label if y_label else "Output"
+        self.y_label: str = y_label if y_label else "y"
+
+        self.l_bounds = l_bounds
+        self.u_bounds = u_bounds
 
     def plot(self, plot_options: PlotOptions = PlotOptions()):
         self.plot_train()
@@ -107,8 +112,8 @@ class Dataset(Plottable):
         f: Callable[[np.ndarray], np.ndarray],
         d: int,
         n_train_samples: int,
-        n_val_samples: int,
-        n_test_samples: int,
+        n_val_samples: Optional[int] = None,
+        n_test_samples: Optional[int] = None,
         design: str = "lhs",
         seed: Optional[int] = None,
         l_bounds: Optional[List[float]] = None,
@@ -126,17 +131,25 @@ class Dataset(Plottable):
             )
 
         X_train = sampler.random(n=n_train_samples)
-        X_val = sampler.random(n=n_val_samples)
-        X_test = sampler.random(n=n_test_samples)
-
         if l_bounds is not None and u_bounds is not None:
             X_train = qmc.scale(X_train, l_bounds, u_bounds)
-            X_val = qmc.scale(X_val, l_bounds, u_bounds)
-            X_test = qmc.scale(X_test, l_bounds, u_bounds)
-
         y_train = np.squeeze(f(X_train))
-        y_val = np.squeeze(f(X_val))
-        y_test = np.squeeze(f(X_test))
+
+        if n_val_samples is not None:
+            X_val = sampler.random(n=n_val_samples)
+            if l_bounds is not None and u_bounds is not None:
+                X_val = qmc.scale(X_val, l_bounds, u_bounds)
+            y_val = np.squeeze(f(X_val))
+        else:
+            X_val, y_val = None, None
+
+        if n_test_samples is not None:
+            X_test = sampler.random(n=n_test_samples)
+            if l_bounds is not None and u_bounds is not None:
+                X_test = qmc.scale(X_test, l_bounds, u_bounds)
+            y_test = np.squeeze(f(X_test))
+        else:
+            X_test, y_test = None, None
 
         return cls(
             X_train,
@@ -145,4 +158,6 @@ class Dataset(Plottable):
             y_val=y_val,
             X_test=X_test,
             y_test=y_test,
+            l_bounds=l_bounds,
+            u_bounds=u_bounds,
         )
