@@ -11,12 +11,12 @@ import torch
 import torchmetrics
 
 from GPErks.constants import (
+    DEFAULT_GSA_N_DRAWS,
     DEFAULT_TRAIN_MAX_EPOCH,
     DEFAULT_TRAIN_SNAPSHOT_DIR,
     DEFAULT_TRAIN_SNAPSHOT_EPOCH_TEMPLATE,
     DEFAULT_TRAIN_SNAPSHOT_FREQUENCY,
     DEFAULT_TRAIN_SNAPSHOT_RESTART_TEMPLATE,
-    N_DRAWS,
 )
 from GPErks.gp.data.scaled_data import ScaledData
 from GPErks.gp.experiment import GPExperiment
@@ -387,7 +387,7 @@ class GPEmulator(Trainable):
 
         return output
 
-    def sample(self, X_new: numpy.ndarray, n_draws: int = N_DRAWS):
+    def sample(self, X_new: numpy.ndarray, n_draws: int = DEFAULT_GSA_N_DRAWS):
         self.model.eval()
         self.model.likelihood.eval()
 
