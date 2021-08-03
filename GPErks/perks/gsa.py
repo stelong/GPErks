@@ -8,13 +8,13 @@ from SALib.sample import saltelli
 from scipy.special import binom
 
 from GPErks.constants import (
-    CONF_LEVEL,
-    N_BOOTSTRAP,
-    N_DRAWS,
-    SKIP_VALUES,
-    THRESHOLD,
-    N,
-    Z,
+    DEFAULT_GSA_CONF_LEVEL,
+    DEFAULT_GSA_N,
+    DEFAULT_GSA_N_BOOTSTRAP,
+    DEFAULT_GSA_N_DRAWS,
+    DEFAULT_GSA_SKIP_VALUES,
+    DEFAULT_GSA_THRESHOLD,
+    DEFAULT_GSA_Z,
 )
 from GPErks.gp.data.dataset import Dataset
 from GPErks.plot.gsa import boxplot, donut, heatmap, network
@@ -28,7 +28,7 @@ class SobolGSA(Plottable):
     def __init__(
         self,
         dataset: Dataset,
-        n: int = N,
+        n: int = DEFAULT_GSA_N,
         seed: Optional[int] = None,
     ):
         super(SobolGSA, self).__init__()
@@ -68,14 +68,14 @@ class SobolGSA(Plottable):
             problem,
             self.n,
             calc_second_order=True,
-            skip_values=SKIP_VALUES,
+            skip_values=DEFAULT_GSA_SKIP_VALUES,
         )
         return problem, X
 
     def estimate_Sobol_indices_with_emulator(
         self,
         emulator: GPEmulator,
-        n_draws: int = N_DRAWS,
+        n_draws: int = DEFAULT_GSA_N_DRAWS,
     ):
         problem, X = self.assemble_Saltelli_space()
         Y = emulator.sample(X, n_draws)
@@ -95,8 +95,8 @@ class SobolGSA(Plottable):
                 problem,
                 y,
                 calc_second_order=True,
-                num_resamples=N_BOOTSTRAP,
-                conf_level=CONF_LEVEL,
+                num_resamples=DEFAULT_GSA_N_BOOTSTRAP,
+                conf_level=DEFAULT_GSA_CONF_LEVEL,
                 parallel=False,
                 n_processors=None,
                 seed=self.seed,
@@ -110,19 +110,25 @@ class SobolGSA(Plottable):
             )
 
             self.ST_std = np.vstack(
-                (self.ST_std, T_Si["ST_conf"].reshape(1, -1) / Z)
+                (self.ST_std, T_Si["ST_conf"].reshape(1, -1) / DEFAULT_GSA_Z)
             )
             self.S1_std = np.vstack(
-                (self.S1_std, first_Si["S1_conf"].reshape(1, -1) / Z)
+                (
+                    self.S1_std,
+                    first_Si["S1_conf"].reshape(1, -1) / DEFAULT_GSA_Z,
+                )
             )
             self.S2_std = np.vstack(
                 (
                     self.S2_std,
-                    (np.array(second_Si["S2_conf"]).reshape(1, -1) / Z),
+                    (
+                        np.array(second_Si["S2_conf"]).reshape(1, -1)
+                        / DEFAULT_GSA_Z
+                    ),
                 )
             )
 
-    def correct_Sobol_indices(self, threshold: float = THRESHOLD):
+    def correct_Sobol_indices(self, threshold: float = DEFAULT_GSA_THRESHOLD):
         for S in [self.ST, self.S1, self.S2]:
             Q1 = np.percentile(S, q=25, axis=0)
             l = np.where(Q1 < threshold)[0]
