@@ -1,3 +1,4 @@
+import os
 import random
 from typing import Optional
 
@@ -7,11 +8,16 @@ from scipy.stats import qmc
 
 
 def set_seed(seed: Optional[int] = None):
+    # ref: https://www.kaggle.com/lars123/neural-tangent-kernel-2
     if seed is None:
         return
     random.seed(seed)
+    os.environ['PYTHONASSEED'] = str(seed)
     numpy.random.seed(seed)
     torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = True
 
 
 class RandomEngine(qmc.QMCEngine):
