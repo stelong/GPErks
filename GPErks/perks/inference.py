@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from GPErks.constants import HEIGHT, WIDTH
+from GPErks.constants import DEFAULT_INFERENCE_GRID_DIM, HEIGHT, WIDTH
 from GPErks.train.emulator import GPEmulator
 from GPErks.utils.array import get_minmax, tensorize
 from GPErks.utils.metrics import get_metric_name
@@ -82,54 +82,88 @@ class Inference:
         plt.show()
 
     def interpolate_2Dgrid(
-        self, f: Optional[Callable[[np.ndarray], np.ndarray]] = None
+        self,
+        f: Optional[Callable[[np.ndarray], np.ndarray]] = None,
+        grid_dim: int = DEFAULT_INFERENCE_GRID_DIM,
     ):
         if self.X_test.shape[1] != 2:
             raise ValueError("Not a 2D input!")
 
-        n = 50
         X_train = self.emulator.experiment.dataset.X_train
         minmax = get_minmax(X_train)
 
-        x1 = np.linspace(minmax[0, 0], minmax[0, 1], n)
-        x2 = np.linspace(minmax[1, 0], minmax[1, 1], n)
+        x1 = np.linspace(minmax[0, 0], minmax[0, 1], grid_dim)
+        x2 = np.linspace(minmax[1, 0], minmax[1, 1], grid_dim)
         x1, x2 = np.meshgrid(x1, x2)
         X_grid = np.hstack((x1.reshape(-1, 1), x2.reshape(-1, 1)))
 
         y_pred_mean, y_pred_std = self.emulator.predict(X_grid)
-        y_pred_mean = y_pred_mean.reshape(n, n)
-        y_pred_std = y_pred_std.reshape(n, n)
+        y_pred_mean = y_pred_mean.reshape(grid_dim, grid_dim)
+        y_pred_std = y_pred_std.reshape(grid_dim, grid_dim)
 
-        n_subplots = 2
+        n_subplots = 1
+        t0 = (0,)
+        t1 = (1,)
         if f is not None:
-            n_subplots = 3
+            n_subplots += 1
+            t0 = (0,) + t0
+            t1 = (0,) + t1
+
             y_grid = f(X_grid)
-            y_grid = y_grid.reshape(n, n)
-            err = np.abs(np.ones((n, n), dtype=float) - y_pred_mean / y_grid)
+            y_grid = y_grid.reshape(grid_dim, grid_dim)
+            err = np.abs(
+                np.ones((grid_dim, grid_dim), dtype=float)
+                - y_pred_mean / y_grid
+            )
 
         fig, axes = plt.subplots(
-            1, n_subplots, figsize=(2 * WIDTH, 2 * HEIGHT / 6)
+            n_subplots, 2, figsize=(2 * WIDTH, 2 * HEIGHT / (6 / n_subplots))
         )
 
-        PC0 = axes[0].pcolormesh(
-            x1, x2, y_pred_mean, cmap=plt.get_cmap("viridis"), shading="auto"
+        PC0 = axes[t0].pcolormesh(
+            x1,
+            x2,
+            y_pred_mean,
+            cmap=plt.get_cmap("viridis"),
+            vmin=y_pred_mean.min(),
+            vmax=y_pred_mean.max(),
+            shading="auto",
         )
-        cbar0 = fig.colorbar(PC0, ax=axes[0])
+        cbar0 = fig.colorbar(PC0, ax=axes[t0])
         cbar0.set_label("GPE posterior mean", fontsize=12)
 
-        PC1 = axes[1].pcolormesh(
+        PC1 = axes[t1].pcolormesh(
             x1, x2, y_pred_std, cmap=plt.get_cmap("viridis"), shading="auto"
         )
-        cbar1 = fig.colorbar(PC1, ax=axes[1])
+        cbar1 = fig.colorbar(PC1, ax=axes[t1])
         cbar1.set_label("GPE posterior std", fontsize=12)
 
-        if n_subplots == 3:
-            PC2 = axes[2].pcolormesh(
+        if n_subplots == 2:
+            PC2 = axes[1, 0].pcolormesh(
+                x1,
+                x2,
+                y_grid,
+                cmap=plt.get_cmap("viridis"),
+                vmin=y_pred_mean.min(),
+                vmax=y_pred_mean.max(),
+                shading="auto",
+            )
+            cbar2 = fig.colorbar(PC2, ax=axes[1, 0])
+            cbar2.set_label("True value", fontsize=12)
+
+            PC3 = axes[1, 1].pcolormesh(
                 x1, x2, err, cmap=plt.get_cmap("magma"), shading="auto"
             )
-            cbar2 = fig.colorbar(PC2, ax=axes[2])
-            cbar2.set_label("Relative Error", fontsize=12)
-            axes[2].scatter(X_train[:, 0], X_train[:, 1], fc="r", ec="r")
+            cbar3 = fig.colorbar(PC3, ax=axes[1, 1])
+            cbar3.set_label("Relative Error", fontsize=12)
+            axes[1, 1].scatter(
+                X_train[:, 0],
+                X_train[:, 1],
+                fc="r",
+                ec="r",
+                label="training data",
+            )
+            axes[1, 1].legend(loc="upper center")
 
         fig.tight_layout()
         plt.show()
