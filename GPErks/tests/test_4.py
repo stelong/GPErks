@@ -33,26 +33,16 @@ def main():
     # ================================================================
     # (2) Building example training, validation and test datasets
     # ================================================================
-    # fig, axis = plt.subplots(1, 1)
-    # axis.scatter(X_train[:, 0], X_train[:, 1], fc="C0", ec="C0", label="train")
-    # axis.scatter(X_val[:, 0], X_val[:, 1], fc="C1", ec="C1", label="val")
-    # axis.scatter(X_test[:, 0], X_test[:, 1], fc="C2", ec="C2", label="test")
-    # plt.legend()
-    # plt.show()
-
-    D = 2
-    factor = 10
     f = lambda X: np.array([currin_exp(x) for x in X])
-    n_train_samples = factor * D
-    n_val_samples = int(factor / 4 * D)
-    n_test_samples = factor * D
+    D = 2
+    n_train_samples = 20
+    n_test_samples = 25
 
     dataset = Dataset.build_from_function(
         f,
         D,
-        n_train_samples,
-        n_val_samples,
-        n_test_samples,
+        n_train_samples=n_train_samples,
+        n_test_samples=n_test_samples,
         design="lhs",
         seed=8,
     )
@@ -65,7 +55,7 @@ def main():
     input_size = dataset.input_size
     mean_function = LinearMean(input_size=input_size)
     kernel = ScaleKernel(RBFKernel(ard_num_dims=input_size))
-    metrics = [ExplainedVariance(), R2Score(), MeanSquaredError()]
+    metrics = [MeanSquaredError(), R2Score()]
 
     experiment = GPExperiment(
         dataset,
@@ -81,10 +71,10 @@ def main():
 
     optimizer = torch.optim.Adam(experiment.model.parameters(), lr=0.1)
 
-    MAX_EPOCHS = 100
-    early_stopping_criterion = PkEarlyStoppingCriterion(
-        MAX_EPOCHS, alpha=1.0, patience=8, strip_length=20
-    )
+    # MAX_EPOCHS = 1000
+    # early_stopping_criterion = PkEarlyStoppingCriterion(
+    #     MAX_EPOCHS, alpha=0.01, patience=8, strip_length=20
+    # )
     # early_stopping_criterion = GLEarlyStoppingCriterion(
     #     MAX_EPOCHS, alpha=1.0, patience=8
     # )
@@ -97,8 +87,9 @@ def main():
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     emul = GPEmulator(experiment, device)
-    emul.train(optimizer, early_stopping_criterion, snapshotting_criterion)
+    _, best_train_stats = emul.train(optimizer)
 
+    best_train_stats.plot(with_early_stopping_criterion=True)
     # ================================================================
     # (4) Testing trained GPE at new input points (inference)
     # ================================================================
@@ -109,7 +100,7 @@ def main():
     I = Inference(emul)
     I.summary()
     I.plot()
-    I.interpolate_2Dgrid(f)  # only works for 2D inputs
+    I.interpolate_2Dgrid()  # only works for 2D inputs
 
 
 if __name__ == "__main__":

@@ -83,19 +83,15 @@ def main(factor):
     dataset = Dataset.build_from_function(
         f,
         D,
-        n_train_samples,
-        n_val_samples,
-        n_test_samples,
+        n_train_samples=n_train_samples,
+        n_test_samples=n_test_samples,
         design="lhs",
         seed=seed,
         l_bounds=l_bounds,
         u_bounds=u_bounds,
     )
-    dataset.X_val = None
-    dataset.y_val = None
-    dataset.with_val = False
-    # dataset.plot()
-    # dataset.plot_pairwise()
+    dataset.plot()
+    dataset.plot_pairwise()
 
     ##========================================================================
     ## define experiment options
