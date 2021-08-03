@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 from scipy import linalg, stats
 
+from GPErks.constants import HEIGHT, WIDTH
 from GPErks.train.emulator import GPEmulator
 
 
@@ -101,10 +102,8 @@ class Diagnostics:
 
         plt.rcParams.update({"mathtext.default": "regular"})
 
-        width = 5.91667
-        height = 9.36111
         fig, axes = plt.subplots(
-            1, 2, sharey="row", figsize=(2 * width, 2 * height / 4)
+            1, 2, sharey="row", figsize=(2 * WIDTH, 2 * HEIGHT / 4)
         )
 
         axes[0].axhline(-2, c="r", ls="--", lw=0.8)
