@@ -1,0 +1,5 @@
+view_zenith
+LAI
+sl
+lmbd_z
+lambda
