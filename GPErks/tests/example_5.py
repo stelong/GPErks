@@ -39,33 +39,34 @@ log = get_logger()
 
 
 def main():
+    ##========================================================================
+    ## enforce reproducibility
+    ##========================================================================
     seed = 8
-    set_seed(seed)  # reproducible sampling
+    set_seed(seed)
 
     ##========================================================================
     ## load dataset
     ##========================================================================
-    path_to_data = "data/nkmodel/"
-    X_train = np.loadtxt(path_to_data + "X_train.txt", dtype=float)
-    y_train = np.loadtxt(path_to_data + "y_train.txt", dtype=float)
-    X_val = None
-    y_val = None
-    X_test = np.loadtxt(path_to_data + "X_test.txt", dtype=float)
-    y_test = np.loadtxt(path_to_data + "y_test.txt", dtype=float)
-
-    target_label_idx = 0
+    path_to_data = "../../notebooks/data/"
+    X = np.loadtxt(path_to_data + "X.txt", dtype=float)[:100]
+    y = np.loadtxt(path_to_data + "y.txt", dtype=float)[:100]
+    X_, X_test, y_, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=seed
+    )
+    X_train, X_val, y_train, y_val = train_test_split(
+        X_, y_, test_size=0.2, random_state=seed
+    )
     xlabels = read_labels_from_file(path_to_data + "xlabels.txt")
-    ylabel = read_labels_from_file(path_to_data + "ylabels.txt")[
-        target_label_idx
-    ]
+    ylabel = read_labels_from_file(path_to_data + "ylabel.txt")[0]
 
     dataset = Dataset(
         X_train,
         y_train,
-        X_val=X_test,
-        y_val=y_test,
-        # X_test=X_test,
-        # y_test=y_test,
+        X_val=X_val,
+        y_val=y_val,
+        X_test=X_test,
+        y_test=y_test,
         x_labels=xlabels,
         y_label=ylabel,
     )
@@ -74,10 +75,8 @@ def main():
     ## define experiment options
     ##========================================================================
     likelihood = gpytorch.likelihoods.GaussianLikelihood()
-
-    input_size = dataset.input_size
-    mean_function = LinearMean(input_size=input_size)
-    kernel = ScaleKernel(RBFKernel(ard_num_dims=input_size))
+    mean_function = LinearMean(input_size=dataset.input_size)
+    kernel = ScaleKernel(RBFKernel(ard_num_dims=dataset.input_size))
 
     metrics = [R2Score(), MeanSquaredError()]
 
@@ -89,52 +88,30 @@ def main():
         n_restarts=3,
         metrics=metrics,
         seed=seed,  # reproducible training
+        learn_noise=True,
     )
 
     ##========================================================================
     ## define training options
     ##========================================================================
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+
     optimizer = torch.optim.Adam(experiment.model.parameters(), lr=0.1)
-    # device = "cuda" if torch.cuda.is_available() else "cpu"
-    device = "cpu"
-
-    here = os.path.abspath(os.path.dirname(__file__))
-    example_name = Path(__file__).name.replace(".py", "")
-    snapshot_dir = posix_path(here, "snapshot", example_name)
-    os.makedirs(snapshot_dir, exist_ok=True)
-    snapshotting_criterion = EveryEpochSnapshottingCriterion(
-        posix_path(snapshot_dir, "restart_{restart}"),
-        "epoch_{epoch}.pth",
-    )
-
-    early_stopping_criterion = PkEarlyStoppingCriterion(
-        1000, alpha=0.001, patience=8, strip_length=20
-    )
-    #
-    # early_stopping_criterion = SimpleEarlyStoppingCriterion(
-    #     1000, patience=8
+    early_stopping_criterion = SimpleEarlyStoppingCriterion(1000, patience=8)
+    # early_stopping_criterion = PkEarlyStoppingCriterion(
+    #     1000, alpha=0.001, patience=8, strip_length=20
     # )
 
-    KFoldCrossValidation(experiment, ["cpu"], 2, 1).train(
-        optimizer,
-        # early_stopping_criterion=early_stopping_criterion
+    kf = KFoldCrossValidation(experiment, [device], n_splits=3, max_workers=1)
+
+    best_model_dct, best_train_stats_dct, test_scores = kf.train(
+        optimizer, early_stopping_criterion=early_stopping_criterion
     )
 
-    # ##========================================================================
-    # ## train model
-    # ##========================================================================
-    emul = GPEmulator(experiment, device)
-    best_model, best_train_stats = emul.train(
-        optimizer,
-        early_stopping_criterion,
-        snapshotting_criterion,
-    )
-    best_train_stats.plot()
-    #
-    inference = Inference(emul)
-    inference.summary()
-    print(inference.scores_dct)
-    # return best_train_stats.best_epoch
+    print(test_scores)
+
+    # for i, bts in best_train_stats_dct.items():
+    #     bts.plot(with_early_stopping_criterion=True)
 
 
 if __name__ == "__main__":
