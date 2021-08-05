@@ -29,6 +29,7 @@ from GPErks.train.snapshot import (
 )
 from GPErks.train.trainable import Trainable
 from GPErks.utils.concurrency import execute_task_in_parallel
+from GPErks.utils.metrics import get_metric_name
 
 log = get_logger()
 
@@ -86,17 +87,29 @@ class KFoldCrossValidation(Trainable):
             for i, (device, (idx_train, idx_test)) in enumerate(
                 zip(cycle(self.devices), self.split_generator.split(X))
             )
-        }
+        }  # TODO: dump to file used indices to reproduce splitting outside here
+
+        best_model_dct = {}
+        best_train_stats_dct = {}
+        inference_scores_dct = {}
+
         for split, (
             best_model,
             best_train_stats,
-            inference_scores_dct,
+            test_scores,
         ) in execute_task_in_parallel(
             self._train_split, splits, self.max_workers
         ).items():
-            print(split)
-            print(inference_scores_dct)
-            best_train_stats.plot(with_early_stopping_criterion=True)
+            best_model_dct[split] = best_model
+            best_train_stats_dct[split] = best_train_stats
+            inference_scores_dct[split] = test_scores
+
+        test_scores = {get_metric_name(m): [] for m in self.experiment.metrics}
+        for split, score in inference_scores_dct.items():
+            for m in test_scores.keys():
+                test_scores[m].append(score[m].item())
+
+        return best_model_dct, best_train_stats_dct, test_scores
 
     def _train_split(
         self,
@@ -121,6 +134,7 @@ class KFoldCrossValidation(Trainable):
             x_labels=self.experiment.dataset.x_labels,
             y_label=self.experiment.dataset.y_label,
         )
+
         experiment = GPExperiment(
             dataset,
             deepcopy(self.experiment.likelihood),
@@ -132,7 +146,10 @@ class KFoldCrossValidation(Trainable):
             learn_noise=self.experiment.learn_noise,
         )
 
-        optimizer = deepcopy(optimizer)
+        optimizer = optimizer.__class__(
+            experiment.model.parameters(), **optimizer.defaults
+        )
+
         early_stopping_criterion = deepcopy(early_stopping_criterion)
         snapshotting_criterion = deepcopy(snapshotting_criterion)
         snapshotting_criterion.snapshot_dir = (
@@ -150,8 +167,9 @@ class KFoldCrossValidation(Trainable):
             early_stopping_criterion,
             snapshotting_criterion,
         )
-        best_train_stats.plot()
         log.info(f"Run K-fold split {i}.")
+
         inference = Inference(emulator)
         inference.summary()
+
         return best_model, best_train_stats, inference.scores_dct
