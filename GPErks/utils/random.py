@@ -12,7 +12,7 @@ def set_seed(seed: Optional[int] = None):
     if seed is None:
         return
     random.seed(seed)
-    os.environ['PYTHONASSEED'] = str(seed)
+    os.environ["PYTHONASSEED"] = str(seed)
     numpy.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
