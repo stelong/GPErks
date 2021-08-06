@@ -1,6 +1,6 @@
 from copy import deepcopy
 from itertools import cycle
-from typing import List
+from typing import List, Optional
 
 from sklearn.model_selection import KFold
 
@@ -42,8 +42,9 @@ class KFoldCrossValidation(Trainable):
         n_splits: int = DEFAULT_CROSS_VALIDATION_N_SPLITS,
         max_workers: int = DEFAULT_CROSS_VALIDATION_MAX_WORKERS,
         *,
-        shuffle=False,
-        random_state=None,
+        shuffle: bool = False,
+        random_state: Optional[int] = None,
+        leftout_is_val: Optional[bool] = None,
     ):
         self.experiment: GPExperiment = experiment
         self.devices: List[str] = devices
@@ -54,6 +55,7 @@ class KFoldCrossValidation(Trainable):
             shuffle=shuffle,
             random_state=random_state,
         )
+        self.leftout_is_val = leftout_is_val
 
     def train(
         self,
@@ -69,7 +71,10 @@ class KFoldCrossValidation(Trainable):
             ),
             DEFAULT_TRAIN_SNAPSHOT_EPOCH_TEMPLATE,
         ),
+        leftout_is_val: bool = False,
     ):
+        self.leftout_is_val = leftout_is_val
+
         X = self.experiment.dataset.X_train
         y = self.experiment.dataset.y_train
         splits = {
@@ -81,10 +86,10 @@ class KFoldCrossValidation(Trainable):
                 device,
                 X[idx_train],
                 y[idx_train],
-                X[idx_test],
-                y[idx_test],
+                X[idx_leftout],
+                y[idx_leftout],
             )
-            for i, (device, (idx_train, idx_test)) in enumerate(
+            for i, (device, (idx_train, idx_leftout)) in enumerate(
                 zip(cycle(self.devices), self.split_generator.split(X))
             )
         }  # TODO: dump to file used indices to reproduce splitting outside here
@@ -96,13 +101,16 @@ class KFoldCrossValidation(Trainable):
         for split, (
             best_model,
             best_train_stats,
-            test_scores,
+            emulator,
         ) in execute_task_in_parallel(
             self._train_split, splits, self.max_workers
         ).items():
+            inference = Inference(emulator)
+            inference.summary()
+
             best_model_dct[split] = best_model
             best_train_stats_dct[split] = best_train_stats
-            inference_scores_dct[split] = test_scores
+            inference_scores_dct[split] = inference.scores_dct
 
         test_scores = {get_metric_name(m): [] for m in self.experiment.metrics}
         for split, score in inference_scores_dct.items():
@@ -120,20 +128,33 @@ class KFoldCrossValidation(Trainable):
         device,
         X_train,
         y_train,
-        X_test,
-        y_test,
+        X_leftout,
+        y_leftout,
     ):
         log.info(f"Running K-fold split {i}...")
-        dataset = Dataset(
-            X_train,
-            y_train,
-            X_val=self.experiment.dataset.X_val,
-            y_val=self.experiment.dataset.y_val,
-            X_test=X_test,
-            y_test=y_test,
-            x_labels=self.experiment.dataset.x_labels,
-            y_label=self.experiment.dataset.y_label,
-        )
+
+        if self.leftout_is_val:
+            dataset = Dataset(
+                X_train,
+                y_train,
+                X_val=X_leftout,
+                y_val=y_leftout,
+                X_test=X_leftout,
+                y_test=y_leftout,
+                x_labels=self.experiment.dataset.x_labels,
+                y_label=self.experiment.dataset.y_label,
+            )
+        else:
+            dataset = Dataset(
+                X_train,
+                y_train,
+                X_val=self.experiment.dataset.X_val,
+                y_val=self.experiment.dataset.y_val,
+                X_test=X_leftout,
+                y_test=y_leftout,
+                x_labels=self.experiment.dataset.x_labels,
+                y_label=self.experiment.dataset.y_label,
+            )
 
         experiment = GPExperiment(
             dataset,
@@ -149,7 +170,6 @@ class KFoldCrossValidation(Trainable):
         optimizer = optimizer.__class__(
             experiment.model.parameters(), **optimizer.defaults
         )
-
         early_stopping_criterion = deepcopy(early_stopping_criterion)
         snapshotting_criterion = deepcopy(snapshotting_criterion)
         snapshotting_criterion.snapshot_dir = (
@@ -169,7 +189,4 @@ class KFoldCrossValidation(Trainable):
         )
         log.info(f"Run K-fold split {i}.")
 
-        inference = Inference(emulator)
-        inference.summary()
-
-        return best_model, best_train_stats, inference.scores_dct
+        return best_model, best_train_stats, emulator
