@@ -17,7 +17,7 @@ from GPErks.constants import (
     DEFAULT_GSA_Z,
 )
 from GPErks.gp.data.dataset import Dataset
-from GPErks.plot.gsa import boxplot, donut, heatmap, network
+from GPErks.plot.gsa import boxplot, donut, fancy_donut, heatmap, network
 from GPErks.plot.options import PlotOptions
 from GPErks.plot.plottable import Plottable
 from GPErks.train.emulator import GPEmulator
@@ -167,6 +167,9 @@ class SobolGSA(Plottable):
 
     def plot_donut(self):
         donut(self.ST, self.S1, self.index_i, self.ylabel)
+
+    def plot_fancy_donut(self):
+        fancy_donut(self.ST, self.S1, self.S2, self.index_i, self.ylabel)
 
     def plot_heatmap(self):
         heatmap(self.ST, self.S1, self.index_i, self.ylabel)

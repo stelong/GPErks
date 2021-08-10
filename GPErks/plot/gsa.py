@@ -1,3 +1,5 @@
+from itertools import cycle
+
 import matplotlib.gridspec as grsp
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -94,6 +96,86 @@ def donut(ST, S1, index_i, ylabel):
     # plt.savefig(
     #     savepath + ylabel + "_donut.pdf", bbox_inches="tight", dpi=1000
     # )
+    plt.show()
+
+
+def fancy_donut(ST, S1, S2, index_i, ylabel):
+    ST = np.median(ST, axis=0)
+    S1 = np.median(S1, axis=0)
+    S2 = np.median(S2, axis=0)
+
+    D = len(ST)
+    V = np.zeros((D, D), dtype=float)
+
+    for j in range(D - 1):
+        i1 = int(j * (D - 1) - np.sum(np.array(range(j))))
+        i2 = int((j + 1) * (D - 1) - np.sum(np.array(range(j + 1))))
+        V[j, j + 1 :] = S2[i1:i2]
+
+    for m in range(D):
+        for n in range(D):
+            if m > n:
+                V[n, m] = 0.5 * V[n, m]
+                V[m, n] = V[n, m]
+
+    S = np.hstack(
+        (
+            S1.reshape(-1, 1),
+            np.array([np.sum(V[ind, :]) for ind in range(D)]).reshape(-1, 1),
+        )
+    )
+    rem = np.sum(ST) - (np.sum(S[:, 0]) + np.sum(S[:, 1]))
+    S = np.vstack((S, np.array([rem, 0]).reshape(1, -1)))
+
+    fig, axis = plt.subplots(1, 1, figsize=(4 * WIDTH / 3, HEIGHT / 2))
+
+    colors = [
+        "red",
+        "purple",
+        "amber",
+        "light_green",
+        "blue",
+        "pink",
+        "teal",
+        "brown",
+    ]
+
+    inner_colors = []
+    for c, _ in zip(cycle(colors), index_i):
+        cis = interp_col(get_col(c), 6)
+        inner_colors.append(cis[3])
+        inner_colors.append(cis[2])
+    inner_colors += 2 * [interp_col(get_col("gray"), 6)[2]]
+
+    outer_colors = [get_col(c)[1] for c in colors]
+    outer_colors += [interp_col(get_col("gray"), 6)[2]]
+
+    wedges, _ = axis.pie(
+        S.sum(axis=1),
+        radius=1,
+        colors=outer_colors,
+        startangle=90,
+        counterclock=False,
+        wedgeprops=dict(width=0.3, edgecolor="w"),
+    )
+    axis.pie(
+        S.flatten(),
+        radius=1 - 0.3,
+        colors=inner_colors,
+        startangle=90,
+        counterclock=False,
+        wedgeprops=dict(width=0.3, edgecolor="w"),
+    )
+
+    axis.set(aspect="equal")
+    axis.set_title(ylabel, fontsize=12, fontweight="bold")
+
+    plt.figlegend(
+        wedges,
+        index_i + ["higher-order\ninteractions"],
+        ncol=5,
+        loc="lower center",
+    )
     plt.show()
 
 
