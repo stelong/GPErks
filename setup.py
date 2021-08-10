@@ -13,7 +13,7 @@ def read_requirements(file_name):
     with open(os.path.join(here, file_name)) as in_f:
         for line in in_f:
             line = line.strip()
-            if not line or line.startswith('#'):
+            if not line or line.startswith('#') or line.startswith('-'):
                 continue
             reqs.append(line)
     return reqs

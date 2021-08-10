@@ -1,10 +1,10 @@
+-r requirements.in
 black
 flake8
 isort
 mypy
-pip-tools
+pip-compile-multi
 tox
 twine
 jupyter
-decorator==4.4.2  # TODO: remove temporary workaround
-python-dateutil==2.8.1  # TODO: remove temporary workaround
+
