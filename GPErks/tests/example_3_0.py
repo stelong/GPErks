@@ -171,11 +171,11 @@ def main(factor):
     ##========================================================================
     ## gsa: analytic solution vs GPE-based GSA
     ##========================================================================
-    gsa = SobolGSA(dataset, n=2 * 1024, seed=seed)
+    gsa = SobolGSA(dataset, n=1024, seed=seed)
     gsa.estimate_Sobol_indices_with_emulator(emul, n_draws=1000)
     # gsa.estimate_Sobol_indices_with_simulator(f)
-    # gsa.correct_Sobol_indices(threshold=0.01)
-    # gsa.plot()
+    gsa.correct_Sobol_indices(threshold=0.01)
+    gsa.plot_fancy_donut()
     # gsa.summary()
 
     # print("\n================\n")
@@ -183,57 +183,57 @@ def main(factor):
     # print(df_Si_theo)
     # print(df_Sij_theo)
 
-    df_ST = pd.DataFrame(data=gsa.ST, columns=gsa.index_i)
-    df_S1 = pd.DataFrame(data=gsa.S1, columns=gsa.index_i)
-    df_S2 = pd.DataFrame(
-        data=gsa.S2,
-        columns=[
-            "(" + elem[0] + ", " + elem[1] + ")" for elem in gsa.index_ij
-        ],
-    )
+    # df_ST = pd.DataFrame(data=gsa.ST, columns=gsa.index_i)
+    # df_S1 = pd.DataFrame(data=gsa.S1, columns=gsa.index_i)
+    # df_S2 = pd.DataFrame(
+    #     data=gsa.S2,
+    #     columns=[
+    #         "(" + elem[0] + ", " + elem[1] + ")" for elem in gsa.index_ij
+    #     ],
+    # )
 
-    plt.style.use("seaborn")
-    gs = grsp.GridSpec(2, 2)
-    fig = plt.figure(figsize=(2 * WIDTH, 2 * HEIGHT / 2))
+    # plt.style.use("seaborn")
+    # gs = grsp.GridSpec(2, 2)
+    # fig = plt.figure(figsize=(2 * WIDTH, 2 * HEIGHT / 2))
 
-    ax0 = fig.add_subplot(gs[0, 0])
-    sns.boxplot(ax=ax0, data=df_S1)
-    ax0.set_ylim(0, 1)
-    ax0.set_title("First-order effect", fontweight="bold", fontsize=12)
-    ax0.set_xticklabels(
-        ax0.get_xticklabels(), rotation=45, horizontalalignment="right"
-    )
-    l0 = list(df_Si_theo["Si"])
-    trans0 = ax0.get_xaxis_transform()
-    for k, val in enumerate(l0):
-        ax0.axhline(val, c="r", lw=1, ls="--")
+    # ax0 = fig.add_subplot(gs[0, 0])
+    # sns.boxplot(ax=ax0, data=df_S1)
+    # ax0.set_ylim(0, 1)
+    # ax0.set_title("First-order effect", fontweight="bold", fontsize=12)
+    # ax0.set_xticklabels(
+    #     ax0.get_xticklabels(), rotation=45, horizontalalignment="right"
+    # )
+    # l0 = list(df_Si_theo["Si"])
+    # trans0 = ax0.get_xaxis_transform()
+    # for k, val in enumerate(l0):
+    #     ax0.axhline(val, c="r", lw=1, ls="--")
 
-    ax1 = fig.add_subplot(gs[0, 1])
-    sns.boxplot(ax=ax1, data=df_ST)
-    ax1.set_ylim(0, 1)
-    ax1.set_title("Total effect", fontweight="bold", fontsize=12)
-    ax1.set_xticklabels(
-        ax1.get_xticklabels(), rotation=45, horizontalalignment="right"
-    )
-    l1 = list(df_STi_theo["STi"])
-    trans1 = ax1.get_xaxis_transform()
-    for k, val in enumerate(l1):
-        ax1.axhline(val, c="r", lw=1, ls="--")
+    # ax1 = fig.add_subplot(gs[0, 1])
+    # sns.boxplot(ax=ax1, data=df_ST)
+    # ax1.set_ylim(0, 1)
+    # ax1.set_title("Total effect", fontweight="bold", fontsize=12)
+    # ax1.set_xticklabels(
+    #     ax1.get_xticklabels(), rotation=45, horizontalalignment="right"
+    # )
+    # l1 = list(df_STi_theo["STi"])
+    # trans1 = ax1.get_xaxis_transform()
+    # for k, val in enumerate(l1):
+    #     ax1.axhline(val, c="r", lw=1, ls="--")
 
-    ax2 = fig.add_subplot(gs[1, :])
-    sns.boxplot(ax=ax2, data=df_S2)
-    ax2.set_ylim(0, 1)
-    ax2.set_title("Second-order effect", fontweight="bold", fontsize=12)
-    ax2.set_xticklabels(
-        ax2.get_xticklabels(), rotation=45, horizontalalignment="right"
-    )
-    l2 = list(df_Sij_theo["Sij"])
-    trans2 = ax2.get_xaxis_transform()
-    for k, val in enumerate(l2):
-        ax2.axhline(val, c="r", lw=1, ls="--")
+    # ax2 = fig.add_subplot(gs[1, :])
+    # sns.boxplot(ax=ax2, data=df_S2)
+    # ax2.set_ylim(0, 1)
+    # ax2.set_title("Second-order effect", fontweight="bold", fontsize=12)
+    # ax2.set_xticklabels(
+    #     ax2.get_xticklabels(), rotation=45, horizontalalignment="right"
+    # )
+    # l2 = list(df_Sij_theo["Sij"])
+    # trans2 = ax2.get_xaxis_transform()
+    # for k, val in enumerate(l2):
+    #     ax2.axhline(val, c="r", lw=1, ls="--")
 
-    fig.tight_layout()
-    plt.show()
+    # fig.tight_layout()
+    # plt.show()
 
 
 if __name__ == "__main__":
