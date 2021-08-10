@@ -37,7 +37,7 @@ or, install from the project repository:
 ```
 git clone https://github.com/stelong/GPErks.git
 cd GPErks/
-pip install -r requirements.txt
+pip install .
 ```
 
 ### Usage
