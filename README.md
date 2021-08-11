@@ -1,3 +1,5 @@
+<img src="notebooks/data/images/GPErks_logo.png" width=120 height=120 />
+
 # GPErks
 
 A Python library to (bene)fit Gaussian Process Emulators.
