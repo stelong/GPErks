@@ -92,13 +92,31 @@ class Diagnostics:
         )
         print(df)
 
-    def plot(self, uncorrelated: bool = True):
-        if uncorrelated:
-            errors = list(DG(self.y_test, self.y_pred_mean, self.y_pred_covar))
-            ylab = "$D^{G}(y^{*})$"
-        else:
+    def plot(self, errors_type: str = "pivoted"):
+        if errors_type == "correlated":
             errors = list(DI(self.y_test, self.y_pred_mean, self.y_pred_std))
+            x_errors = self.y_pred_mean
+            xlab = r"$E[\eta (x_{i}^{*})|y]$"
             ylab = "$D^{I}(y^{*})$"
+
+        elif errors_type == "uncorrelated":
+            errors = list(DG(self.y_test, self.y_pred_mean, self.y_pred_covar))
+            x_errors = self.y_pred_mean
+            xlab = r"$E[\eta (x_{i}^{*})|y]$"
+            ylab = "$D^{G}(y^{*})$"
+
+        elif errors_type == "pivoted":
+            errors = list(
+                DPC(self.y_test, self.y_pred_mean, self.y_pred_covar)
+            )
+            x_errors = np.arange(len(errors))
+            xlab = "Pivoting order"
+            ylab = "$D^{PC}(y^{*})$"
+
+        else:
+            raise ValueError(
+                "Not a valid errors type! Choose among: 'correlated', 'uncorrelated', 'pivoted'."
+            )
 
         plt.rcParams.update({"mathtext.default": "regular"})
 
@@ -109,10 +127,10 @@ class Diagnostics:
         axes[0].axhline(-2, c="r", ls="--", lw=0.8)
         axes[0].axhline(0, c="k", ls="--", lw=0.8)
         axes[0].axhline(2, c="r", ls="--", lw=0.8)
-        axes[0].scatter(self.y_pred_mean, errors)
+        axes[0].scatter(x_errors, errors)
 
+        axes[0].set_xlabel(xlab, fontsize=12)
         axes[0].set_ylabel(ylab, fontsize=12)
-        axes[0].set_xlabel(r"$E[\eta (x_{i}^{*})|y]$", fontsize=12)
 
         errors.sort()
         theoretical_percentiles = stats.mstats.plotting_positions(errors)
@@ -143,6 +161,16 @@ class Diagnostics:
         plt.show()
 
 
+def pivoted_Cholesky_factorization(A):
+    dpstrf = linalg.get_lapack_funcs("pstrf", dtype=float)
+    n = A.shape[0]
+    P = np.zeros((n, n), dtype=float)
+    L, PIV, RANK, INFO = dpstrf(A)
+    for k in range(n):
+        P[PIV[k] - 1, k] = 1
+    return np.triu(L).T, P
+
+
 def DI(y_true: np.ndarray, y_pred_mean: np.ndarray, y_pred_std: np.ndarray):
     return (y_true - y_pred_mean) / y_pred_std
 
@@ -162,6 +190,12 @@ def DG(y_true: np.ndarray, y_pred_mean: np.ndarray, y_pred_covar: np.ndarray):
     x = (y_true - y_pred_mean).reshape(-1, 1)
     G = linalg.cholesky(y_pred_covar, lower=True)
     return np.squeeze(linalg.solve(G, x))
+
+
+def DPC(y_true: np.ndarray, y_pred_mean: np.ndarray, y_pred_covar: np.ndarray):
+    x = (y_true - y_pred_mean).reshape(-1, 1)
+    P, L = pivoted_Cholesky_factorization(y_pred_covar)
+    return np.squeeze(linalg.solve(L, np.matmul(P.T, x)))
 
 
 def DCI(
