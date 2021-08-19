@@ -106,4 +106,8 @@ plt.show()
 
 
 diagnostics.summary()
-diagnostics.plot(uncorrelated=False)
+
+
+diagnostics.plot(errors_type="correlated")
+diagnostics.plot(errors_type="uncorrelated")
+diagnostics.plot(errors_type="pivoted")
