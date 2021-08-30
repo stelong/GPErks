@@ -44,7 +44,7 @@ pip install .
 
 ### Usage
 
-Full documentation under construction. For the moment, please refer to the example notebooks.
+Full documentation under construction. For the moment, please refer to the example [notebooks](https://github.com/stelong/GPErks/tree/master/notebooks) and [tutorial](https://youtu.be/e4kYIIrcAHA). The available notebooks are also provided as plain Python [scripts](https://github.com/stelong/GPErks/tree/master/examples).
 
 ---
 ## Contributing
@@ -55,7 +55,7 @@ Full documentation under construction. For the moment, please refer to the examp
 ## License
 
 This project is licensed under the MIT license.
-Please refer to the [LICENSE.md](LICENSE.md) file for details.
+Please refer to the [LICENSE](LICENSE) file for details.
 
 ---
 *This README.md complies with [this project template](
