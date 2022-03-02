@@ -107,9 +107,13 @@ def load_experiment_from_config_file(
 
     gpexperiment = config["GPExperiment"]
     n_restarts = gpexperiment.getint("n_restarts")
-    seed = gpexperiment.getint("seed")
+    seed = gpexperiment.get("seed")
     learn_noise = gpexperiment.getboolean("learn_noise")
 
+    if seed == "None":
+        seed = None
+    else:
+        seed = int(seed)
     set_seed(seed)
 
     metrics = [
