@@ -1,7 +1,7 @@
 import time
 from datetime import datetime
 
-DEFAULT_DATE_FORMAT = "%d-%m-%Y_%H:%M:%S"
+DEFAULT_DATE_FORMAT = "%d-%m-%Y_%Hh%Mm%Ss"
 
 SECOND = 1000
 MINUTE = 60 * SECOND
