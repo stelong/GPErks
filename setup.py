@@ -25,7 +25,7 @@ with open(os.path.join(here, 'README.md')) as f:
 
 setup(
     name='GPErks',
-    version='0.1.0',
+    version='0.1.1',
     url=home_page,
     author="Stefano Longobardi, Gianvito Taneburgo",
     author_email="stefano.longobardi.8@gmail.com, taneburgo+shadowtemplate@gmail.com",
@@ -35,13 +35,17 @@ setup(
     long_description_content_type="text/markdown",
     python_requires='>=3.6',
     packages=find_packages(exclude=['tests']),
-    install_requires=read_requirements('requirements.txt'),
+    install_requires=read_requirements(
+        os.path.join('requirements', 'requirements.txt')
+    ),
     project_urls={
         "Bug Tracker": os.path.join(home_page, 'issues'),
         "Source Code": home_page,
     },
     extras_require={
-        "dev": read_requirements('requirements-dev.txt'),
+        "dev": read_requirements(
+            os.path.join('requirements', 'requirements-dev.txt')
+        ),
     },
     include_package_data=True,
     package_data={

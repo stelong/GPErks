@@ -10,3 +10,4 @@ torchvision
 torch
 SALib
 torchmetrics
+importlib-metadata<4.3  # required by flake8==4.0.1
