@@ -1,6 +1,6 @@
-# This workflow will run tox on push and PR to master
+# This workflow will run tox on push and PRs to master
 
-name: Python package
+name: tox
 
 on:
   push:
