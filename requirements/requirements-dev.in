@@ -7,4 +7,3 @@ pip-compile-multi
 tox
 twine
 jupyter
-
