@@ -48,7 +48,7 @@ def branin_rescaled(x):
     """
     x0, x1 = 15 * x[0] - 5, 15 * x[1]
     return (
-        np.power(x1 - 1.275 * x0 ** 2 / np.pi ** 2 + 5 * x0 / np.pi - 6, 2)
+        np.power(x1 - 1.275 * x0**2 / np.pi**2 + 5 * x0 / np.pi - 6, 2)
         + 10 * (1 - 0.125 / np.pi) * np.cos(x0)
         - 44.81
     ) / 51.95
