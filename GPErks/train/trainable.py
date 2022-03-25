@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 
-from GPErks.train.early_stop import EarlyStoppingCriterion
 from GPErks.train.snapshot import SnapshottingCriterion
+from GPErks.train.early_stop import EarlyStoppingCriterion
 
 
 class Trainable(metaclass=ABCMeta):
