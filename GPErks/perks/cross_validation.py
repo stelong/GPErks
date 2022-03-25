@@ -16,8 +16,8 @@ from GPErks.constants import (
 from GPErks.gp.data.dataset import Dataset
 from GPErks.gp.experiment import GPExperiment
 from GPErks.log.logger import get_logger
-from GPErks.perks.inference import Inference
 from GPErks.serialization.path import posix_path
+from GPErks.perks.inference import Inference
 from GPErks.train.early_stop import (
     EarlyStoppingCriterion,
     NoEarlyStoppingCriterion,
