@@ -1,8 +1,8 @@
 import json
 from typing import Dict, List
 
-import numpy
 from matplotlib import pyplot as plt
+import numpy
 
 from GPErks.constants import HEIGHT, WIDTH
 
