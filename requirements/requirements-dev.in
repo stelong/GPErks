@@ -1,9 +1,0 @@
--r requirements.in
-black
-flake8
-isort
-mypy
-pip-compile-multi
-tox
-twine
-jupyter
