@@ -1,11 +1,11 @@
 from itertools import combinations
 from typing import Callable, Optional
 
-import numpy as np
-import pandas as pd
-from SALib.analyze import sobol
-from SALib.sample import saltelli
 from scipy.special import binom
+import numpy as np
+from SALib.analyze import sobol
+import pandas as pd
+from SALib.sample import saltelli
 
 from GPErks.constants import (
     DEFAULT_GSA_CONF_LEVEL,
