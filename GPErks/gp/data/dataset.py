@@ -34,14 +34,10 @@ class Dataset(Plottable):
         self.with_val: bool = X_val is not None and y_val is not None
 
         self.sample_size = self.X_train.shape[0]
-        self.input_size = (
-            self.X_train.shape[1] if len(self.X_train.shape) > 1 else 1
-        )
+        self.input_size = self.X_train.shape[1] if len(self.X_train.shape) > 1 else 1
 
         self.x_labels: List[str] = (
-            x_labels
-            if x_labels
-            else [f"X{i+1}" for i in range(self.input_size)]
+            x_labels if x_labels else [f"X{i+1}" for i in range(self.input_size)]
         )
         self.y_label: str = y_label if y_label else "y"
 

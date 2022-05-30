@@ -47,9 +47,7 @@ class SnapshottingCriterion(metaclass=ABCMeta):
     def get_snapshot_file_path(self, restart, epoch):
         restart_dir = Path(self.snapshot_dir.format(restart=restart))
         restart_dir.mkdir(parents=True, exist_ok=True)
-        return (
-            restart_dir / self.snapshot_file.format(epoch=epoch)
-        ).as_posix()
+        return (restart_dir / self.snapshot_file.format(epoch=epoch)).as_posix()
 
     def keep_snapshots_until(self, restart, epoch):
         for useless_epoch in range(epoch + 1, self._reached_epoch + 1):

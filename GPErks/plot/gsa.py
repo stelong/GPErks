@@ -27,25 +27,19 @@ def boxplot(ST, S1, S2, index_i, index_ij, ylabel):
     sns.boxplot(ax=ax0, data=df_S1)
     ax0.set_ylim(0, 1)
     ax0.set_title("First-order effect", fontweight="bold", fontsize=12)
-    ax0.set_xticklabels(
-        ax0.get_xticklabels(), rotation=45, horizontalalignment="right"
-    )
+    ax0.set_xticklabels(ax0.get_xticklabels(), rotation=45, horizontalalignment="right")
 
     ax1 = fig.add_subplot(gs[0, 1])
     sns.boxplot(ax=ax1, data=df_ST)
     ax1.set_ylim(0, 1)
     ax1.set_title("Total effect", fontweight="bold", fontsize=12)
-    ax1.set_xticklabels(
-        ax1.get_xticklabels(), rotation=45, horizontalalignment="right"
-    )
+    ax1.set_xticklabels(ax1.get_xticklabels(), rotation=45, horizontalalignment="right")
 
     ax2 = fig.add_subplot(gs[1, :])
     sns.boxplot(ax=ax2, data=df_S2)
     ax2.set_ylim(0, 1)
     ax2.set_title("Second-order effect", fontweight="bold", fontsize=12)
-    ax2.set_xticklabels(
-        ax2.get_xticklabels(), rotation=45, horizontalalignment="right"
-    )
+    ax2.set_xticklabels(ax2.get_xticklabels(), rotation=45, horizontalalignment="right")
 
     fig.tight_layout()
     # plt.savefig(savepath + ylabel + "_box.pdf", bbox_inches="tight", dpi=1000)
@@ -90,9 +84,7 @@ def donut(ST, S1, index_i, ylabel):
     )
     axes[1].set_title("ST", fontsize=12, fontweight="bold")
 
-    plt.figlegend(
-        wedges, index_i + ["higher-order int."], ncol=5, loc="lower center"
-    )
+    plt.figlegend(wedges, index_i + ["higher-order int."], ncol=5, loc="lower center")
     # plt.savefig(
     #     savepath + ylabel + "_donut.pdf", bbox_inches="tight", dpi=1000
     # )
@@ -249,15 +241,10 @@ def network(ST, S1, S2, index_i, index_ij, ylabel):
 
     min_size = 0
     max_size = 200
-    foreground_node_size = [
-        min_size + (max_size - min_size) * k for k in list(S1_mean)
-    ]
-    backgroud_node_size = [
-        min_size + (max_size - min_size) * k for k in list(ST_mean)
-    ]
+    foreground_node_size = [min_size + (max_size - min_size) * k for k in list(S1_mean)]
+    backgroud_node_size = [min_size + (max_size - min_size) * k for k in list(ST_mean)]
     edge_width = [
-        np.sqrt((min_size + (max_size - min_size) * k) / np.pi)
-        for k in list(S2_mean)
+        np.sqrt((min_size + (max_size - min_size) * k) / np.pi) for k in list(S2_mean)
     ]
 
     Sources = list(list(zip(*index_ij))[0])

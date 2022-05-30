@@ -30,9 +30,7 @@ class Diagnostics:
         self.n = self.emulator.experiment.dataset.sample_size
         self.q = self.emulator.experiment.dataset.input_size
         self.m = (
-            self.X_test.shape[0]
-            if len(self.X_test.shape) > 1
-            else len(self.X_test)
+            self.X_test.shape[0] if len(self.X_test.shape) > 1 else len(self.X_test)
         )
 
     def chi_squared(self):
@@ -106,16 +104,15 @@ class Diagnostics:
             ylab = "$D^{G}(y^{*})$"
 
         elif errors_type == "pivoted":
-            errors = list(
-                DPC(self.y_test, self.y_pred_mean, self.y_pred_covar)
-            )
+            errors = list(DPC(self.y_test, self.y_pred_mean, self.y_pred_covar))
             x_errors = np.arange(len(errors))
             xlab = "Pivoting order"
             ylab = "$D^{PC}(y^{*})$"
 
         else:
             raise ValueError(
-                "Not a valid errors type! Choose among: 'correlated', 'uncorrelated', 'pivoted'."
+                "Not a valid errors type! "
+                "Choose among: 'correlated', 'uncorrelated', 'pivoted'."
             )
 
         plt.rcParams.update({"mathtext.default": "regular"})

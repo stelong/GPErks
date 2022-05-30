@@ -22,9 +22,7 @@ def Ishigami_theoretical_Si(a=7.0, b=0.1):
     D = 3
 
     index_i = ["X{}".format(i + 1) for i in range(D)]
-    index_ij = [
-        "({}, {})".format(c[0], c[1]) for c in combinations(index_i, 2)
-    ]
+    index_ij = ["({}, {})".format(c[0], c[1]) for c in combinations(index_i, 2)]
 
     V1 = 0.5 * np.power(1 + b * np.power(np.pi, 4) / 5, 2)
     V2 = np.power(a, 2) / 8
@@ -95,16 +93,12 @@ def SobolGstar_theoretical_Si(a, delta, alpha):
     D = len(a)
 
     index_i = ["X{}".format(i + 1) for i in range(D)]
-    index_ij = [
-        "({}, {})".format(c[0], c[1]) for c in combinations(index_i, 2)
-    ]
+    index_ij = ["({}, {})".format(c[0], c[1]) for c in combinations(index_i, 2)]
 
     Vi = []
     V = 1
     for i in range(D):
-        vi = np.power(alpha[i], 2) / (
-            (1 + 2 * alpha[i]) * np.power(1 + a[i], 2)
-        )
+        vi = np.power(alpha[i], 2) / ((1 + 2 * alpha[i]) * np.power(1 + a[i], 2))
         Vi.append(vi)
         V = V * (1 + vi)
     V -= 1

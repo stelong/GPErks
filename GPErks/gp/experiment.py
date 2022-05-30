@@ -75,10 +75,14 @@ class GPExperiment:
             + f"Bias: {self.model.mean_module.bias.data.squeeze():.4f}\n"
             + f"Weights: {self.model.mean_module.weights.data.squeeze()}\n"
             + f"Outputscale: {self.model.covar_module.outputscale.data.squeeze():.4f}\n"
-            + f"Lengthscales: {self.model.covar_module.base_kernel.lengthscale.data.squeeze()}"
+            + f"Lengthscales: "
+            f"{self.model.covar_module.base_kernel.lengthscale.data.squeeze()}"
         )
         if self.learn_noise:
-            msg += f"\nLikelihood noise: {self.model.likelihood.noise_covar.noise.data.squeeze():.4f}"
+            msg += (
+                f"\nLikelihood noise: "
+                f"{self.model.likelihood.noise_covar.noise.data.squeeze():.4f}"
+            )
         print(msg)
 
     def save_to_config_file(self, experiment_file_path):
@@ -121,15 +125,11 @@ def load_experiment_from_config_file(
         for metric in get_repeatable_section(config, "Metric")
     ]
 
-    likelihood = build_instance(
-        **{k: v for k, v in config["Likelihood"].items()}
-    )
+    likelihood = build_instance(**{k: v for k, v in config["Likelihood"].items()})
 
     mean = build_instance(**{k: v for k, v in config["Mean"].items()})
 
-    kernel = ScaleKernel(
-        build_instance(**{k: v for k, v in config["Kernel"].items()})
-    )
+    kernel = ScaleKernel(build_instance(**{k: v for k, v in config["Kernel"].items()}))
     return GPExperiment(
         dataset,
         likelihood,

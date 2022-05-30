@@ -46,9 +46,7 @@ class EarlyStoppingCriterion(metaclass=ABCMeta):
             )
         else:
             should_stop, evaluation = self._should_stop()
-            self.train_stats.early_stopping_criterion_evaluations.append(
-                evaluation
-            )
+            self.train_stats.early_stopping_criterion_evaluations.append(evaluation)
 
         if must_stop or should_stop:
             log.debug(
@@ -144,14 +142,10 @@ class PkEarlyStoppingCriterion(EarlyStoppingCriterion):
         if self.computation_enabled:
             self.Pk.append(
                 numpy.abs(
-                    numpy.sum(
-                        self.train_stats.train_loss[-self.strip_length :]
-                    )
+                    numpy.sum(self.train_stats.train_loss[-self.strip_length :])
                     / (
                         self.strip_length
-                        * numpy.min(
-                            self.train_stats.train_loss[-self.strip_length :]
-                        )
+                        * numpy.min(self.train_stats.train_loss[-self.strip_length :])
                     )
                     - 1
                 )
@@ -164,7 +158,8 @@ class PkEarlyStoppingCriterion(EarlyStoppingCriterion):
         if self.computation_enabled and self.Pk[-1] < self.alpha:
             self.counter += 1
             log.debug(
-                f"Triggered PkEpochEarlyStoppingCriterion {self.counter}/{self.patience}"
+                f"Triggered PkEpochEarlyStoppingCriterion "
+                f"{self.counter}/{self.patience}"
             )
         else:
             if self.counter > 0:
@@ -217,9 +212,7 @@ class SimpleEarlyStoppingCriterion(EarlyStoppingCriterion):
 
             self.current_best_state_dict = deepcopy(self.model.state_dict())
             if self.counter > 0:
-                log.debug(
-                    "Resetting SimpleEpochEarlyStoppingCriterion countdown."
-                )
+                log.debug("Resetting SimpleEpochEarlyStoppingCriterion countdown.")
                 self.counter = 0
 
                 log.debug(
@@ -228,7 +221,8 @@ class SimpleEarlyStoppingCriterion(EarlyStoppingCriterion):
         else:
             self.counter += 1
             log.debug(
-                f"Triggered SimpleEpochEarlyStoppingCriterion {self.counter}/{self.patience}"
+                f"Triggered SimpleEpochEarlyStoppingCriterion "
+                f"{self.counter}/{self.patience}"
             )
         return self.counter == self.patience, self.train_stats.val_loss[-1]
 
@@ -281,7 +275,8 @@ class GLEarlyStoppingCriterion(EarlyStoppingCriterion):
         if self.GL[-1] > self.alpha:
             self.counter += 1
             log.debug(
-                f"Triggered GLEpochEarlyStoppingCriterion {self.counter}/{self.patience}"
+                f"Triggered GLEpochEarlyStoppingCriterion "
+                f"{self.counter}/{self.patience}"
             )
         else:
             if self.counter > 0:
@@ -353,13 +348,12 @@ class UPEarlyStoppingCriterion(EarlyStoppingCriterion):
             if self.UP[-1] == 1:
                 self.sstrips_counter += 1
                 log.debug(
-                    f"Triggered UPEpochEarlyStoppingCriterion {self.sstrips_counter}/{self.successive_strips}"
+                    f"Triggered UPEpochEarlyStoppingCriterion "
+                    f"{self.sstrips_counter}/{self.successive_strips}"
                 )
             else:
                 self.sstrips_counter = 0
-                self.current_best_state_dict = deepcopy(
-                    self.model.state_dict()
-                )
+                self.current_best_state_dict = deepcopy(self.model.state_dict())
         else:
             self.UP.append(0.0)
 
@@ -439,15 +433,11 @@ class PQEarlyStoppingCriterion(EarlyStoppingCriterion):
                 numpy.abs(
                     1000
                     * (
-                        numpy.sum(
-                            self.train_stats.train_loss[-self.strip_length :]
-                        )
+                        numpy.sum(self.train_stats.train_loss[-self.strip_length :])
                         / (
                             self.strip_length
                             * numpy.min(
-                                self.train_stats.train_loss[
-                                    -self.strip_length :
-                                ]
+                                self.train_stats.train_loss[-self.strip_length :]
                             )
                         )
                         - 1
@@ -463,7 +453,8 @@ class PQEarlyStoppingCriterion(EarlyStoppingCriterion):
         if self.PQ[-1] > self.alpha:
             self.counter += 1
             log.debug(
-                f"Triggered PQEpochEarlyStoppingCriterion {self.counter}/{self.patience}"
+                f"Triggered PQEpochEarlyStoppingCriterion "
+                f"{self.counter}/{self.patience}"
             )
         else:
             if self.counter > 0:
