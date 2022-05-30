@@ -71,7 +71,7 @@ class GPEmulator(Trainable):
         early_stopping_criterion: EarlyStoppingCriterion = NoEarlyStoppingCriterion(
             DEFAULT_TRAIN_MAX_EPOCH
         ),
-        snapshotting_criterion: SnapshottingCriterion = EveryNEpochsSnapshottingCriterion(
+        snapshotting_criterion: SnapshottingCriterion = EveryNEpochsSnapshottingCriterion(  # noqa: E501
             posix_path(
                 DEFAULT_TRAIN_SNAPSHOT_DIR,
                 DEFAULT_TRAIN_SNAPSHOT_RESTART_TEMPLATE,
