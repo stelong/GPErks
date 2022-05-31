@@ -3,7 +3,8 @@ import numpy as np
 
 def get_col(color_name=None):
     """Material Design color palettes (only '100' and '900' variants).
-    Help: call with no arguments to see the list of available colors, these are also returned into a list
+    Help: call with no arguments to see the list of available colors, these are also
+    returned into a list
     Kwarg:
             - color_name: string representing the color's name
     Output:
@@ -38,10 +39,7 @@ def get_col(color_name=None):
             print("- " + key)
         return list(colors.keys())
     else:
-        color = [
-            [colors[color_name][i][j] / 255 for j in range(3)]
-            for i in range(2)
-        ]
+        color = [[colors[color_name][i][j] / 255 for j in range(3)] for i in range(2)]
         return color
 
 

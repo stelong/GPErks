@@ -92,6 +92,5 @@ class StandardLogScaler(OutputDataScaler):
         ystd = self.sigma * ystd_
         return (
             np.exp(y + 0.5 * np.power(ystd, 2)),
-            (np.exp(np.power(ystd, 2)) - 1)
-            * np.exp(2 * y + np.power(ystd, 2)),
+            (np.exp(np.power(ystd, 2)) - 1) * np.exp(2 * y + np.power(ystd, 2)),
         )

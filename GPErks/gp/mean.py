@@ -7,15 +7,11 @@ class LinearMean(gpytorch.means.Mean):
         super().__init__()
         self.register_parameter(
             name="weights",
-            parameter=torch.nn.Parameter(
-                torch.zeros(*batch_shape, input_size, 1)
-            ),
+            parameter=torch.nn.Parameter(torch.zeros(*batch_shape, input_size, 1)),
         )
         self.register_parameter(
             name="bias",
-            parameter=torch.nn.Parameter(
-                data_mean * torch.ones(*batch_shape, 1)
-            ),
+            parameter=torch.nn.Parameter(data_mean * torch.ones(*batch_shape, 1)),
         )
 
     def forward(self, x):

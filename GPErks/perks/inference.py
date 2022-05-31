@@ -22,19 +22,13 @@ class Inference:
     def summary(self):
         metrics_names = list(map(get_metric_name, self.metrics))
         metrics_scores = list(
-            m(tensorize(self.y_pred_mean), tensorize(self.y_test))
-            .cpu()
-            .numpy()
+            m(tensorize(self.y_pred_mean), tensorize(self.y_test)).cpu().numpy()
             for m in self.metrics
         )
-        self.scores_dct = {
-            key: val for key, val in zip(metrics_names, metrics_scores)
-        }
+        self.scores_dct = {key: val for key, val in zip(metrics_names, metrics_scores)}
 
         df = pd.DataFrame(
-            data=np.around(np.array(metrics_scores), decimals=4).reshape(
-                -1, 1
-            ),
+            data=np.around(np.array(metrics_scores), decimals=4).reshape(-1, 1),
             index=metrics_names,
             columns=["Score"],
         )
@@ -112,8 +106,7 @@ class Inference:
             y_grid = f(X_grid)
             y_grid = y_grid.reshape(grid_dim, grid_dim)
             err = np.abs(
-                np.ones((grid_dim, grid_dim), dtype=float)
-                - y_pred_mean / y_grid
+                np.ones((grid_dim, grid_dim), dtype=float) - y_pred_mean / y_grid
             )
 
         fig, axes = plt.subplots(

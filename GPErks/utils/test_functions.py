@@ -1,6 +1,7 @@
 import numpy as np
 
-# TODO: make this a class that for a given function name returns both the function AND the input dimension
+# TODO: make this a class that for a given function name returns both the function
+#  AND the input dimension
 
 
 def forrester(x):

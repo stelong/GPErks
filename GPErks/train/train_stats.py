@@ -68,9 +68,7 @@ class TrainStats:
                 label="validation",
             )
 
-            for metric_name, axis in zip(
-                self.val_metrics_score, axes.flat[1:]
-            ):
+            for metric_name, axis in zip(self.val_metrics_score, axes.flat[1:]):
                 axis.plot(
                     numpy.arange(1, loss_len + 1),
                     self.val_metrics_score[metric_name],

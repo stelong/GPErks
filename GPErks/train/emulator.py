@@ -71,7 +71,7 @@ class GPEmulator(Trainable):
         early_stopping_criterion: EarlyStoppingCriterion = NoEarlyStoppingCriterion(
             DEFAULT_TRAIN_MAX_EPOCH
         ),
-        snapshotting_criterion: SnapshottingCriterion = EveryNEpochsSnapshottingCriterion(
+        snapshotting_criterion: SnapshottingCriterion = EveryNEpochsSnapshottingCriterion(  # noqa: E501
             posix_path(
                 DEFAULT_TRAIN_SNAPSHOT_DIR,
                 DEFAULT_TRAIN_SNAPSHOT_RESTART_TEMPLATE,
@@ -133,20 +133,14 @@ class GPEmulator(Trainable):
         self.best_train_metrics_score = _get_best_metrics_score(
             restarts_best_epochs,
             best_overall_loss_idx,
-            [
-                train_stats.train_metrics_score
-                for train_stats in restarts_train_stats
-            ],
+            [train_stats.train_metrics_score for train_stats in restarts_train_stats],
         )
 
         if self.scaled_data.with_val:
             self.best_val_metrics_score = _get_best_metrics_score(
                 restarts_best_epochs,
                 best_overall_loss_idx,
-                [
-                    train_stats.val_metrics_score
-                    for train_stats in restarts_train_stats
-                ],
+                [train_stats.val_metrics_score for train_stats in restarts_train_stats],
             )
 
         best_restart = best_overall_loss_idx + 1
@@ -163,16 +157,12 @@ class GPEmulator(Trainable):
             map_location=torch.device("cpu"),
         )
         self.model.load_state_dict(best_model)
-        log.info(
-            f"Loaded best model (restart: {best_restart}, epoch: {best_epoch})."
-        )
+        log.info(f"Loaded best model (restart: {best_restart}, epoch: {best_epoch}).")
         best_model_link = posix_path(
             Path(snapshotting_criterion.snapshot_dir).parent.as_posix(),
             "best_model.pth",
         )
-        log.debug(
-            f"Linking best model {best_model_file} to {best_model_link}..."
-        )
+        log.debug(f"Linking best model {best_model_file} to {best_model_link}...")
         try:  # if the symlink exists we have to override it
             os.remove(best_model_link)
         except FileNotFoundError:
@@ -181,7 +171,8 @@ class GPEmulator(Trainable):
         log.debug(f"Linked best model {best_model_file} to {best_model_link}.")
 
         log.info(
-            f"Loading best train stats (restart: {best_restart}, epoch: {best_epoch})..."
+            f"Loading best train stats "
+            f"(restart: {best_restart}, epoch: {best_epoch})..."
         )
         best_train_stats_file = posix_path(
             Path(best_model_file).parent.as_posix(), "train_stats.json"
@@ -192,7 +183,8 @@ class GPEmulator(Trainable):
             "best_train_stats.json",
         )
         log.debug(
-            f"Linking best train stats {best_train_stats_file} to {best_train_stats_link}..."
+            f"Linking best train stats {best_train_stats_file} to "
+            f"{best_train_stats_link}..."
         )
         try:  # if the symlink exists we have to override it
             os.remove(best_train_stats_link)
@@ -200,7 +192,8 @@ class GPEmulator(Trainable):
             pass  # nothing to do
         os.symlink(best_train_stats_file, best_train_stats_link)
         log.debug(
-            f"Linked best train stats {best_train_stats_file} to {best_train_stats_link}."
+            f"Linked best train stats {best_train_stats_file} to "
+            f"{best_train_stats_link}."
         )
 
         log.info("The fitted emulator hyperparameters are:")
@@ -232,8 +225,7 @@ class GPEmulator(Trainable):
             )  # TODO: make range customizable
             hyperparameters = {
                 "covar_module.base_kernel.raw_lengthscale": (
-                    (theta_sup - theta_inf)
-                    * torch.rand(self.scaled_data.input_size)
+                    (theta_sup - theta_inf) * torch.rand(self.scaled_data.input_size)
                     + theta_inf
                 ).to(self.device),
                 "covar_module.raw_outputscale": (
@@ -243,9 +235,9 @@ class GPEmulator(Trainable):
             self.model.initialize(**hyperparameters)
             if self.learn_noise:
                 self.model.likelihood.initialize(
-                    raw_noise=(
-                        (theta_sup - theta_inf) * torch.rand(1) + theta_inf
-                    ).to(self.device)
+                    raw_noise=((theta_sup - theta_inf) * torch.rand(1) + theta_inf).to(
+                        self.device
+                    )
                 )
 
         self.model.to(self.device)
@@ -297,9 +289,7 @@ class GPEmulator(Trainable):
                     train_stats.val_loss.append(val_loss)
                     msg += f" | Validation Loss: {val_loss:.4f}"
                     metric_scores = self._evaluate_metrics(X_val, y_val)
-                    for metric, metric_score in zip(
-                        self.metrics, metric_scores
-                    ):
+                    for metric, metric_score in zip(self.metrics, metric_scores):
                         metric_name = get_metric_name(metric)
                         msg += f" - {metric_name}: {metric_score:.4f}"
                         train_stats.val_metrics_score[metric_name].append(
@@ -315,15 +305,11 @@ class GPEmulator(Trainable):
         train_stats.best_epoch = best_epoch
         train_stats.save_to_file(
             posix_path(
-                snapshotting_criterion.snapshot_dir.format(
-                    restart=self.restart_idx
-                ),
+                snapshotting_criterion.snapshot_dir.format(restart=self.restart_idx),
                 "train_stats.json",
             )
         )
-        snapshotting_criterion.keep_snapshots_until(
-            self.restart_idx, best_epoch
-        )
+        snapshotting_criterion.keep_snapshots_until(self.restart_idx, best_epoch)
         return train_stats, best_epoch
 
     def _train_step(self, X_train, y_train, optimizer):
@@ -347,9 +333,7 @@ class GPEmulator(Trainable):
         self.model.eval()
         self.model.likelihood.eval()
 
-        X_new = tensorize(self.scaled_data.scx.transform(X_new)).to(
-            self.device
-        )
+        X_new = tensorize(self.scaled_data.scx.transform(X_new)).to(self.device)
 
         with torch.no_grad(), gpytorch.settings.fast_pred_var():
             # TODO: check off-diagonal elements during fast-pred
@@ -362,9 +346,7 @@ class GPEmulator(Trainable):
             y_covar = predictions.covariance_matrix.cpu().detach().numpy()
             covar_sign = numpy.sign(y_covar)
 
-        y_mean, y_std = self.scaled_data.scy.inverse_transform(
-            y_mean, ystd_=y_std
-        )
+        y_mean, y_std = self.scaled_data.scy.inverse_transform(y_mean, ystd_=y_std)
 
         # trick here to backtransform a full covariance matrix:
         y_covar_as_vec = numpy.sqrt(
@@ -391,17 +373,13 @@ class GPEmulator(Trainable):
         self.model.eval()
         self.model.likelihood.eval()
 
-        X_new = tensorize(self.scaled_data.scx.transform(X_new)).to(
-            self.device
-        )
+        X_new = tensorize(self.scaled_data.scx.transform(X_new)).to(self.device)
 
         with torch.no_grad(), gpytorch.settings.fast_pred_var():
             predictions = self.model.likelihood(self.model(X_new))
             y_std = numpy.sqrt(predictions.variance.cpu().numpy())
             y_samples = (
-                predictions.sample(sample_shape=torch.Size([n_draws]))
-                .cpu()
-                .numpy()
+                predictions.sample(sample_shape=torch.Size([n_draws])).cpu().numpy()
             )
 
         for i in range(n_draws):
@@ -420,9 +398,7 @@ def _get_best_metrics_score(
     metrics_score_list = defaultdict(list)
     for metrics_score, best_epoch in zip(metrics_scores, restarts_best_epochs):
         for metric_name, metric_values in metrics_score.items():
-            metrics_score_list[metric_name].append(
-                metric_values[best_epoch - 1]
-            )
+            metrics_score_list[metric_name].append(metric_values[best_epoch - 1])
     return {
         metric_name: best_values[best_overall_loss_idx]
         for metric_name, best_values in metrics_score_list.items()

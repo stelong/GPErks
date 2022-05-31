@@ -105,9 +105,7 @@ class SobolGSA(Plottable):
 
             self.ST = np.vstack((self.ST, T_Si["ST"].reshape(1, -1)))
             self.S1 = np.vstack((self.S1, first_Si["S1"].reshape(1, -1)))
-            self.S2 = np.vstack(
-                (self.S2, np.array(second_Si["S2"]).reshape(1, -1))
-            )
+            self.S2 = np.vstack((self.S2, np.array(second_Si["S2"]).reshape(1, -1)))
 
             self.ST_std = np.vstack(
                 (self.ST_std, T_Si["ST_conf"].reshape(1, -1) / DEFAULT_GSA_Z)
@@ -121,10 +119,7 @@ class SobolGSA(Plottable):
             self.S2_std = np.vstack(
                 (
                     self.S2_std,
-                    (
-                        np.array(second_Si["S2_conf"]).reshape(1, -1)
-                        / DEFAULT_GSA_Z
-                    ),
+                    (np.array(second_Si["S2_conf"]).reshape(1, -1) / DEFAULT_GSA_Z),
                 )
             )
 
@@ -148,9 +143,7 @@ class SobolGSA(Plottable):
         )
         df_Sij = pd.DataFrame(
             data=np.round(np.median(self.S2, axis=0), 6).reshape(-1, 1),
-            index=[
-                "(" + elem[0] + ", " + elem[1] + ")" for elem in self.index_ij
-            ],
+            index=["(" + elem[0] + ", " + elem[1] + ")" for elem in self.index_ij],
             columns=["Sij"],
         )
         print(df_STi)
@@ -161,9 +154,7 @@ class SobolGSA(Plottable):
         self.plot_boxplot()
 
     def plot_boxplot(self):
-        boxplot(
-            self.ST, self.S1, self.S2, self.index_i, self.index_ij, self.ylabel
-        )
+        boxplot(self.ST, self.S1, self.S2, self.index_i, self.index_ij, self.ylabel)
 
     def plot_donut(self):
         donut(self.ST, self.S1, self.index_i, self.ylabel)
@@ -175,6 +166,4 @@ class SobolGSA(Plottable):
         heatmap(self.ST, self.S1, self.index_i, self.ylabel)
 
     def plot_network(self):
-        network(
-            self.ST, self.S1, self.S2, self.index_i, self.index_ij, self.ylabel
-        )
+        network(self.ST, self.S1, self.S2, self.index_i, self.index_ij, self.ylabel)

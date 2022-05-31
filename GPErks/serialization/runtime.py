@@ -39,8 +39,6 @@ def dump_instance(instance):
         f"Please, verify all initialization params are dumped."
     )
     params = [f"{k}={v}" for k, v in dump.items() if k != "class"]
-    log.warning(
-        f"The object will be built as: {full_class_name}({', '.join(params)})."
-    )
+    log.warning(f"The object will be built as: {full_class_name}({', '.join(params)}).")
     log.debug(f"Dumped instance {instance}.")
     return dump

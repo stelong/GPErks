@@ -12,8 +12,7 @@ APPLICATION_NAME = "GPErks"
 # LOGGING
 DEFAULT_LOG_FILE = (Path.home() / Path(f"{APPLICATION_NAME}.log")).as_posix()
 DEFAULT_LOG_FORMAT = (
-    "%(levelname)s:%(asctime)s:%(module)s:%(funcName)s:"
-    "L%(lineno)d: %(message)s"
+    "%(levelname)s:%(asctime)s:%(module)s:%(funcName)s:" "L%(lineno)d: %(message)s"
 )
 
 
