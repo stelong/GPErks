@@ -47,6 +47,7 @@ pip install torch --extra-index-url https://download.pytorch.org/whl/cpu
 pip3 install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu116
 ```
 Note: please check PyTorch [website](https://pytorch.org/get-started/locally/) to customize your installation.
+
 4. Install GPErks library:
 ```
 pip install .
