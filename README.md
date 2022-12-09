@@ -11,7 +11,7 @@ A Python library to (bene)fit Gaussian Process Emulators.
 
 **Type**: `Personal project`
 
-**Development years**: `2020-2021`
+**Development years**: `2020 - Present`
 
 **Authors**: [stelong](https://github.com/stelong), [ShadowTemplate](https://github.com/ShadowTemplate)
 
@@ -25,20 +25,30 @@ A Python library to (bene)fit Gaussian Process Emulators.
 
 ### Installing
 
-Create a Python3 virtual environment (optional)
+1. Pull the source code from the project repository:
+```
+git clone https://github.com/stelong/GPErks.git
+cd GPErks/
+```
+2. (optional) Create a Python3 virtual environment:
 ```
 python3 -m venv venv
 source venv/bin/activate
 pip install --upgrade pip setuptools wheel
 ```
-Install using pip:
+3. Install PyTorch package first in order to satisfy your custom installation requirements (e.g., a CPU-only installation or a CUDA installation with a specific version that matches your machine NVIDIA drivers):
+
+(CPU-only)
 ```
-pip install GPErks
+pip install torch --extra-index-url https://download.pytorch.org/whl/cpu
 ```
-or, install from the project repository:
+(CUDA 11.6)
 ```
-git clone https://github.com/stelong/GPErks.git
-cd GPErks/
+pip3 install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu116
+```
+Note: please check PyTorch [website](https://pytorch.org/get-started/locally/) to customize your installation.
+4. Install GPErks library:
+```
 pip install .
 ```
 
