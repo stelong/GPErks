@@ -29,8 +29,9 @@ def dump_instance(instance):
     dump["class"] = full_class_name
 
     # encode here class-specific logic to dump initialization parameters
-    if full_class_name == "gpytorch.means.linear_mean.LinearMean":
-        dump["input_size"] = len(instance.weights)
+    if full_class_name == "GPErks.gp.mean.LinearMean":
+        dump["degree"] = instance.degree
+        dump["input_size"] = instance.input_size
     if full_class_name == "gpytorch.kernels.rbf_kernel.RBFKernel":
         dump["ard_num_dims"] = instance.ard_num_dims
 
