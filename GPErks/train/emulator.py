@@ -4,6 +4,7 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Dict, List, Optional
 
+import botorch
 import gpytorch
 import gpytorch.constraints
 import numpy
@@ -206,6 +207,26 @@ class GPEmulator(Trainable):
             print(msg)
 
         return best_model, best_train_stats
+
+    def train_auto(self):
+        self.model.to(self.device)
+        self.criterion = gpytorch.mlls.ExactMarginalLogLikelihood(
+            self.model.likelihood, self.model
+        )
+
+        log.info("Training emulator...")
+        botorch.fit.fit_gpytorch_mll(self.criterion)
+        log.info("Trained emulator.")
+
+        log.info("The fitted emulator hyperparameters are:")
+        self.experiment.print_stats()
+
+        log.info("Saving model...")
+        snapshot_dir = Path(DEFAULT_TRAIN_SNAPSHOT_DIR)
+        snapshot_dir.mkdir(parents=True, exist_ok=True)
+        snapshot_file_path = posix_path(DEFAULT_TRAIN_SNAPSHOT_DIR, "best_model.pth")
+        torch.save(self.model.state_dict(), snapshot_file_path)
+        log.info("Saved model.")
 
     def _train_once(
         self,
