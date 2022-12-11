@@ -41,8 +41,8 @@ def main():
 
 
     # choose mean function
-    from gpytorch.means import LinearMean
-    mean_function = LinearMean(input_size=dataset.input_size)
+    from GPErks.gp.mean import LinearMean
+    mean_function = LinearMean(degree=1, input_size=dataset.input_size, bias=True)
 
 
     # choose kernel
@@ -87,7 +87,7 @@ def main():
 
 
     # bonus: inference on 2-dimensional grid
-    inference.interpolate_2Dgrid()  # can add function f as optional argument
+    inference.interpolate_2Dgrid(f)
 
 
     # perk n.2: diagnostics

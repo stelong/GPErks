@@ -41,8 +41,8 @@ def main():
 
 
     # choose mean function
-    from gpytorch.means import LinearMean
-    mean_function = LinearMean(input_size=dataset.input_size)
+    from GPErks.gp.mean import LinearMean
+    mean_function = LinearMean(degree=1, input_size=dataset.input_size, bias=True)
 
 
     # choose covariance function (kernel)

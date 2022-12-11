@@ -93,15 +93,15 @@ def main():
 
     # define experiment
     from gpytorch.likelihoods import GaussianLikelihood
-    from gpytorch.means import LinearMean
     from gpytorch.kernels import RBFKernel, ScaleKernel
     from torchmetrics import MeanSquaredError, R2Score
     from GPErks.gp.experiment import GPExperiment
+    from GPErks.gp.mean import LinearMean
     from GPErks.train.emulator import GPEmulator
     from GPErks.train.early_stop import GLEarlyStoppingCriterion
 
     likelihood = GaussianLikelihood()
-    mean_function = LinearMean(input_size=dataset.input_size)
+    mean_function = LinearMean(degree=1, input_size=dataset.input_size, bias=True)
     kernel = ScaleKernel(RBFKernel(ard_num_dims=dataset.input_size))
     metrics = [MeanSquaredError(), R2Score()]
     experiment = GPExperiment(
