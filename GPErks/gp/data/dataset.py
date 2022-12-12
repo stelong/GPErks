@@ -8,6 +8,7 @@ from GPErks.constants import HEIGHT, WIDTH
 from GPErks.plot.options import PlotOptions
 from GPErks.plot.plottable import Plottable
 from GPErks.utils.random import RandomEngine
+from GPErks.utils.sampling import Sampler
 
 
 class Dataset(Plottable):
@@ -117,34 +118,19 @@ class Dataset(Plottable):
         l_bounds: Optional[List[float]] = None,
         u_bounds: Optional[List[float]] = None,
     ):
-        if design == "srs":
-            sampler = RandomEngine(d=d, seed=seed)
-        elif design == "lhs":
-            sampler = qmc.LatinHypercube(d=d, seed=seed)
-        elif design == "sobol":
-            sampler = qmc.Sobol(d=d, scramble=True, seed=seed)
-        else:
-            raise ValueError(
-                "Not a valid sampling design! Choose between 'srs', 'lhs', 'sobol'"
-            )
+        sampler = Sampler(design, d, seed)
 
-        X_train = sampler.random(n=n_train_samples)
-        if l_bounds is not None and u_bounds is not None:
-            X_train = qmc.scale(X_train, l_bounds, u_bounds)
+        X_train = sampler.sample(n_train_samples, l_bounds, u_bounds)
         y_train = np.squeeze(f(X_train))
 
         if n_val_samples is not None:
-            X_val = sampler.random(n=n_val_samples)
-            if l_bounds is not None and u_bounds is not None:
-                X_val = qmc.scale(X_val, l_bounds, u_bounds)
+            X_val = sampler.sample(n_val_samples, l_bounds, u_bounds)
             y_val = np.squeeze(f(X_val))
         else:
             X_val, y_val = None, None
 
         if n_test_samples is not None:
-            X_test = sampler.random(n=n_test_samples)
-            if l_bounds is not None and u_bounds is not None:
-                X_test = qmc.scale(X_test, l_bounds, u_bounds)
+            X_test = sampler.sample(n_test_samples, l_bounds, u_bounds)
             y_test = np.squeeze(f(X_test))
         else:
             X_test, y_test = None, None
