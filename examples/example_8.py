@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# 8. Showcasing new functionalities: automatic emulator hyperparameters' fit
+# 8. Showcasing new functionalities: automatic emulator hyperparameters' fitting
 # + LinearMean module with higher than first degree polynomials + mean module fit inspection
 #
 import numpy
