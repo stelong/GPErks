@@ -364,28 +364,28 @@ class GPEmulator(Trainable):
             # contexts.
             # ref: https://github.com/pytorch/pytorch/issues/11390
             y_std = numpy.sqrt(predictions.variance.cpu().detach().numpy())
-            y_covar = predictions.covariance_matrix.cpu().detach().numpy()
-            covar_sign = numpy.sign(y_covar)
+            if with_covar:
+                y_covar = predictions.covariance_matrix.cpu().detach().numpy()
+                covar_sign = numpy.sign(y_covar)
 
         y_mean, y_std = self.scaled_data.scy.inverse_transform(y_mean, ystd_=y_std)
+        output = (y_mean, y_std)
 
-        # trick here to backtransform a full covariance matrix:
-        y_covar_as_vec = numpy.sqrt(
-            numpy.abs(
-                y_covar.reshape(
-                    len(y_std) ** 2,
+        if with_covar:
+            # trick here to backtransform a full covariance matrix:
+            y_covar_as_vec = numpy.sqrt(
+                numpy.abs(
+                    y_covar.reshape(
+                        len(y_std) ** 2,
+                    )
                 )
             )
-        )
-        _, y_covar_as_vec = self.scaled_data.scy.inverse_transform(
-            y_mean, ystd_=y_covar_as_vec
-        )
-        y_covar = covar_sign * numpy.power(
-            y_covar_as_vec.reshape(len(y_std), len(y_std)), 2
-        )
-
-        output = (y_mean, y_std)
-        if with_covar:
+            _, y_covar_as_vec = self.scaled_data.scy.inverse_transform(
+                y_mean, ystd_=y_covar_as_vec
+            )
+            y_covar = covar_sign * numpy.power(
+                y_covar_as_vec.reshape(len(y_std), len(y_std)), 2
+            )
             output += (y_covar,)
 
         return output
