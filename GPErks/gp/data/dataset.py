@@ -112,6 +112,8 @@ class Dataset(Plottable):
         n_test_samples: Optional[int] = None,
         design: str = "lhs",
         seed: Optional[int] = None,
+        x_labels: Optional[List[str]] = None,
+        y_label: Optional[str] = None,
         l_bounds: Optional[List[float]] = None,
         u_bounds: Optional[List[float]] = None,
     ):
@@ -154,6 +156,8 @@ class Dataset(Plottable):
             y_val=y_val,
             X_test=X_test,
             y_test=y_test,
+            x_labels=x_labels,
+            y_label=y_label,
             l_bounds=l_bounds,
             u_bounds=u_bounds,
         )
