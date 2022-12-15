@@ -124,7 +124,7 @@ class Wave:
     def augment_nimp(
         self,
         n_total_points,
-        scale=0.1,
+        scaling=0.1,
     ):
         X = np.copy(self.NIMP)
         lbounds = self.Itrain[:, 0]
@@ -140,14 +140,14 @@ class Wave:
             n_total_points - X.shape[0] if n_total_points - X.shape[0] > 0 else 0,
         )
         log.info(
-            f"\n[Iteration: {count:<2}] Found: {a:<{len(str(n_total_points))}} ({'{:.2f}'.format(100*a/n_total_points):>6}%) | Missing: {b:<{len(str(n_total_points))}}"
+            f"[Iteration: {count:<2}] Found: {a:<{len(str(n_total_points))}} ({'{:.2f}'.format(100*a/n_total_points):>6}%) | Missing: {b:<{len(str(n_total_points))}}"
         )
 
         while X.shape[0] < n_total_points:
             count += 1
 
             bounds = get_minmax(X)
-            scale *= np.array([bounds[i, 1] - bounds[i, 0] for i in range(X.shape[1])])
+            scale = scaling * np.array([bounds[i, 1] - bounds[i, 0] for i in range(X.shape[1])])
 
             temp = np.random.normal(loc=X, scale=scale)
             while True:
