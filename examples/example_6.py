@@ -88,8 +88,7 @@ def main():
 
 
     # resulting mean test scores
-    for key in test_scores_dct.keys():
-        print(f"Mean test {key} score: {np.mean(test_scores_dct[key]):.4f}")
+    kfcv.summary()
 
 
     # check training stats at each split
