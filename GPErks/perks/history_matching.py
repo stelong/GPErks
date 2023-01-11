@@ -147,7 +147,9 @@ class Wave:
             count += 1
 
             bounds = get_minmax(X)
-            scale = scaling * np.array([bounds[i, 1] - bounds[i, 0] for i in range(X.shape[1])])
+            scale = scaling * np.array(
+                [bounds[i, 1] - bounds[i, 0] for i in range(X.shape[1])]
+            )
 
             temp = np.random.normal(loc=X, scale=scale)
             while True:
