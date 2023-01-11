@@ -80,17 +80,19 @@ def main():
 
     optimizer = torch.optim.Adam(experiment.model.parameters(), lr=0.1)
     esc = GLEarlyStoppingCriterion(max_epochs=1000, alpha=0.1, patience=8)
-    best_model_dct, best_train_stats_dct, test_scores_dct = kfcv.train(optimizer, esc)
+    best_model_dct, best_train_stats_dct = kfcv.train(optimizer, esc)
 
-
-    # check mean test scores
-    for key in test_scores_dct.keys():
-        print(f"Mean test {key} score: {np.mean(test_scores_dct[key]):.4f}")
-
+    # check cv split test scores
+    kfcv.summary()
 
     # check training stats at each split
     for i, bts in best_train_stats_dct.items():
         bts.plot(with_early_stopping_criterion=True)
+
+    # best-split emulator (according to highest R2-score) is automatically available within kfcv instance
+    from GPErks.perks.inference import Inference
+    inference = Inference(kfcv.emulator)
+    inference.summary()
 
 
 if __name__ == '__main__':
