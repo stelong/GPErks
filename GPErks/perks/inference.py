@@ -19,7 +19,7 @@ class Inference:
         self.y_pred_mean, self.y_pred_std = self.emulator.predict(self.X_test)
         self.scores_dct = {}
 
-    def summary(self):
+    def summary(self, printtoconsole=True):
         metrics_names = list(map(get_metric_name, self.metrics))
         metrics_scores = list(
             m(tensorize(self.y_pred_mean), tensorize(self.y_test)).cpu().numpy()
@@ -27,12 +27,13 @@ class Inference:
         )
         self.scores_dct = {key: val for key, val in zip(metrics_names, metrics_scores)}
 
-        df = pd.DataFrame(
-            data=np.around(np.array(metrics_scores), decimals=4).reshape(-1, 1),
-            index=metrics_names,
-            columns=["Score"],
-        )
-        print(df)
+        if printtoconsole:
+            df = pd.DataFrame(
+                data=np.around(np.array(metrics_scores), decimals=4).reshape(-1, 1),
+                index=metrics_names,
+                columns=["Score"],
+            )
+            print(df)
 
     def plot(self):
         fig, axis = plt.subplots(1, 1, figsize=(2 * WIDTH, 2 * HEIGHT / 3))
