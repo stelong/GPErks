@@ -1,4 +1,5 @@
 import multiprocessing
+import os
 from pathlib import Path
 
 from scipy.stats import norm
@@ -19,7 +20,7 @@ DEFAULT_LOG_FORMAT = (
 # TRAINING
 DEFAULT_TRAIN_MAX_EPOCH = 100
 DEFAULT_TRAIN_SNAPSHOT_FREQUENCY = DEFAULT_TRAIN_MAX_EPOCH / 20
-DEFAULT_TRAIN_SNAPSHOT_DIR = posix_path(".", "snapshot", pretty_str(now()))
+DEFAULT_TRAIN_SNAPSHOT_DIR = posix_path(os.getcwd(), "snapshot")
 DEFAULT_TRAIN_SNAPSHOT_SPLIT_TEMPLATE = "split_{split}"
 DEFAULT_TRAIN_SNAPSHOT_RESTART_TEMPLATE = "restart_{restart}"
 DEFAULT_TRAIN_SNAPSHOT_EPOCH_TEMPLATE = "epoch_{epoch}.pth"
