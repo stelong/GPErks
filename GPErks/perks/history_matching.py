@@ -222,7 +222,7 @@ class Wave:
         W.imp_idx = self.imp_idx.copy()
         return W
 
-    def plot_wave(self, xlabels=None, display="impl", filename=None):
+    def plot_wave(self, xlabels=None, display="impl", filepath=None):
         X = self.reconstruct_tests()
         input_dim = X.shape[1]
 
@@ -302,7 +302,7 @@ class Wave:
         cbar = fig.colorbar(im, cax=cbar_axis)
         cbar.set_label(cbar_label, fontsize=12)
         fig.tight_layout()
-        if filename is not None:
-            plt.savefig(filename + ".png", bbox_inches="tight", dpi=300)
+        if filepath is not None:
+            plt.savefig(filepath, bbox_inches="tight", dpi=300)
         else:
             plt.show()
