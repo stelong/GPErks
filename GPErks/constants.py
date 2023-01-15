@@ -5,7 +5,6 @@ from pathlib import Path
 from scipy.stats import norm
 
 from GPErks.serialization.path import posix_path
-from GPErks.utils.time import now, pretty_str
 
 APPLICATION_NAME = "GPErks"
 
@@ -50,3 +49,7 @@ DEFAULT_GSA_THRESHOLD = 0.01
 # PLOT
 HEIGHT = 9.36111
 WIDTH = 5.91667
+
+
+# MISCELLANEA
+DEFAULT_TMP_OUTFILE_DIR = posix_path(os.getcwd(), "tmp")
