@@ -127,7 +127,7 @@ def main():
     )
 
     # create a huge, 100k points parameter space to be explored all at once using the trained emulator
-    sampler = Sampler(design="lhs", dim=d, seed=seed)
+    sampler = Sampler(design="lhs", dim=d, seed=seed)  # available designs: 'srs', 'lhs', 'sobol'
     n_samples = 100000
     x = sampler.sample(
         n_samples,
