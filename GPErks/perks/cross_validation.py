@@ -118,7 +118,6 @@ class KFoldCrossValidation(Trainable):
         ) in execute_task_in_parallel(
             self._train_split, splits, self.max_workers
         ).items():
-
             best_model_dct[split] = best_model
             best_train_stats_dct[split] = best_train_stats
             best_test_scores_dct[split] = best_test_scores
