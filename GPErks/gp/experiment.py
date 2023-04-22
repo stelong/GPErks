@@ -83,7 +83,7 @@ class GPExperiment:
                 f"\nLikelihood noise: "
                 f"{self.model.likelihood.noise_covar.noise.data.squeeze():.4f}"
             )
-        print(msg)
+        return msg
 
     def save_to_config_file(self, experiment_file_path):
         config = ConfigParser()
