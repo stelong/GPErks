@@ -198,7 +198,7 @@ class GPEmulator(Trainable):
         )
 
         log.info("The fitted emulator hyperparameters are:")
-        self.experiment.print_stats()
+        log.info(self.experiment.print_stats())
 
         if self.scaled_data.with_val:
             msg = ""
@@ -219,7 +219,7 @@ class GPEmulator(Trainable):
         log.info("Trained emulator.")
 
         log.info("The fitted emulator hyperparameters are:")
-        self.experiment.print_stats()
+        log.info(self.experiment.print_stats())
 
         log.info("Saving model...")
         snapshot_dir = Path(DEFAULT_TRAIN_SNAPSHOT_DIR)
