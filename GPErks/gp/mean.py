@@ -1,5 +1,4 @@
 import gpytorch
-import numpy
 import torch
 
 from GPErks.utils.polynomialfeatures import PolynomialFeatures
