@@ -1,4 +1,3 @@
-import os
 from copy import deepcopy
 from itertools import cycle
 from typing import List, Optional
@@ -16,7 +15,6 @@ from GPErks.constants import (
     DEFAULT_TRAIN_SNAPSHOT_EPOCH_TEMPLATE,
     DEFAULT_TRAIN_SNAPSHOT_RESTART_TEMPLATE,
     DEFAULT_TRAIN_SNAPSHOT_SPLIT_TEMPLATE,
-    DEFAULT_GSA_N_DRAWS,
 )
 from GPErks.gp.data.dataset import Dataset
 from GPErks.gp.experiment import GPExperiment
