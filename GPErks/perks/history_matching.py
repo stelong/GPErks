@@ -8,8 +8,7 @@ from scipy.stats import iqr
 from GPErks.log.logger import get_logger
 from GPErks.utils.array import get_minmax
 from GPErks.utils.indices import diff, whereq_whernot
-from GPErks.utils.jsonfiles import save_json, load_json
-
+from GPErks.utils.jsonfiles import load_json, save_json
 
 log = get_logger()
 
