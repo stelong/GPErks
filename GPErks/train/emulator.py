@@ -113,7 +113,7 @@ class GPEmulator(Trainable):
             log.info(f"Run restart {current_restart}.")
             current_restart += 1
 
-        log.info("Trained emulator...")
+        log.info("Trained emulator.")
 
         train_loss_list = [
             train_stats.train_loss[best_epoch - 1]
@@ -158,7 +158,7 @@ class GPEmulator(Trainable):
             map_location=torch.device("cpu"),
         )
         self.model.load_state_dict(best_model)
-        log.info(f"Loaded best model (restart: {best_restart}, epoch: {best_epoch}).")
+        log.info("Loaded best model.")
         best_model_link = posix_path(
             Path(snapshotting_criterion.snapshot_dir).parent.as_posix(),
             "best_model.pth",
@@ -196,15 +196,10 @@ class GPEmulator(Trainable):
             f"Linked best train stats {best_train_stats_file} to "
             f"{best_train_stats_link}."
         )
+        log.info("Loaded best train stats.")
 
         log.info("The fitted emulator hyperparameters are:")
         log.info(self.experiment.print_stats())
-
-        if self.scaled_data.with_val:
-            msg = ""
-            for metric_name, best_value in self.best_val_metrics_score.items():
-                msg += f"{metric_name}: {best_value:.4f}\n"
-            print(msg)
 
         return best_model, best_train_stats
 
@@ -297,9 +292,10 @@ class GPEmulator(Trainable):
 
             self.model.eval()
             with torch.no_grad(), gpytorch.settings.fast_pred_var():
-                metric_scores = self._evaluate_metrics(X_train, y_train)
-                for metric, metric_score in zip(self.metrics, metric_scores):
-                    metric_name = get_metric_name(metric)
+                for metric in self.metrics:
+                    metric_name, metric_score = self._evaluate_metric(
+                        metric, X_train, y_train
+                    )
                     msg += f" - {metric_name}: {metric_score:.4f}"
                     train_stats.train_metrics_score[metric_name].append(
                         float(metric_score)
@@ -309,9 +305,10 @@ class GPEmulator(Trainable):
                     val_loss = self._val_step(X_val, y_val)
                     train_stats.val_loss.append(val_loss)
                     msg += f" | Validation Loss: {val_loss:.4f}"
-                    metric_scores = self._evaluate_metrics(X_val, y_val)
-                    for metric, metric_score in zip(self.metrics, metric_scores):
-                        metric_name = get_metric_name(metric)
+                    for metric in self.metrics:
+                        metric_name, metric_score = self._evaluate_metric(
+                            metric, X_val, y_val
+                        )
                         msg += f" - {metric_name}: {metric_score:.4f}"
                         train_stats.val_metrics_score[metric_name].append(
                             float(metric_score)
@@ -345,10 +342,18 @@ class GPEmulator(Trainable):
         val_loss = -self.criterion(self.model(X_val), y_val)
         return val_loss.item()
 
-    def _evaluate_metrics(self, X, y):
+    def _evaluate_metric(self, metric, X, y):
         predictions = self.model.likelihood(self.model(X))
-        y_pred = predictions.mean
-        return [m(y_pred.cpu(), y.cpu()) for m in self.metrics]
+        y_pred_mean = predictions.mean
+        metric_name = get_metric_name(metric)
+        output = (metric_name,)
+        if metric_name == "IndependentStandardError":
+            y_pred_std = torch.sqrt(predictions.variance)
+            output += (metric(y_pred_mean.cpu(), y_pred_std.cpu(), y.cpu()),)
+        else:
+            output += (metric(y_pred_mean.cpu(), y.cpu()),)
+
+        return output
 
     def predict(self, X_new, with_covar=False):
         self.model.eval()
