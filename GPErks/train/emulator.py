@@ -28,7 +28,7 @@ from GPErks.train.early_stop import (
     NoEarlyStoppingCriterion,
 )
 from GPErks.train.snapshot import (
-    EveryNEpochsSnapshottingCriterion,
+    NeverSaveSnapshottingCriterion,
     SnapshottingCriterion,
 )
 from GPErks.train.train_stats import TrainStats, load_train_stats_from_file
@@ -72,13 +72,12 @@ class GPEmulator(Trainable):
         early_stopping_criterion: EarlyStoppingCriterion = NoEarlyStoppingCriterion(
             DEFAULT_TRAIN_MAX_EPOCH
         ),
-        snapshotting_criterion: SnapshottingCriterion = EveryNEpochsSnapshottingCriterion(  # noqa: E501
+        snapshotting_criterion: SnapshottingCriterion = NeverSaveSnapshottingCriterion(
             posix_path(
                 DEFAULT_TRAIN_SNAPSHOT_DIR,
                 DEFAULT_TRAIN_SNAPSHOT_RESTART_TEMPLATE,
             ),
             DEFAULT_TRAIN_SNAPSHOT_EPOCH_TEMPLATE,
-            DEFAULT_TRAIN_SNAPSHOT_FREQUENCY,
         ),
     ):
         log.info("Training emulator...")
