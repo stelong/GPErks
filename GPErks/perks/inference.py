@@ -11,6 +11,10 @@ from GPErks.utils.metrics import get_metric_name
 
 
 class Inference:
+    """
+    A set of tools to assess trained emulators predictive capability onto unseen testing datasets.
+    """
+
     def __init__(self, emulator: GPEmulator):
         self.emulator = emulator
         self.X_test = self.emulator.experiment.dataset.X_test
@@ -20,17 +24,33 @@ class Inference:
         self.scores_dct = {}
 
     def summary(self, printtoconsole=True):
-        metrics_names = list(map(get_metric_name, self.metrics))
-        metrics_scores = list(
-            m(tensorize(self.y_pred_mean), tensorize(self.y_test)).cpu().numpy()
-            for m in self.metrics
-        )
-        self.scores_dct = {key: val for key, val in zip(metrics_names, metrics_scores)}
+        self.scores_dct = {}
+        for metric in self.metrics:
+            name = get_metric_name(metric)
+            if name == "IndependentStandardError":
+                score = (
+                    metric(
+                        tensorize(self.y_pred_mean),
+                        tensorize(self.y_pred_std),
+                        tensorize(self.y_test),
+                    )
+                    .cpu()
+                    .numpy()
+                )
+            else:
+                score = (
+                    metric(tensorize(self.y_pred_mean), tensorize(self.y_test))
+                    .cpu()
+                    .numpy()
+                )
+            self.scores_dct[name] = score
 
         if printtoconsole:
             df = pd.DataFrame(
-                data=np.around(np.array(metrics_scores), decimals=4).reshape(-1, 1),
-                index=metrics_names,
+                data=np.around(
+                    np.array(list(self.scores_dct.values())), decimals=4
+                ).reshape(-1, 1),
+                index=list(self.scores_dct.keys()),
                 columns=["Score"],
             )
             print(df)
@@ -38,31 +58,31 @@ class Inference:
     def plot(self):
         fig, axis = plt.subplots(1, 1, figsize=(2 * WIDTH, 2 * HEIGHT / 3))
 
-        l = np.argsort(
+        idx_sort = np.argsort(
             self.y_pred_mean
         )  # let's sort predicted values for a better visualisation
-        x = np.arange(len(l))
+        x = np.arange(len(idx_sort))
 
         ci = 2  # ~95% confidence interval
 
         axis.scatter(
             x,
-            self.y_test[l],
+            self.y_test[idx_sort],
             facecolors="none",
             edgecolors="C0",
             label="observed",
         )
         axis.scatter(
             x,
-            self.y_pred_mean[l],
+            self.y_pred_mean[idx_sort],
             facecolors="C0",
             s=16,
             label="predicted",
         )
         axis.errorbar(
             x,
-            self.y_pred_mean[l],
-            yerr=ci * self.y_pred_std[l],
+            self.y_pred_mean[idx_sort],
+            yerr=ci * self.y_pred_std[idx_sort],
             c="C0",
             ls="none",
             lw=0.5,
