@@ -52,4 +52,5 @@ WIDTH = 5.91667
 
 
 # MISCELLANEA
+DEFAULT_RANDOM_SEED = 8
 DEFAULT_TMP_OUTFILE_DIR = posix_path(os.getcwd(), "tmp")
