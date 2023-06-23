@@ -37,21 +37,24 @@ class Dataset(Plottable):
         self.X_test: Optional[np.ndarray] = X_test
         self.y_test: Optional[np.ndarray] = y_test
         self.with_test: bool = X_test is not None and y_test is not None
+
         self.sample_size = self.X_train.shape[0]
-        self.input_size = self.X_train.shape[1] if len(self.X_train.shape) > 1 else 1
+        self.input_size = self.X_train.shape[1]
+
         self.x_labels: List[str] = (
             x_labels if x_labels else [f"X{i+1}" for i in range(self.input_size)]
         )
         self.y_label: str = y_label if y_label else "y"
+
         self.l_bounds: List[float] = l_bounds if l_bounds else np.min(X_train, axis=0)
         self.u_bounds: List[float] = u_bounds if u_bounds else np.max(X_train, axis=0)
+
         self.name: str = name if name else "TestExperiment"
         self.descr: str = (
             descr if descr else "An example dataset to test GPErks' power!"
         )
 
-        msg = self.print_dataset_info()
-        print(msg)
+        self._print_dataset_info()
 
     def plot(self, plot_options: PlotOptions = PlotOptions()):
         self.plot_train()
@@ -115,7 +118,7 @@ class Dataset(Plottable):
         )
         plt.show()
 
-    def print_dataset_info(self):
+    def _print_dataset_info(self):
         msg = f"{self.name} dataset loaded."
         if self.descr:
             msg += f'\nNotes from the author:\n"{self.descr}"'
@@ -132,7 +135,7 @@ class Dataset(Plottable):
             + f"\n-Validation data available: {val_avail}"
             + f"\n-Testing data available: {test_avail}"
         )
-        return msg
+        print(msg)
 
     @property
     def discrepancy(self):
@@ -177,17 +180,13 @@ class Dataset(Plottable):
         if "u_bounds" in data.keys():
             y_labels = data["u_bounds"]
 
-        with_val = False
         X_val, Y_val = None, Y_train.shape[1] * [None]
         if "X_val" in data.keys() and "Y_val" in data.keys():
-            with_val = True
             X_val = np.array(data["X_val"])
             Y_val = np.array(data["Y_val"]).T
 
-        with_test = False
         X_test, Y_test = None, Y_train.shape[1] * [None]
         if "X_test" in data.keys() and "Y_test" in data.keys():
-            with_test = True
             X_test = np.array(data["X_test"])
             Y_test = np.array(data["Y_test"]).T
 
