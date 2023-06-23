@@ -2,5 +2,7 @@ black
 flake8
 isort
 mypy
+sphinx
+sphinx-material
 tox
 twine
