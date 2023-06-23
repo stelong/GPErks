@@ -34,6 +34,9 @@ def dump_instance(instance):
         dump["input_size"] = instance.input_size
     if full_class_name == "gpytorch.kernels.rbf_kernel.RBFKernel":
         dump["ard_num_dims"] = instance.ard_num_dims
+    if full_class_name == "gpytorch.kernels.matern_kernel.MaternKernel":
+        dump["nu"] = instance.nu
+        dump["ard_num_dims"] = instance.ard_num_dims
 
     log.warning(
         f"Dumping instance of class {full_class_name}. "
