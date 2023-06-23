@@ -66,7 +66,7 @@ class SnapshottingCriterion(metaclass=ABCMeta):
 
 
 class EveryNEpochsSnapshottingCriterion(SnapshottingCriterion):
-    def __init__(self, snapshot_dir: str, snapshot_file: str, n):
+    def __init__(self, snapshot_dir: str, snapshot_file: str, n: int):
         super().__init__(snapshot_dir, snapshot_file)
         self.n = n
 
