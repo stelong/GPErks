@@ -9,5 +9,5 @@ SALib
 scikit-learn
 scipy
 seaborn
-torch
+torch<2.0
 torchmetrics
