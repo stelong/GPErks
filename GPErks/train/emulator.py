@@ -16,7 +16,6 @@ from GPErks.constants import (
     DEFAULT_TRAIN_MAX_EPOCH,
     DEFAULT_TRAIN_SNAPSHOT_DIR,
     DEFAULT_TRAIN_SNAPSHOT_EPOCH_TEMPLATE,
-    DEFAULT_TRAIN_SNAPSHOT_FREQUENCY,
     DEFAULT_TRAIN_SNAPSHOT_RESTART_TEMPLATE,
 )
 from GPErks.gp.data.scaled_data import ScaledData
@@ -40,6 +39,17 @@ log = get_logger()
 
 
 class GPEmulator(Trainable):
+    """_summary_
+
+    Attributes
+    ----------
+
+    Parameters
+    ----------
+    Trainable : _type_
+        _description_
+
+    """
     def __init__(
         self,
         experiment: GPExperiment,
@@ -80,6 +90,22 @@ class GPEmulator(Trainable):
             DEFAULT_TRAIN_SNAPSHOT_EPOCH_TEMPLATE,
         ),
     ):
+        """_summary_
+
+        Parameters
+        ----------
+        optimizer : _type_
+            _description_
+        early_stopping_criterion : EarlyStoppingCriterion, optional
+            _description_, by default NoEarlyStoppingCriterion( DEFAULT_TRAIN_MAX_EPOCH )
+        snapshotting_criterion : SnapshottingCriterion, optional
+            _description_, by default NeverSaveSnapshottingCriterion( posix_path( DEFAULT_TRAIN_SNAPSHOT_DIR, DEFAULT_TRAIN_SNAPSHOT_RESTART_TEMPLATE, ), DEFAULT_TRAIN_SNAPSHOT_EPOCH_TEMPLATE, )
+
+        Returns
+        -------
+        _type_
+            _description_
+        """
         log.info("Training emulator...")
 
         X_train = self.scaled_data.X_train.to(self.device)
