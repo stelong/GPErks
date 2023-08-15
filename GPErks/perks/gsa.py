@@ -25,6 +25,10 @@ from GPErks.utils.array import get_minmax
 
 
 class SobolGSA(Plottable):
+    """
+    Sobol global sensitivity analysis using Saltelli method and integrating emulator uncertainty.
+    """
+
     def __init__(
         self,
         dataset: Dataset,
@@ -98,7 +102,7 @@ class SobolGSA(Plottable):
                 num_resamples=DEFAULT_GSA_N_BOOTSTRAP,
                 conf_level=DEFAULT_GSA_CONF_LEVEL,
                 parallel=False,
-                n_processors=None,
+                n_processors=0,
                 seed=self.seed,
             )
             T_Si, first_Si, (_, second_Si) = sobol.Si_to_pandas_dict(S)
