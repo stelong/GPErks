@@ -6,16 +6,63 @@ import torch
 import torchmetrics
 from gpytorch.kernels import ScaleKernel
 
+from GPErks.constants import DEFAULT_EXP_N_RESTARTS
 from GPErks.gp.data.data_scaler import StandardScaler, UnitCubeScaler
 from GPErks.gp.data.dataset import Dataset
 from GPErks.gp.data.scaled_data import ScaledData
 from GPErks.gp.model import ExactGPModel
+from GPErks.log.logger import get_logger
 from GPErks.serialization.config import get_repeatable_section, read_config
 from GPErks.serialization.runtime import build_instance, dump_instance
 from GPErks.utils.random import set_seed
 
+log = get_logger()
+
 
 class GPExperiment:
+    """
+    Container object for all emulator properties and training setup.
+
+    ...
+
+    Attributes
+    ----------
+    dataset: GPErks.gp.data.dataset.Dataset
+        Container object handling data and all their associated properties.
+    scaled_data: GPErks.gp.data.scaled_data.ScaledData
+        Container object handling default pre- and post-processing transformers (input->UnitCubeScaler,
+        output -> StandardScaler) and data transformed through them.
+    n_restarts: int
+        Number of times we restart the training process from a different point in the hyperparameter space.
+    seed: int, optional
+        Random seed for reproducibility.
+    metrics: list of torchmetrics.Metric, optional
+        List of regression metrics to be evaluated against validation and/or testing dataset.
+    learn_noise: bool
+        Whether to fit likelihood noise (True) of shrink and fix it to a very small value (False, not recommended).
+    model: GPErks.gp.model.ExactGPModel
+        GPyTorch Gaussian process emulator model implementing a forward method.
+
+    Parameters
+    ----------
+    likelihood: gpytorch.likelihoods.Likelihood
+        Gaussian process emulator likelihood function.
+    mean_module: gpytorch.means.Mean
+        Gaussian process emulator mean function.
+    covar_module: gpytorch.kernels.Kernel
+        Gaussian process emulator covariance function.
+
+    Methods
+    -------
+    load_model()
+    print_stats()
+    save_to_config_file()
+
+    Examples
+    --------
+
+   """
+
     def __init__(
         self,
         dataset: Dataset,
@@ -23,7 +70,7 @@ class GPExperiment:
         mean_module: gpytorch.means.Mean,
         covar_module: gpytorch.kernels.Kernel,
         *,
-        n_restarts: int = 10,
+        n_restarts: int = DEFAULT_EXP_N_RESTARTS,
         seed: Optional[int] = None,
         metrics: Optional[List[torchmetrics.Metric]] = None,
         learn_noise: bool = True,
@@ -34,30 +81,21 @@ class GPExperiment:
         self.dataset = dataset
         # scale data by default
         self.scaled_data: ScaledData = ScaledData(
-            self.dataset,
+            dataset,
             UnitCubeScaler(),
             StandardScaler(),
         )
 
-        self.likelihood: gpytorch.likelihoods.Likelihood = likelihood
-        self.mean_module: gpytorch.means.Mean = mean_module
-        self.covar_module: gpytorch.kernels.Kernel = covar_module
-
         self.n_restarts: int = n_restarts
-
-        if metrics:
-            self.metrics: List[torchmetrics.Metric] = metrics
-        else:
-            self.metrics: List[torchmetrics.Metric] = []
-
+        self.metrics: List[torchmetrics.Metric] = metrics or []
         self.learn_noise: bool = learn_noise
 
         self.model: ExactGPModel = ExactGPModel(
             self.scaled_data.X_train,
             self.scaled_data.y_train,
-            self.likelihood,
-            self.mean_module,
-            self.covar_module,
+            likelihood,
+            mean_module,
+            covar_module,
         )
 
     def load_model(
@@ -66,7 +104,8 @@ class GPExperiment:
         device: torch.device = torch.device("cpu"),
     ):
         self.model.load_state_dict(torch.load(model_path, map_location=device))
-        self.print_stats()
+        log.info("Loaded model with hyperparameters:")
+        log.info(self.print_stats())
 
     def print_stats(self):
         torch.set_printoptions(sci_mode=False)
