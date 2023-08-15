@@ -1,6 +1,9 @@
 import json
+from pathlib import Path
 
 import numpy
+
+from GPErks.serialization.labels import read_labels_from_file
 
 
 class NumpyEncoder(json.JSONEncoder):
@@ -33,3 +36,24 @@ def load_json(filename):
     with open(filename, "r") as f:
         dct = json.load(f, object_hook=numpy_hook)
     return dct
+
+
+def create_json_dataset_from_arrays(data_dir: Path):
+    X_train = numpy.loadtxt(data_dir / "X_train.txt", dtype=float)
+    Y_train = numpy.loadtxt(data_dir / "Y_train.txt", dtype=float)
+    xlabels = read_labels_from_file(data_dir / "xlabels.txt")
+    ylabels = read_labels_from_file(data_dir / "ylabels.txt")
+
+    data_dct = {
+        "X_train": X_train.tolist(),
+        "Y_train": Y_train.tolist(),
+        # "X_val": X_val.tolist(),
+        # "Y_val": Y_val.tolist(),
+        # "X_test": X_test.tolist(),
+        # "Y_test": Y_test.tolist(),  # TODO: use path.glob(*.txt) to detect whether the user has got also val and test
+        "x_labels": xlabels,
+        "y_labels": ylabels,
+        "info": "This is the most beautiful dataset you'll ever see!"
+    }
+    with open(data_dir / f"{data_dir.name}.json", "w") as f:
+        json.dump(data_dct, f, indent=4)
