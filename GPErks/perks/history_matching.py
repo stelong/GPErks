@@ -14,6 +14,10 @@ log = get_logger()
 
 
 class Wave:
+    """
+    A module to perform Bayesian history matching using trained univariate emulators to match target distributions' mean and SD values.
+    """
+
     def __init__(
         self,
         emulator=None,
