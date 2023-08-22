@@ -86,6 +86,10 @@ class GPExperiment:
             StandardScaler(),
         )
 
+        self.likelihood = likelihood
+        self.mean_module = mean_module
+        self.covar_module = covar_module
+
         self.n_restarts: int = n_restarts
         self.metrics: List[torchmetrics.Metric] = metrics or []
         self.learn_noise: bool = learn_noise
@@ -93,9 +97,9 @@ class GPExperiment:
         self.model: ExactGPModel = ExactGPModel(
             self.scaled_data.X_train,
             self.scaled_data.y_train,
-            likelihood,
-            mean_module,
-            covar_module,
+            self.likelihood,
+            self.mean_module,
+            self.covar_module,
         )
 
     def load_model(
