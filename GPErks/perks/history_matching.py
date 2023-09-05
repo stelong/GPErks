@@ -307,5 +307,6 @@ class Wave:
         fig.tight_layout()
         if filepath is not None:
             plt.savefig(filepath, bbox_inches="tight", dpi=300)
+            plt.close()
         else:
             plt.show()
