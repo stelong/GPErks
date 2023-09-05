@@ -54,8 +54,6 @@ class Dataset(Plottable):
             descr if descr else "An example dataset to test GPErks' power!"
         )
 
-        self._print_dataset_info()
-
     def plot(self, plot_options: PlotOptions = PlotOptions()):
         self.plot_train()
 
@@ -118,8 +116,8 @@ class Dataset(Plottable):
         )
         plt.show()
 
-    def _print_dataset_info(self):
-        msg = f"{self.name} dataset loaded."
+    def summary(self):
+        msg = f"\n{self.name} dataset loaded."
         if self.descr:
             msg += f'\nNotes from the author:\n"{self.descr}"'
         val_avail = f"Yes (size = {self.X_val.shape[0]})" if self.with_val else "No"
@@ -139,8 +137,9 @@ class Dataset(Plottable):
 
     @property
     def discrepancy(self):
-        """Quantifies the distance between the continuous uniform distribution on a hypercube and the discrete uniform
-        distribution on distinct sample points. The lower the value, the better the coverage of the parameter space
+        """Quantifies the distance between the continuous uniform distribution on a
+        hypercube and the discrete uniform distribution on distinct sample points.
+        The lower the value, the better the coverage of the parameter space
         """
         X_train_unit_cube = qmc.scale(
             self.X_train, self.l_bounds, self.u_bounds, reverse=True
