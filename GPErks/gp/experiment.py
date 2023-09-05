@@ -55,7 +55,6 @@ class GPExperiment:
     Methods
     -------
     load_model()
-    print_stats()
     save_to_config_file()
 
     Examples
@@ -107,27 +106,11 @@ class GPExperiment:
         model_path: str,
         device: torch.device = torch.device("cpu"),
     ):
+        log.info("Loading model from hyperparameters state dictionary...")
         self.model.load_state_dict(torch.load(model_path, map_location=device))
-        log.info("Loaded model with hyperparameters:")
-        log.info(self.print_stats())
+        log.info("Loaded model.")
 
-    def print_stats(self):
-        torch.set_printoptions(sci_mode=False)
-        msg = (
-            "\n"
-            + f"Bias: {self.model.mean_module.bias.data.squeeze():.4f}\n"
-            + f"Weights: {self.model.mean_module.weights.data.squeeze()}\n"
-            + f"Outputscale: {self.model.covar_module.outputscale.data.squeeze():.4f}\n"
-            + f"Lengthscales: "
-            f"{self.model.covar_module.base_kernel.lengthscale.data.squeeze()}"
-        )
-        if self.learn_noise:
-            msg += (
-                f"\nLikelihood noise: "
-                f"{self.model.likelihood.noise_covar.noise.data.squeeze():.4f}"
-            )
-        return msg
-
+        
     def save_to_config_file(self, experiment_file_path):
         config = ConfigParser()
         config["GPExperiment"] = {}
