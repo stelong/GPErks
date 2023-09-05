@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from GPErks.constants import DEFAULT_INFERENCE_GRID_DIM, WIDTH, HEIGHT
+from GPErks.constants import DEFAULT_INFERENCE_GRID_DIM, HEIGHT, WIDTH
 from GPErks.train.emulator import GPEmulator
 from GPErks.utils.array import tensorize
 
@@ -15,7 +15,8 @@ def inspect_mean_module(
     if input_size > 2:
         raise ValueError(
             "self.input_size is greater than 2! "
-            + "You can only inspect the mean module of emulators trained on a 1D/2D parameter space."
+            + "You can only inspect the mean module of emulators "
+            + "trained on a 1D/2D parameter space."
         )
     else:
         x = emulator.scaled_data.X_train

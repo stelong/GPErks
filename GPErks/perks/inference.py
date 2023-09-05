@@ -12,7 +12,8 @@ from GPErks.utils.metrics import get_metric_name
 
 class Inference:
     """
-    A set of tools to assess trained emulators predictive capability onto unseen testing datasets.
+    A set of tools to assess trained emulators predictive capability onto unseen
+    testing datasets.
     """
 
     def __init__(self, emulator: GPEmulator):

@@ -26,7 +26,8 @@ from GPErks.utils.array import get_minmax
 
 class SobolGSA(Plottable):
     """
-    Sobol global sensitivity analysis using Saltelli method and integrating emulator uncertainty.
+    Sobol global sensitivity analysis using Saltelli method and
+    integrating emulator uncertainty.
     """
 
     def __init__(

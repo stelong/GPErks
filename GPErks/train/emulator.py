@@ -50,6 +50,7 @@ class GPEmulator(Trainable):
         _description_
 
     """
+
     def __init__(
         self,
         experiment: GPExperiment,
@@ -97,9 +98,16 @@ class GPEmulator(Trainable):
         optimizer : _type_
             _description_
         early_stopping_criterion : EarlyStoppingCriterion, optional
-            _description_, by default NoEarlyStoppingCriterion( DEFAULT_TRAIN_MAX_EPOCH )
+            _description_, by default NoEarlyStoppingCriterion(
+                DEFAULT_TRAIN_MAX_EPOCH)
         snapshotting_criterion : SnapshottingCriterion, optional
-            _description_, by default NeverSaveSnapshottingCriterion( posix_path( DEFAULT_TRAIN_SNAPSHOT_DIR, DEFAULT_TRAIN_SNAPSHOT_RESTART_TEMPLATE, ), DEFAULT_TRAIN_SNAPSHOT_EPOCH_TEMPLATE, )
+            _description_, by default NeverSaveSnapshottingCriterion(
+                posix_path(
+                    DEFAULT_TRAIN_SNAPSHOT_DIR,
+                    DEFAULT_TRAIN_SNAPSHOT_RESTART_TEMPLATE,
+                    ),
+                    DEFAULT_TRAIN_SNAPSHOT_EPOCH_TEMPLATE,
+                )
 
         Returns
         -------
@@ -195,7 +203,7 @@ class GPEmulator(Trainable):
         except FileNotFoundError:
             pass  # nothing to do
         os.symlink(best_model_file, best_model_link)
-        log.debug(f"Linked best model.")
+        log.debug("Linked best model.")
 
         log.info(
             f"Loading best train stats "
@@ -220,7 +228,7 @@ class GPEmulator(Trainable):
         except FileNotFoundError:
             pass  # nothing to do
         os.symlink(best_train_stats_file, best_train_stats_link)
-        log.debug(f"Linked best train stats.")
+        log.debug("Linked best train stats.")
 
         return best_model, best_train_stats
 
@@ -431,7 +439,7 @@ class GPEmulator(Trainable):
             )[0]
 
         return y_samples
-    
+
     def hyperparameters(self):
         torch.set_printoptions(sci_mode=False)
         msg = (

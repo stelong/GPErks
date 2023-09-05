@@ -15,7 +15,8 @@ log = get_logger()
 
 class Wave:
     """
-    A module to perform Bayesian history matching using trained univariate emulators to match target distributions' mean and SD values.
+    A module to perform Bayesian history matching using trained univariate emulators to
+    match target distributions' mean and SD values.
     """
 
     def __init__(
@@ -113,7 +114,8 @@ class Wave:
         nimp = len(self.nimp_idx)
         if n_points >= nimp - 1:
             raise ValueError(
-                "Not enough NIMP points to choose from! n_points must be strictly less than W.NIMP.shape[0] - 1."
+                "Not enough NIMP points to choose from! n_points must be strictly "
+                + "less than W.NIMP.shape[0] - 1."
             )
         else:
             X = dp.subset.psa_select(
@@ -122,8 +124,9 @@ class Wave:
             _, nl = whereq_whernot(self.NIMP, X)
         return X, self.NIMP[nl]
 
-    # Note: the Wave object instance internal structure will be compromised after calling this method:
-    # we recommend calling self.copy() and/or self.save() beforehand!
+    # Note: the Wave object instance internal structure will be compromised after
+    # calling this method: we recommend calling self.copy() and/or self.save()
+    # beforehand!
     def augment_nimp(
         self,
         n_total_points,
@@ -134,7 +137,8 @@ class Wave:
         ubounds = self.Itrain[:, 1]
 
         log.info(
-            f"\nRequested points: {n_total_points}\nAvailable points: {X.shape[0]}\nStart searching..."
+            f"\nRequested points: {n_total_points}\nAvailable points: "
+            + f"{X.shape[0]}\nStart searching..."
         )
 
         count = 0
@@ -143,7 +147,9 @@ class Wave:
             n_total_points - X.shape[0] if n_total_points - X.shape[0] > 0 else 0,
         )
         log.info(
-            f"[Iteration: {count:<2}] Found: {a:<{len(str(n_total_points))}} ({'{:.2f}'.format(100*a/n_total_points):>6}%) | Missing: {b:<{len(str(n_total_points))}}"
+            f"[Iteration: {count:<2}] Found: {a:<{len(str(n_total_points))}} "
+            + f"({'{:.2f}'.format(100*a/n_total_points):>6}%) | "
+            + f"Missing: {b:<{len(str(n_total_points))}}"
         )
 
         while X.shape[0] < n_total_points:
@@ -179,7 +185,9 @@ class Wave:
                 n_total_points - X.shape[0] if n_total_points - X.shape[0] > 0 else 0,
             )
             log.info(
-                f"[Iteration: {count:<2}] Found: {a:<{len(str(n_total_points))}} ({'{:.2f}'.format(100*a/n_total_points):>6}%) | Missing: {b:<{len(str(n_total_points))}}"
+                f"[Iteration: {count:<2}] Found: {a:<{len(str(n_total_points))}} "
+                + f"({'{:.2f}'.format(100*a/n_total_points):>6}%) | "
+                + f"Missing: {b:<{len(str(n_total_points))}}"
             )
 
         log.info("\nDone.")
@@ -199,7 +207,8 @@ class Wave:
         n_samples = X.shape[0]
         if n_points > n_samples:
             raise ValueError(
-                "Cannot return more points than totally available points! Choose n_points <= X_train.shape[0]."
+                "Cannot return more points than totally available points! "
+                + "Choose n_points <= X_train.shape[0]."
             )
         elif n_points == n_samples:
             return X
@@ -258,7 +267,8 @@ class Wave:
 
         else:
             raise ValueError(
-                "Not a valid display option! Can only display implausibilty maps ('impl') or proportion-of-exp.variance maps ('var')."
+                "Not a valid display option! Can only display implausibilty maps "
+                + "('impl') or proportion-of-exp.variance maps ('var')."
             )
 
         height = 9.36111
