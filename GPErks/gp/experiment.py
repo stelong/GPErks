@@ -30,16 +30,20 @@ class GPExperiment:
     dataset: GPErks.gp.data.dataset.Dataset
         Container object handling data and all their associated properties.
     scaled_data: GPErks.gp.data.scaled_data.ScaledData
-        Container object handling default pre- and post-processing transformers (input->UnitCubeScaler,
-        output -> StandardScaler) and data transformed through them.
+        Container object handling default pre- and post-processing transformers
+        (input->UnitCubeScaler, output -> StandardScaler) and data transformed
+        through them.
     n_restarts: int
-        Number of times we restart the training process from a different point in the hyperparameter space.
+        Number of times we restart the training process from a different point in the
+        hyperparameter space.
     seed: int, optional
         Random seed for reproducibility.
     metrics: list of torchmetrics.Metric, optional
-        List of regression metrics to be evaluated against validation and/or testing dataset.
+        List of regression metrics to be evaluated against validation and/or testing
+        dataset.
     learn_noise: bool
-        Whether to fit likelihood noise (True) of shrink and fix it to a very small value (False, not recommended).
+        Whether to fit likelihood noise (True) of shrink and fix it to a very small
+        value (False, not recommended).
     model: GPErks.gp.model.ExactGPModel
         GPyTorch Gaussian process emulator model implementing a forward method.
 
@@ -60,7 +64,7 @@ class GPExperiment:
     Examples
     --------
 
-   """
+    """
 
     def __init__(
         self,
@@ -110,7 +114,6 @@ class GPExperiment:
         self.model.load_state_dict(torch.load(model_path, map_location=device))
         log.info("Loaded model.")
 
-        
     def save_to_config_file(self, experiment_file_path):
         config = ConfigParser()
         config["GPExperiment"] = {}
