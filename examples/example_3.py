@@ -6,12 +6,11 @@ def main():
     # import main libraries
     import os
     import torch
+    from pathlib import Path
 
-    # set logger and enforce reproducibility
-    from GPErks.log.logger import get_logger
+    # enforce reproducibility
     from GPErks.utils.random import set_seed
     from GPErks.constants import DEFAULT_RANDOM_SEED
-    get_logger()
     seed = DEFAULT_RANDOM_SEED
     set_seed(seed)  # reproducible sampling
 
@@ -60,28 +59,15 @@ def main():
 
     # dump experiment to config file;
     # this will allow reproducing the exact, same experimental setup in future contexts
-    config_file = "./example_3.ini"
+    from GPErks.serialization.path import posix_path
+    config_file = posix_path(os.getcwd(), "snapshot", "example_3.ini")
     experiment.save_to_config_file(config_file)
-
-    # load experiment from config file
-    del experiment  # let's delete the original experiment before being able to re-create it from file
-
-    from GPErks.gp.experiment import load_experiment_from_config_file
-    experiment = load_experiment_from_config_file(
-        config_file,
-        dataset  # data is not saved in config file to save memory, so we still need to pass the dataset used!
-    )
 
     # choose training options: device + optimizer
     device = "cuda" if torch.cuda.is_available() else "cpu"
     optimizer = torch.optim.Adam(experiment.model.parameters(), lr=0.1)
 
-    # train model
-    from GPErks.train.emulator import GPEmulator
-    emulator = GPEmulator(experiment, device)
-
-    # snapshotting - save model state at a given epoch(s)
-    from GPErks.serialization.path import posix_path
+    # snapshotting - save model state at a given epoch(s) while training
     from GPErks.train.snapshot import (
         EveryEpochSnapshottingCriterion,
         EveryNEpochsSnapshottingCriterion,
@@ -96,32 +82,46 @@ def main():
         snapshot_file,
     )
 
-    # training
+    # train model
+    from GPErks.train.emulator import GPEmulator
+    emulator = GPEmulator(experiment, device)
     emulator.train(optimizer, snapshotting_criterion=snpc)
 
-    # by default, after training, the best emulator stored in the emulator instance is the one that achieved
-    # the lowest training loss (or validation loss if we provided a validation dataset) across the different
-    # restarts we have run; this emulator is the one used, for example, to perform inference on test set
+    # check fitted hyperparameters
+    emulator.hyperparameters()
+
+    # inference on stored test set
     from GPErks.perks.inference import Inference
     inference = Inference(emulator)
     inference.summary()
 
-    # loading emulator;
-    # a symbolic link to the best emulator across the different restarts run is created at the end of the training
-    # process, this can be accessed under the name of "best_model.pth":
-    best_model_file = posix_path(
-        snapshot_dir,
-        "best_model.pth"
+    # loading experiment from config file
+    del experiment  # let's delete the original experiment before being able to re-create it from file
+    from GPErks.gp.experiment import load_experiment_from_config_file
+    experiment = load_experiment_from_config_file(
+        config_file,
+        dataset  # data is not saved in config file to save memory, so we still need to pass the dataset used!
     )
-    # load the best model fitted hyperparameters
-    best_model_state = torch.load(best_model_file, map_location=torch.device(device))
 
-    emulator1 = GPEmulator(experiment, device)  # create an emulator instance
-    emulator1.model.load_state_dict(best_model_state)  # update its hyperparameters with the loaded state
+    # loading emulator from best model file
+    del emulator  # let's delete the original emulator befor being able to re-create it from file
 
-    inference = Inference(emulator1)
-    inference.summary()  # sanity check: metrics' values should be the same as the one obtained soon after training
+    # create an emulator instance
+    emulator = GPEmulator(experiment, device)
+    emulator.hyperparameters()  # trained hyperparameters are NOT YET loaded
 
+    # by default, after training, a symbolic link to the best emulator across the different restarts run is
+    # created; this can be accessed under the name of "best_model.pth"
+    best_model_file = posix_path(snapshot_dir, "best_model.pth")
 
+    # update experiment model internal hyperparameters using values stored in best model file
+    emulator.experiment.load_model(best_model_file)
+    emulator.hyperparameters()  # now hyperparameters match the values seen right after training
+
+    # sanity check: metrics' values should be the same as the ones obtained right after training
+    inference = Inference(emulator)
+    inference.summary()
+
+    
 if __name__ == '__main__':
     main()

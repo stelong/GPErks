@@ -7,11 +7,9 @@ def main():
     import numpy as np
     import torch
 
-    # set logger and enforce reproducibility
-    from GPErks.log.logger import get_logger
+    # enforce reproducibility
     from GPErks.utils.random import set_seed
     from GPErks.constants import DEFAULT_RANDOM_SEED
-    get_logger()
     seed = DEFAULT_RANDOM_SEED
     set_seed(seed)  # reproducible sampling
 
@@ -32,6 +30,8 @@ def main():
         l_bounds=[0],  # for d-dimensional input, l_bounds and u_bounds must be lists of length = d
         u_bounds=[1],  # could omit l_bounds and u_bounds if, as in this case, input parameters live in [0, 1]
     )
+    # we can get a coincise summary of the dataset like this:
+    dataset.summary()
 
     # choose likelihood
     from gpytorch.likelihoods import GaussianLikelihood
@@ -69,6 +69,12 @@ def main():
     from GPErks.train.emulator import GPEmulator
     emulator = GPEmulator(experiment, device)
     emulator.train(optimizer)
+
+    # check fitted hyperparameters;
+    # by default, after training, the best emulator stored in the emulator instance is the one that achieved
+    # the lowest training loss (or validation loss if we provided a validation dataset) across the different
+    # restarts we have run
+    emulator.hyperparameters()
 
     # inference on stored test set
     from GPErks.utils.array import tensorize

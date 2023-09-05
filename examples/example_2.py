@@ -6,11 +6,9 @@ def main():
     # import main libraries
     import torch
 
-    # set logger and enforce reproducibility
-    from GPErks.log.logger import get_logger
+    # enforce reproducibility
     from GPErks.utils.random import set_seed
     from GPErks.constants import DEFAULT_RANDOM_SEED
-    get_logger()
     seed = DEFAULT_RANDOM_SEED
     set_seed(seed)  # reproducible sampling
 
@@ -28,6 +26,7 @@ def main():
         design="lhs",
         seed=seed,
     )
+    dataset.summary()
     dataset.plot()  # plot (multi-dimensional) input vs scalar output to check for relationships
     dataset.plot_pairwise()  # plot input vs input to check for parameter space coverage
 
@@ -68,6 +67,9 @@ def main():
     from GPErks.train.emulator import GPEmulator
     emulator = GPEmulator(experiment, device)
     emulator.train(optimizer)
+
+    # check fitted hyperparameters
+    emulator.hyperparameters()
 
     # inference on stored test set
     from GPErks.perks.inference import Inference

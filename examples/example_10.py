@@ -35,30 +35,22 @@ def main():
     set_seed(seed)
 
     # Load experimental values (mean and variance) you aim to match
-    exp_data_file = posix_path(os.getcwd(), "data", "example_10", "expdata.json")
+    data_dir = posix_path(os.getcwd(), "examples", "data", "example_10")
     expdata = {}
-    with open(exp_data_file, "r") as f:
+    with open(Path(data_dir) / "expdata.json", "r") as f:
         expdata = json.load(f)
     exp_mean = [val["mean"] for val in expdata.values()]
     exp_var = [val["var"] for val in expdata.values()]
 
-    # Load input parameters and output features' names
-    dataset_dir = Path(posix_path(os.getcwd(), "datasets", "stefano", "8p", "sham"))
-    xlabels = read_labels_from_file(dataset_dir / "xlabels.txt")
-    ylabels = read_labels_from_file(dataset_dir / "ylabels.txt")
-    feature_idx = {key: val for val, key in enumerate(ylabels)}
+    # Load dataset
+    datasets = Dataset.build_from_file(posix_path(os.getcwd(), "examples", "data", "datasets", "Stefano_8p_sham.json"))
     active_features = list(expdata.keys())
-    active_indices = [feature_idx[f] for f in active_features]
 
     # Train list of univariate emulators (one for each feature to match)
-    X = np.loadtxt(dataset_dir / "X.txt", dtype=float)
-    Y = np.loadtxt(dataset_dir / "Y.txt", dtype=float)
-
+    device = "cpu"
     emulators = []
-    for idx, feature in zip(active_indices, active_features):
-        y = Y[:, idx]
-
-        dataset = Dataset(X, y, x_labels=xlabels, y_label=feature)
+    for feature in active_features:
+        dataset = datasets[feature]
         likelihood = GaussianLikelihood()
         mean = LinearMean(degree=1, input_size=dataset.input_size, bias=True)
         covar = ScaleKernel(MaternKernel(ard_num_dims=dataset.input_size))
@@ -72,13 +64,13 @@ def main():
             metrics=metrics,
             seed=seed
         )
-        device = "cpu"
 
         emulator = GPEmulator(experiment, device)
         emulator.train_auto()
         emulators.append(emulator)
 
-    minmax = get_minmax(X)
+    xlabels = dataset.x_labels
+    minmax = get_minmax(dataset.X_train)
 
     waveno = 1  # number of iteration we are at (wave id if you want)
     cutoff = 3.0  # threshold value for the implausibility criterion
@@ -99,7 +91,7 @@ def main():
         var=exp_var,
     )  # instantiate the wave object
 
-    sampler = Sampler(design="lhs", dim=X.shape[1], seed=seed)
+    sampler = Sampler(design="lhs", dim=dataset.X_train.shape[1], seed=seed)
     n_samples = 100000
     X = sampler.sample(
         n_samples,
@@ -111,9 +103,9 @@ def main():
     # and of implausible points starting from the initial samples in X
     w.find_regions(X)
     w.print_stats()  # show statistics about the two obtained spaces
-    w.plot_wave(xlabels=xlabels, display="impl")  # plot the current wave of history matching (impl. measure plot)
-    w.plot_wave(xlabels=xlabels, display="var")  # we can also check the accuracy of the GPEs for the current wave
-    # note: if filepath=<path_to_file> flag is provided, the plot will be saved to <path_to_file>
+    w.plot_wave(xlabels=xlabels, display="impl", filepath=Path(data_dir)/"impl.png")  # plot the current wave of history matching (impl. measure plot)
+    w.plot_wave(xlabels=xlabels, display="var", filepath=Path(data_dir)/"var.png")  # we can also check the accuracy of the GPEs for the current wave
+    # note: if we omit the filepath=<path_to_file> flag, plots will be simply displayed and not saved
 
     # How to continue on the next wave in 5 steps
     #

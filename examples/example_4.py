@@ -4,21 +4,22 @@
 #
 def main():
     # import main libraries
+    import os
     import numpy as np
     import torch
+    from pathlib import Path
 
-    # set logger and enforce reproducibility
-    from GPErks.log.logger import get_logger
+    # enforce reproducibility
     from GPErks.utils.random import set_seed
     from GPErks.constants import DEFAULT_RANDOM_SEED
-    get_logger()
     seed = DEFAULT_RANDOM_SEED
     set_seed(seed)
 
     # load externally generated dataset
-    data_dir = "data/example_4/"
-    x = np.loadtxt(data_dir + "X.txt", dtype=float)
-    y = np.loadtxt(data_dir + "y.txt", dtype=float)
+    from GPErks.serialization.path import posix_path
+    data_dir = Path(posix_path(os.getcwd(), "examples", "data", "example_4"))
+    x = np.loadtxt(data_dir / "X.txt", dtype=float)
+    y = np.loadtxt(data_dir / "y.txt", dtype=float)
 
     # split original dataset in training, validation and testing sets
     from sklearn.model_selection import train_test_split
@@ -37,8 +38,8 @@ def main():
 
     # load input parameters and output feature names
     from GPErks.serialization.labels import read_labels_from_file
-    x_labels = read_labels_from_file(data_dir + "xlabels.txt")
-    y_label = read_labels_from_file(data_dir + "ylabel.txt")[0]  # there is only one element in the list
+    x_labels = read_labels_from_file(data_dir / "xlabels.txt")
+    y_label = read_labels_from_file(data_dir / "ylabel.txt")[0]  # there is only one element in the list
 
     # build dataset
     from GPErks.gp.data.dataset import Dataset
@@ -51,8 +52,10 @@ def main():
         y_test=y_test,
         x_labels=x_labels,
         y_label=y_label,
+        name="CanopyReflectance",
         descr="A reflectance model for the homogeneous plant canopy and its inversion (doi.org/10.1016/0034-4257(89)90015-1)"
     )
+    dataset.summary()
     dataset.plot()
     dataset.plot_pairwise()
 
@@ -86,6 +89,7 @@ def main():
     emulator = GPEmulator(experiment, device)
     # when training, we can actually output both the best model state (a dict) and some training statistics (an object)
     best_model, best_train_stats = emulator.train(optimizer)
+    print(list(best_model.keys()))
     # training statistics can be used to examine training and validation losses
     best_train_stats.plot()
 

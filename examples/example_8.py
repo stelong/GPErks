@@ -27,12 +27,11 @@ def main():
     set_seed(seed)  # reproducible sampling
 
     # function to learn (2D -> 1D)
-    f = lambda X: numpy.array([currin_exp(x) for x in X])
     D = 2
 
     # build dataset
     dataset = Dataset.build_from_function(
-        f,
+        currin_exp,
         D,
         n_train_samples=20,
         n_test_samples=25,
