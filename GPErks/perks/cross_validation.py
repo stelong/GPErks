@@ -124,7 +124,8 @@ class KFoldCrossValidation(Trainable):
         self.best_test_scores_structured_dct = {
             get_metric_name(m): [] for m in self.experiment.metrics
         }
-        for split, score in best_test_scores_dct.items():
+        for split in range(self.n_splits):
+            score = best_test_scores_dct[split]
             for m in self.best_test_scores_structured_dct.keys():
                 self.best_test_scores_structured_dct[m].append(score[m].item())
 
@@ -166,6 +167,8 @@ class KFoldCrossValidation(Trainable):
             y_test=self.experiment.dataset.y_train[self.best_split_idx[1]],
             x_labels=self.experiment.dataset.x_labels,
             y_label=self.experiment.dataset.y_label,
+            name=self.experiment.dataset.name,
+            descr=self.experiment.dataset.descr,
         )
 
         experiment = GPExperiment(
