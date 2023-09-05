@@ -184,6 +184,7 @@ class GPEmulator(Trainable):
         )
         self.model.load_state_dict(best_model)
         log.info("Loaded best model.")
+
         best_model_link = posix_path(
             Path(snapshotting_criterion.snapshot_dir).parent.as_posix(),
             "best_model.pth",
@@ -194,7 +195,7 @@ class GPEmulator(Trainable):
         except FileNotFoundError:
             pass  # nothing to do
         os.symlink(best_model_file, best_model_link)
-        log.debug(f"Linked best model {best_model_file} to {best_model_link}.")
+        log.debug(f"Linked best model.")
 
         log.info(
             f"Loading best train stats "
@@ -204,6 +205,8 @@ class GPEmulator(Trainable):
             Path(best_model_file).parent.as_posix(), "train_stats.json"
         )
         best_train_stats = load_train_stats_from_file(best_train_stats_file)
+        log.info("Loaded best train stats.")
+
         best_train_stats_link = posix_path(
             Path(snapshotting_criterion.snapshot_dir).parent.as_posix(),
             "best_train_stats.json",
@@ -217,14 +220,7 @@ class GPEmulator(Trainable):
         except FileNotFoundError:
             pass  # nothing to do
         os.symlink(best_train_stats_file, best_train_stats_link)
-        log.debug(
-            f"Linked best train stats {best_train_stats_file} to "
-            f"{best_train_stats_link}."
-        )
-        log.info("Loaded best train stats.")
-
-        log.info("The fitted emulator hyperparameters are:")
-        log.info(self.experiment.print_stats())
+        log.debug(f"Linked best train stats.")
 
         return best_model, best_train_stats
 
@@ -233,13 +229,9 @@ class GPEmulator(Trainable):
         self.criterion = gpytorch.mlls.ExactMarginalLogLikelihood(
             self.model.likelihood, self.model
         )
-
         log.info("Training emulator...")
         botorch.fit.fit_gpytorch_mll(self.criterion)
         log.info("Trained emulator.")
-
-        log.info("The fitted emulator hyperparameters are:")
-        log.info(self.experiment.print_stats())
 
         log.info("Saving model...")
         snapshot_dir = Path(DEFAULT_TRAIN_SNAPSHOT_DIR)
@@ -439,6 +431,23 @@ class GPEmulator(Trainable):
             )[0]
 
         return y_samples
+    
+    def hyperparameters(self):
+        torch.set_printoptions(sci_mode=False)
+        msg = (
+            "\n"
+            + f"Bias: {self.model.mean_module.bias.data.squeeze():.4f}\n"
+            + f"Weights: {self.model.mean_module.weights.data.squeeze()}\n"
+            + f"Outputscale: {self.model.covar_module.outputscale.data.squeeze():.4f}\n"
+            + f"Lengthscales: "
+            f"{self.model.covar_module.base_kernel.lengthscale.data.squeeze()}"
+        )
+        if self.learn_noise:
+            msg += (
+                f"\nLikelihood noise: "
+                f"{self.model.likelihood.noise_covar.noise.data.squeeze():.4f}"
+            )
+        print(msg)
 
 
 def _get_best_metrics_score(
