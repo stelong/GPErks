@@ -71,6 +71,8 @@ def main():
     device = "cpu"
     devices = [device]
     kfcv = KFoldCrossValidation(experiment, devices, n_splits=5)
+    # note: if we do not specify 'max_workers' above, the K-fold CV will
+    # automatically run in multiprocessing using all available cores
 
     optimizer = torch.optim.Adam(experiment.model.parameters(), lr=0.1)
     esc = GLEarlyStoppingCriterion(max_epochs=1000, alpha=0.1, patience=8)
