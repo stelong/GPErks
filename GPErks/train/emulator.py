@@ -381,6 +381,7 @@ class GPEmulator(Trainable):
         return output
 
     def predict(self, X_new, with_covar=False):
+        self.model.to(self.device)
         self.model.eval()
         self.model.likelihood.eval()
 
@@ -421,6 +422,7 @@ class GPEmulator(Trainable):
         return output
 
     def sample(self, X_new: numpy.ndarray, n_draws: int = DEFAULT_GSA_N_DRAWS):
+        self.model.to(self.device)
         self.model.eval()
         self.model.likelihood.eval()
 
