@@ -2,7 +2,6 @@ from configparser import ConfigParser
 from typing import List, Optional
 
 import gpytorch
-import torch
 import torchmetrics
 from gpytorch.kernels import ScaleKernel
 
@@ -103,7 +102,6 @@ class GPExperiment:
             self.mean_module,
             self.covar_module,
         )
-
 
     def save_to_config_file(self, experiment_file_path):
         config = ConfigParser()
