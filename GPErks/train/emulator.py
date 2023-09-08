@@ -39,17 +39,6 @@ log = get_logger()
 
 
 class GPEmulator(Trainable):
-    """_summary_
-
-    Attributes
-    ----------
-
-    Parameters
-    ----------
-    Trainable : _type_
-        _description_
-
-    """
 
     def __init__(
         self,
@@ -91,29 +80,6 @@ class GPEmulator(Trainable):
             DEFAULT_TRAIN_SNAPSHOT_EPOCH_TEMPLATE,
         ),
     ):
-        """_summary_
-
-        Parameters
-        ----------
-        optimizer : _type_
-            _description_
-        early_stopping_criterion : EarlyStoppingCriterion, optional
-            _description_, by default NoEarlyStoppingCriterion(
-                DEFAULT_TRAIN_MAX_EPOCH)
-        snapshotting_criterion : SnapshottingCriterion, optional
-            _description_, by default NeverSaveSnapshottingCriterion(
-                posix_path(
-                    DEFAULT_TRAIN_SNAPSHOT_DIR,
-                    DEFAULT_TRAIN_SNAPSHOT_RESTART_TEMPLATE,
-                    ),
-                    DEFAULT_TRAIN_SNAPSHOT_EPOCH_TEMPLATE,
-                )
-
-        Returns
-        -------
-        _type_
-            _description_
-        """
         log.info("Training emulator...")
 
         X_train = self.scaled_data.X_train.to(self.device)
@@ -261,27 +227,22 @@ class GPEmulator(Trainable):
         self.model.load_state_dict(self.init_state)
 
         if self.restart_idx > 0:
-            theta_inf, theta_sup = numpy.log(1e-1), numpy.log(
-                1e1
-            )  # TODO: make range customizable
+            # TODO: make range customizable + restart acts also on mean_module params?
+            theta_inf, theta_sup = numpy.log(1e-1), numpy.log(1e1)
             hyperparameters = {
-                "covar_module.base_kernel.raw_lengthscale": (
+                "covar_module.base_kernel.raw_lengthscale":
                     (theta_sup - theta_inf) * torch.rand(self.scaled_data.input_size)
-                    + theta_inf
-                ).to(self.device),
-                "covar_module.raw_outputscale": (
-                    (theta_sup - theta_inf) * torch.rand(1) + theta_inf
-                ).to(self.device),
+                    + theta_inf,
+                "covar_module.raw_outputscale":
+                    (theta_sup - theta_inf) * torch.rand(1) + theta_inf,
             }
             self.model.initialize(**hyperparameters)
             if self.learn_noise:
                 self.model.likelihood.initialize(
-                    raw_noise=((theta_sup - theta_inf) * torch.rand(1) + theta_inf).to(
-                        self.device
-                    )
+                    raw_noise=(theta_sup - theta_inf) * torch.rand(1) + theta_inf
                 )
 
-        self.model.to(self.device)
+        self.model.to(self.device)  # train model on user-defined device e.g., GPU
 
         self.criterion = gpytorch.mlls.ExactMarginalLogLikelihood(
             self.model.likelihood, self.model
@@ -353,6 +314,9 @@ class GPEmulator(Trainable):
             )
         )
         snapshotting_criterion.keep_snapshots_until(self.restart_idx, best_epoch)
+
+        self.model.to(torch.device("cpu"))  # trained model is always returned on CPU
+        
         return train_stats, best_epoch
 
     def _train_step(self, X_train, y_train, optimizer):
@@ -381,22 +345,18 @@ class GPEmulator(Trainable):
         return output
 
     def predict(self, X_new, with_covar=False):
-        self.model.to(self.device)
         self.model.eval()
         self.model.likelihood.eval()
 
-        X_new = tensorize(self.scaled_data.scx.transform(X_new)).to(self.device)
+        X_new = tensorize(self.scaled_data.scx.transform(X_new))
 
         with torch.no_grad(), gpytorch.settings.fast_pred_var():
             # TODO: check off-diagonal elements during fast-pred
             predictions = self.model.likelihood(self.model(X_new))
-            y_mean = predictions.mean.cpu().numpy()
-            # force a detach() due to improper handling of views in no_grad
-            # contexts.
-            # ref: https://github.com/pytorch/pytorch/issues/11390
-            y_std = numpy.sqrt(predictions.variance.cpu().detach().numpy())
+            y_mean = predictions.mean.numpy()
+            y_std = numpy.sqrt(predictions.variance.numpy())
             if with_covar:
-                y_covar = predictions.covariance_matrix.cpu().detach().numpy()
+                y_covar = predictions.covariance_matrix.numpy()
                 covar_sign = numpy.sign(y_covar)
 
         y_mean, y_std = self.scaled_data.scy.inverse_transform(y_mean, ystd_=y_std)
@@ -422,17 +382,16 @@ class GPEmulator(Trainable):
         return output
 
     def sample(self, X_new: numpy.ndarray, n_draws: int = DEFAULT_GSA_N_DRAWS):
-        self.model.to(self.device)
         self.model.eval()
         self.model.likelihood.eval()
 
-        X_new = tensorize(self.scaled_data.scx.transform(X_new)).to(self.device)
+        X_new = tensorize(self.scaled_data.scx.transform(X_new))
 
         with torch.no_grad(), gpytorch.settings.fast_pred_var():
             predictions = self.model.likelihood(self.model(X_new))
-            y_std = numpy.sqrt(predictions.variance.cpu().numpy())
+            y_std = numpy.sqrt(predictions.variance.numpy())
             y_samples = (
-                predictions.sample(sample_shape=torch.Size([n_draws])).cpu().numpy()
+                predictions.sample(sample_shape=torch.Size([n_draws])).numpy()
             )
 
         for i in range(n_draws):
