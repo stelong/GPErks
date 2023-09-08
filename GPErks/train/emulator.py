@@ -39,7 +39,6 @@ log = get_logger()
 
 
 class GPEmulator(Trainable):
-
     def __init__(
         self,
         experiment: GPExperiment,
@@ -230,11 +229,11 @@ class GPEmulator(Trainable):
             # TODO: make range customizable + restart acts also on mean_module params?
             theta_inf, theta_sup = numpy.log(1e-1), numpy.log(1e1)
             hyperparameters = {
-                "covar_module.base_kernel.raw_lengthscale":
-                    (theta_sup - theta_inf) * torch.rand(self.scaled_data.input_size)
-                    + theta_inf,
-                "covar_module.raw_outputscale":
-                    (theta_sup - theta_inf) * torch.rand(1) + theta_inf,
+                "covar_module.base_kernel.raw_lengthscale": (theta_sup - theta_inf)
+                * torch.rand(self.scaled_data.input_size)
+                + theta_inf,
+                "covar_module.raw_outputscale": (theta_sup - theta_inf) * torch.rand(1)
+                + theta_inf,
             }
             self.model.initialize(**hyperparameters)
             if self.learn_noise:
@@ -316,7 +315,7 @@ class GPEmulator(Trainable):
         snapshotting_criterion.keep_snapshots_until(self.restart_idx, best_epoch)
 
         self.model.to(torch.device("cpu"))  # trained model is always returned on CPU
-        
+
         return train_stats, best_epoch
 
     def _train_step(self, X_train, y_train, optimizer):
@@ -390,9 +389,7 @@ class GPEmulator(Trainable):
         with torch.no_grad(), gpytorch.settings.fast_pred_var():
             predictions = self.model.likelihood(self.model(X_new))
             y_std = numpy.sqrt(predictions.variance.numpy())
-            y_samples = (
-                predictions.sample(sample_shape=torch.Size([n_draws])).numpy()
-            )
+            y_samples = predictions.sample(sample_shape=torch.Size([n_draws])).numpy()
 
         for i in range(n_draws):
             y_samples[i] = self.scaled_data.scy.inverse_transform(
@@ -417,6 +414,16 @@ class GPEmulator(Trainable):
                 f"{self.model.likelihood.noise_covar.noise.data.squeeze():.4f}"
             )
         print(msg)
+
+    def load_state(
+        self,
+        model_path: str,
+    ):
+        log.info("Loading model from hyperparameters state dictionary...")
+        self.model.load_state_dict(
+            torch.load(model_path, map_location=torch.device("cpu"))
+        )
+        log.info("Loaded model.")
 
 
 def _get_best_metrics_score(

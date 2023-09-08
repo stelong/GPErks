@@ -58,7 +58,6 @@ class GPExperiment:
 
     Methods
     -------
-    load_model()
     save_to_config_file()
 
     Examples
@@ -105,14 +104,6 @@ class GPExperiment:
             self.covar_module,
         )
 
-    def load_model(
-        self,
-        model_path: str,
-        device: torch.device = torch.device("cpu"),
-    ):
-        log.info("Loading model from hyperparameters state dictionary...")
-        self.model.load_state_dict(torch.load(model_path, map_location=device))
-        log.info("Loaded model.")
 
     def save_to_config_file(self, experiment_file_path):
         config = ConfigParser()
