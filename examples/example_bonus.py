@@ -3,15 +3,16 @@
 # Bonus. GPE auto-training + GSA using external (from publication) dataset loaded from json file
 #
 import os
+import torch
 
 from gpytorch.likelihoods import GaussianLikelihood
 from gpytorch.means import LinearMean
 from gpytorch.kernels import MaternKernel, ScaleKernel
 
+from GPErks.constants import DEFAULT_RANDOM_SEED
 from GPErks.gp.data.dataset import Dataset
 from GPErks.gp.experiment import GPExperiment
 from GPErks.gp.mean import LinearMean
-from GPErks.log.logger import get_logger
 from GPErks.serialization.path import posix_path
 from GPErks.train.emulator import GPEmulator
 from GPErks.utils.random import set_seed
@@ -19,15 +20,12 @@ from GPErks.perks.gsa import SobolGSA
 
 
 def main():
-    get_logger()
-    seed = 8
+    seed = DEFAULT_RANDOM_SEED
     set_seed(seed)
-
-    device = "cpu"
 
     # This new method loads your dataset into a dictionary where keys = features, values = Dataset objects
     # (each Dataset is built to create the experiment that will emulate the corresponding scalar feature (key))
-    datasets = Dataset.build_from_file(posix_path(os.getcwd(), "data", "datasets", "Stefano_8p_sham.json"))
+    datasets = Dataset.build_from_file(posix_path(os.getcwd(), "examples", "data", "datasets", "Stefano_8p_sham.json"))
     features = list(datasets.keys())
     print(features)  # available features to be emulated
 
@@ -74,20 +72,20 @@ def main():
         metrics=metrics,
         seed=seed
     )
+    device = "cuda" if torch.cuda.is_available() else "cpu"
 
     emulator = GPEmulator(experiment, device)
     emulator.train_auto()  # you could use a more manual approach here with early stopping etc.
-    msg = experiment.print_stats()
-    print(f"\nFitted emulator hyperparameters:{msg}")
+    emulator.hyperparameters()
 
     # GSA
     gsa = SobolGSA(dataset, n=1024, seed=seed)
     # the following method is used to perform GSA whenever a (trained) emulator object is available, also covering
     # the case where it was trained using an externally imported dataset as in this example
     gsa.estimate_Sobol_indices_with_emulator(emulator, n_draws=1000)
+    gsa.correct_Sobol_indices()
     gsa.summary()
 
-    gsa.correct_Sobol_indices(threshold=0.01)
     gsa.plot()
     gsa.plot_donut()
     gsa.plot_fancy_donut()

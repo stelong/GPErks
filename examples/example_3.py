@@ -115,7 +115,7 @@ def main():
     best_model_file = posix_path(snapshot_dir, "best_model.pth")
 
     # update experiment model internal hyperparameters using values stored in best model file
-    emulator.experiment.load_model(best_model_file)
+    emulator.load_state(best_model_file)
     emulator.hyperparameters()  # now hyperparameters match the values seen right after training
 
     # sanity check: metrics' values should be the same as the ones obtained right after training

@@ -20,18 +20,17 @@ from gpytorch.kernels import MaternKernel, ScaleKernel
 from gpytorch.likelihoods import GaussianLikelihood
 from torchmetrics import MeanSquaredError, R2Score
 
+from GPErks.constants import DEFAULT_RANDOM_SEED
 from GPErks.gp.data.dataset import Dataset
 from GPErks.gp.experiment import GPExperiment
 from GPErks.gp.mean import LinearMean
-from GPErks.log.logger import get_logger
 from GPErks.train.emulator import GPEmulator
 from GPErks.utils.random import set_seed
 
 
 def main():
-    # Set logger and enforce reproducibility
-    log = get_logger()
-    seed = 8
+    # Enforce reproducibility
+    seed = DEFAULT_RANDOM_SEED
     set_seed(seed)
 
     # Load experimental values (mean and variance) you aim to match

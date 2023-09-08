@@ -2,48 +2,32 @@
 #
 # 9. Principles of the Bayesian History Matching technique
 #
-import matplotlib.pyplot as plt
-import numpy as np
-
-from gpytorch.kernels import MaternKernel, ScaleKernel
-from gpytorch.likelihoods import GaussianLikelihood
-from torchmetrics import MeanSquaredError, R2Score
-
-from GPErks.gp.data.dataset import Dataset
-from GPErks.gp.experiment import GPExperiment
-from GPErks.gp.mean import LinearMean
-from GPErks.log.logger import get_logger
-from GPErks.perks.history_matching import Wave
-from GPErks.perks.inference import Inference
-from GPErks.plot.mean import inspect_mean_module
-from GPErks.train.emulator import GPEmulator
-from GPErks.utils.array import get_minmax
-from GPErks.utils.random import set_seed
-from GPErks.utils.sampling import Sampler
-
-
-
-
 def main():
-    # Set logger and enforce reproducibility
-    log = get_logger()
-    seed = 8
+    # import main libraries
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import torch
+    
+    # enforce reproducibility
+    from GPErks.utils.random import set_seed
+    from GPErks.constants import DEFAULT_RANDOM_SEED
+    seed = DEFAULT_RANDOM_SEED
     set_seed(seed)
 
-    # Define deterministic function
+    # define deterministic function
     def f(x):  # elliptic paraboloid: y = x1^2/a^2 + x2^2/b^2, with a=b=1
         return np.sum(np.power(x, 2), axis=1)
     d = 2  # input dimension (f:2D->1D)
 
-    # Generate synthetic datum to match by visually exploring the parameter space
+    # generate synthetic datum to match by visually exploring the parameter space
     n = 100
     x = np.linspace(-3, 3, n)
     x1, x2 = np.meshgrid(x, x)
     x = np.hstack((x1.reshape(n**2, 1), x2.reshape(n**2, 1)))
     y = f(x).reshape(n, n)
 
-    # Plot synthetic data, i.e. deterministic function evaluations
-    # Note: we highlight with a contour plot a specific region of the parameter space where
+    # plot synthetic data, i.e. deterministic function evaluations;
+    # note: we highlight with a contour plot a specific region of the parameter space where
     # the deterministic function evaluates to 8
     fig, axis = plt.subplots(1, 1)
 
@@ -57,13 +41,14 @@ def main():
     fig.tight_layout()
     plt.show()
 
-    # We generate a synthetic experimental datum (mean and var) we aim to match by using history matching
+    # we generate a synthetic experimental datum (mean and var) we aim to match by using history matching
     exp_mean = np.array([8.0])
     exp_var = 0.1 * exp_mean
 
-    # We now train a univariate Gaussian process emulator (GPE) to replace the mapping f: X -> y
+    # we now train a univariate Gaussian process emulator (GPE) to replace the mapping f: X -> y
 
     # build dataset
+    from GPErks.gp.data.dataset import Dataset
     dataset = Dataset.build_from_function(
         f,
         d,
@@ -78,14 +63,19 @@ def main():
     )
 
     # choose likelihood, mean function and covariance function
+    from gpytorch.kernels import MaternKernel, ScaleKernel
+    from gpytorch.likelihoods import GaussianLikelihood
+    from GPErks.gp.mean import LinearMean
     likelihood = GaussianLikelihood()
     mean = LinearMean(degree=2, input_size=dataset.input_size, bias=True)
     covar = ScaleKernel(MaternKernel(ard_num_dims=dataset.input_size))
 
     # choose metrics
+    from torchmetrics import MeanSquaredError, R2Score
     metrics = [MeanSquaredError(), R2Score()]
 
     # define experiment + device
+    from GPErks.gp.experiment import GPExperiment
     experiment = GPExperiment(
         dataset,
         likelihood,
@@ -94,13 +84,15 @@ def main():
         metrics=metrics,
         seed=seed,
     )
-    device = "cpu"
+    device = "cuda" if torch.cuda.is_available() else "cpu"
 
     # train emulator
+    from GPErks.train.emulator import GPEmulator
     emulator = GPEmulator(experiment, device)
     emulator.train_auto()
 
-    # make inference
+    # check accuracy
+    from GPErks.perks.inference import Inference
     inference = Inference(emulator)
     inference.summary()
     inference.plot()
@@ -108,15 +100,19 @@ def main():
     # inspect fitted mean module
     # Note: to have an almost perfect emulator, we kind of cheated when selecting degree=2 for the mean function.
     # In fact, we knew already that the underlying, deterministic function was an ellipsoid
+    from GPErks.plot.mean import inspect_mean_module
     inspect_mean_module(emulator)
 
     # run the first wave (iteration) of history matching
     cutoff = 3.0  # threshold for the implausibility measure
     maxno = 1  # the first highest implausibility value (worse emulator prediction) deems a point to be implausible
     # Note: maxno is not relevant in this case since we only have 1 emulator to match one experimental datum
+    from GPErks.utils.array import get_minmax
     minmax = get_minmax(emulator.experiment.dataset.X_train)  # training dataset min-max parameter ranges
 
-    # define the wave object
+    # perk n.5: Bayesian History Matching technique;
+    # let's define a wave object
+    from GPErks.perks.history_matching import Wave
     w = Wave(
         emulator=[emulator],
         Itrain=minmax,
@@ -127,6 +123,7 @@ def main():
     )
 
     # create a huge, 100k points parameter space to be explored all at once using the trained emulator
+    from GPErks.utils.sampling import Sampler
     sampler = Sampler(design="lhs", dim=d, seed=seed)  # available designs: 'srs', 'lhs', 'sobol'
     n_samples = 100000
     x = sampler.sample(
@@ -155,7 +152,6 @@ def main():
     sup_conf = exp_mean + cutoff * np.sqrt(exp_var)
     axis.fill_between([xmin, xmax], inf_conf, sup_conf, color="r", alpha=0.1)
     axis.set_xticks([])
-
     fig.tight_layout()
     plt.show()
 
