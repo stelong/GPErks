@@ -1,5 +1,4 @@
-from itertools import cycle
-
+import distinctipy as dp
 import matplotlib.gridspec as grsp
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -41,26 +40,29 @@ def boxplot(ST, S1, S2, index_i, index_ij, ylabel):
     ax2.set_title("Second-order effect", fontweight="bold", fontsize=12)
     ax2.set_xticklabels(ax2.get_xticklabels(), rotation=45, horizontalalignment="right")
 
+    plt.suptitle(
+        f"{ylabel} global sensitivity to model parameters",
+        fontsize=12,
+        fontweight="bold",
+    )
     fig.tight_layout()
-    # plt.savefig(savepath + ylabel + "_box.pdf", bbox_inches="tight", dpi=1000)
     plt.show()
+    return np.array([ax0, ax1, ax2])
 
 
 def donut(ST, S1, index_i, ylabel):
-    ST_mean = np.mean(ST, axis=0)
-    S1_mean = np.mean(S1, axis=0)
+    ST = np.median(ST, axis=0)
+    S1 = np.median(S1, axis=0)
 
-    sum_s1 = S1_mean.sum()
-    sum_st = ST_mean.sum()
+    sum_s1 = S1.sum()
+    sum_st = ST.sum()
     ho = sum_st - sum_s1
-    x_si = np.array(list(S1_mean) + [ho])
-    x_sti = ST_mean
+    x_si = np.array(list(S1) + [ho])
+    x_sti = ST
 
     fig, axes = plt.subplots(1, 2, figsize=(2 * WIDTH, 2 * HEIGHT / 4))
 
-    c = "blue"
-    colors = interp_col(get_col(c), len(index_i))
-    colors += [interp_col(get_col("gray"), 6)[2]]
+    colors = dp.get_colors(len(index_i) + 1, pastel_factor=0.5)
 
     wedges, _ = axes[0].pie(
         x_si,
@@ -71,7 +73,7 @@ def donut(ST, S1, index_i, ylabel):
         wedgeprops=dict(width=0.3, edgecolor="w", linewidth=1),
         normalize=True,
     )
-    axes[0].set_title("S1", fontsize=12, fontweight="bold")
+    axes[0].set_title("Si", fontsize=12)
 
     axes[1].pie(
         x_sti,
@@ -82,13 +84,22 @@ def donut(ST, S1, index_i, ylabel):
         wedgeprops=dict(width=0.3, edgecolor="w", linewidth=1),
         normalize=True,
     )
-    axes[1].set_title("ST", fontsize=12, fontweight="bold")
+    axes[1].set_title("STi", fontsize=12)
 
-    plt.figlegend(wedges, index_i + ["higher-order int."], ncol=5, loc="lower center")
-    # plt.savefig(
-    #     savepath + ylabel + "_donut.pdf", bbox_inches="tight", dpi=1000
-    # )
+    plt.figlegend(
+        wedges,
+        index_i + ["higher-order int."],
+        ncol=5,
+        loc="lower center",
+    )
+    plt.suptitle(
+        f"{ylabel} global sensitivity to model parameters",
+        fontsize=12,
+        fontweight="bold",
+    )
+    fig.tight_layout()
     plt.show()
+    return axes
 
 
 def fancy_donut(ST, S1, S2, index_i, ylabel):
@@ -121,26 +132,14 @@ def fancy_donut(ST, S1, S2, index_i, ylabel):
 
     fig, axis = plt.subplots(1, 1, figsize=(4 * WIDTH / 3, HEIGHT / 2))
 
-    colors = [
-        "red",
-        "purple",
-        "amber",
-        "light_green",
-        "blue",
-        "pink",
-        "teal",
-        "brown",
-    ]
-
+    outer_colors = dp.get_colors(len(index_i) + 1, pastel_factor=0.5)
+    in_c1 = [c + (0.3,) for c in outer_colors[:-1]]
+    in_c2 = [c + (0.7,) for c in outer_colors[:-1]]
     inner_colors = []
-    for c, _ in zip(cycle(colors), index_i):
-        cis = interp_col(get_col(c), 6)
-        inner_colors.append(cis[3])
-        inner_colors.append(cis[2])
-    inner_colors += 2 * [interp_col(get_col("gray"), 6)[2]]
-
-    outer_colors = [get_col(c)[1] for c in colors]
-    outer_colors += [interp_col(get_col("gray"), 6)[2]]
+    for c1, c2 in zip(in_c1, in_c2):
+        inner_colors.append(c1)
+        inner_colors.append(c2)
+    inner_colors.append((1.0, 1.0, 1.0))
 
     wedges, _ = axis.pie(
         S.sum(axis=1),
@@ -160,24 +159,31 @@ def fancy_donut(ST, S1, S2, index_i, ylabel):
     )
 
     axis.set(aspect="equal")
-    axis.set_title(ylabel, fontsize=12, fontweight="bold")
+    axis.set_title("Si + Sij", fontsize=12)
 
     plt.figlegend(
         wedges,
-        index_i + ["higher-order\ninteractions"],
+        index_i + ["higher-order int."],
         ncol=5,
         loc="lower center",
     )
+    plt.suptitle(
+        f"{ylabel} global sensitivity to model parameters",
+        fontsize=12,
+        fontweight="bold",
+    )
+    fig.tight_layout()
     plt.show()
+    return np.array([axis])
 
 
 def heatmap(ST, S1, index_i, ylabel):
-    ST_mean = np.mean(ST, axis=0).reshape(1, -1)
-    S1_mean = np.mean(S1, axis=0).reshape(1, -1)
+    ST = np.median(ST, axis=0).reshape(1, -1)
+    S1 = np.median(S1, axis=0).reshape(1, -1)
 
     fig, axes = plt.subplots(1, 2, figsize=(2 * WIDTH, 2 * HEIGHT / 8))
 
-    df = pd.DataFrame(data=S1_mean, index=[ylabel], columns=index_i)
+    df = pd.DataFrame(data=S1, index=[ylabel], columns=index_i)
     h1 = sns.heatmap(
         df,
         cmap="rocket_r",
@@ -188,12 +194,12 @@ def heatmap(ST, S1, index_i, ylabel):
         cbar_kws={"shrink": 0.8},
         ax=axes[0],
     )
-    axes[0].set_title("S1", fontsize=12, fontweight="bold")
+    axes[0].set_title("Si", fontsize=12, fontweight="bold")
     axes[0].tick_params(left=False, bottom=False)
     h1.set_xticklabels(h1.get_xticklabels(), rotation=45, va="top")
     h1.set_yticklabels(h1.get_yticklabels(), rotation=0, ha="right")
 
-    df = pd.DataFrame(data=ST_mean, index=[ylabel], columns=index_i)
+    df = pd.DataFrame(data=ST, index=[ylabel], columns=index_i)
     ht = sns.heatmap(
         df,
         cmap="rocket_r",
@@ -204,13 +210,19 @@ def heatmap(ST, S1, index_i, ylabel):
         cbar_kws={"shrink": 0.8},
         ax=axes[1],
     )
-    axes[1].set_title("ST", fontsize=12, fontweight="bold")
+    axes[1].set_title("STi", fontsize=12, fontweight="bold")
     axes[1].tick_params(left=False, bottom=False)
     ht.set_xticklabels(ht.get_xticklabels(), rotation=45, va="top")
     ht.set_yticklabels(ht.get_yticklabels(), rotation=0, ha="right")
 
-    # plt.savefig(savepath + ylabel + "_heat.pdf", bbox_inches="tight", dpi=1000)
+    plt.suptitle(
+        f"{ylabel} global sensitivity to model parameters",
+        fontsize=12,
+        fontweight="bold",
+    )
+    fig.tight_layout()
     plt.show()
+    return axes
 
 
 def network(ST, S1, S2, index_i, index_ij, ylabel):
@@ -230,26 +242,26 @@ def network(ST, S1, S2, index_i, index_ij, ylabel):
         elif dx < 0:
             return np.pi + np.arctan(dy / dx)
 
-    ST_mean = np.mean(ST, axis=0)
-    S1_mean = np.mean(S1, axis=0)
-    S2_mean = np.mean(S2, axis=0)
+    ST = np.median(ST, axis=0)
+    S1 = np.median(S1, axis=0)
+    S2 = np.median(S2, axis=0)
 
-    maximum = np.max([ST_mean.max(), S1_mean.max(), S2_mean.max()])
-    ST_mean /= maximum
-    S1_mean /= maximum
-    S2_mean /= maximum
+    maximum = np.max([ST.max(), S1.max(), S2.max()])
+    ST /= maximum
+    S1 /= maximum
+    S2 /= maximum
 
     min_size = 0
     max_size = 200
-    foreground_node_size = [min_size + (max_size - min_size) * k for k in list(S1_mean)]
-    backgroud_node_size = [min_size + (max_size - min_size) * k for k in list(ST_mean)]
+    foreground_node_size = [min_size + (max_size - min_size) * k for k in list(S1)]
+    backgroud_node_size = [min_size + (max_size - min_size) * k for k in list(ST)]
     edge_width = [
-        np.sqrt((min_size + (max_size - min_size) * k) / np.pi) for k in list(S2_mean)
+        np.sqrt((min_size + (max_size - min_size) * k) / np.pi) for k in list(S2)
     ]
 
     Sources = list(list(zip(*index_ij))[0])
     Targets = list(list(zip(*index_ij))[1])
-    Weights = list(S2_mean)
+    Weights = list(S2)
 
     G = nx.Graph()
     for s, t, w in zip(Sources, Targets, Weights):
@@ -300,8 +312,11 @@ def network(ST, S1, S2, index_i, index_ij, ylabel):
 
     axis.axis("equal")
     axis.set_axis_off()
+    plt.suptitle(
+        f"{ylabel} global sensitivity to model parameters",
+        fontsize=12,
+        fontweight="bold",
+    )
     fig.tight_layout()
-    # plt.savefig(
-    #     savepath + ylabel + "_network.pdf", bbox_inches="tight", dpi=1000
-    # )
     plt.show()
+    return np.array([axis])

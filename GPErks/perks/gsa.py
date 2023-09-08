@@ -63,6 +63,8 @@ class SobolGSA(Plottable):
         self.S1_std = np.zeros((0, self.d), dtype=float)
         self.S2_std = np.zeros((0, int(binom(self.d, 2))), dtype=float)
 
+        self.current_axis: Optional[np.ndarray] = None
+
     def assemble_Saltelli_space(self):
         problem = {
             "num_vars": self.d,
@@ -135,7 +137,6 @@ class SobolGSA(Plottable):
             S[:, l] = np.zeros((S.shape[0], len(l)), dtype=float)
 
     def summary(self):
-        self.correct_Sobol_indices()
         df_STi = pd.DataFrame(
             data=np.round(np.median(self.ST, axis=0), 6).reshape(-1, 1),
             index=self.index_i,
@@ -159,16 +160,22 @@ class SobolGSA(Plottable):
         self.plot_boxplot()
 
     def plot_boxplot(self):
-        boxplot(self.ST, self.S1, self.S2, self.index_i, self.index_ij, self.ylabel)
+        self.current_axis = boxplot(
+            self.ST, self.S1, self.S2, self.index_i, self.index_ij, self.ylabel
+        )
 
     def plot_donut(self):
-        donut(self.ST, self.S1, self.index_i, self.ylabel)
+        self.current_axis = donut(self.ST, self.S1, self.index_i, self.ylabel)
 
     def plot_fancy_donut(self):
-        fancy_donut(self.ST, self.S1, self.S2, self.index_i, self.ylabel)
+        self.current_axis = fancy_donut(
+            self.ST, self.S1, self.S2, self.index_i, self.ylabel
+        )
 
     def plot_heatmap(self):
-        heatmap(self.ST, self.S1, self.index_i, self.ylabel)
+        self.current_axis = heatmap(self.ST, self.S1, self.index_i, self.ylabel)
 
     def plot_network(self):
-        network(self.ST, self.S1, self.S2, self.index_i, self.index_ij, self.ylabel)
+        self.current_axis = network(
+            self.ST, self.S1, self.S2, self.index_i, self.index_ij, self.ylabel
+        )
