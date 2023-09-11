@@ -213,6 +213,8 @@ class GPEmulator(Trainable):
         torch.save(self.model.state_dict(), snapshot_file_path)
         log.info("Saved model.")
 
+        self.model.to(torch.device("cpu"))  # trained model is always returned on CPU
+
     def _train_once(
         self,
         X_train,
