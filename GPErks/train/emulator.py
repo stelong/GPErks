@@ -197,7 +197,7 @@ class GPEmulator(Trainable):
 
         return best_model, best_train_stats
 
-    def train_auto(self):
+    def train_auto(self, snap_dir : str = DEFAULT_TRAIN_SNAPSHOT_DIR ):
         self.model.to(self.device)
         self.criterion = gpytorch.mlls.ExactMarginalLogLikelihood(
             self.model.likelihood, self.model
@@ -207,9 +207,9 @@ class GPEmulator(Trainable):
         log.info("Trained emulator.")
 
         log.info("Saving model...")
-        snapshot_dir = Path(DEFAULT_TRAIN_SNAPSHOT_DIR)
+        snapshot_dir = Path(snap_dir)
         snapshot_dir.mkdir(parents=True, exist_ok=True)
-        snapshot_file_path = posix_path(DEFAULT_TRAIN_SNAPSHOT_DIR, "best_model.pth")
+        snapshot_file_path = posix_path(snapshot_dir, "best_model.pth")
         torch.save(self.model.state_dict(), snapshot_file_path)
         log.info("Saved model.")
 
