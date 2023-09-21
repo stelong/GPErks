@@ -1,4 +1,5 @@
 import distinctipy as dp
+import matplotlib as mpl
 import matplotlib.gridspec as grsp
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -50,7 +51,7 @@ def boxplot(ST, S1, S2, index_i, index_ij, ylabel):
     return np.array([ax0, ax1, ax2])
 
 
-def donut(ST, S1, index_i, ylabel):
+def donut(ST, S1, index_i, ylabel, colors=None):
     ST = np.median(ST, axis=0)
     S1 = np.median(S1, axis=0)
 
@@ -62,7 +63,13 @@ def donut(ST, S1, index_i, ylabel):
 
     fig, axes = plt.subplots(1, 2, figsize=(2 * WIDTH, 2 * HEIGHT / 4))
 
-    colors = dp.get_colors(len(index_i) + 1, pastel_factor=0.5)
+    n_colors = len(index_i) + 1
+    if not colors:  # user did not pass any color: we generate a list of colors
+        colors = dp.get_colors(n_colors, pastel_factor=0.5)
+    else:
+        if isinstance(colors, str):  # user passed a colormap name instead of a list
+            cmap = mpl.cm.get_cmap(colors, n_colors)
+            colors = [cmap(i) for i in range(n_colors)]
 
     wedges, _ = axes[0].pie(
         x_si,
