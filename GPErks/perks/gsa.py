@@ -164,8 +164,8 @@ class SobolGSA(Plottable):
             self.ST, self.S1, self.S2, self.index_i, self.index_ij, self.ylabel
         )
 
-    def plot_donut(self):
-        self.current_axis = donut(self.ST, self.S1, self.index_i, self.ylabel)
+    def plot_donut(self, colors=None):
+        self.current_axis = donut(self.ST, self.S1, self.index_i, self.ylabel,colors)
 
     def plot_fancy_donut(self):
         self.current_axis = fancy_donut(
