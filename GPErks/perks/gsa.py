@@ -1,32 +1,26 @@
-from itertools import combinations
 from typing import Callable, Optional
 
+import matplotlib
 import numpy as np
 import pandas as pd
-from SALib.analyze import sobol
-from SALib.sample import saltelli
-from scipy.special import binom
+from scipy.stats import sobol_indices, uniform, _sensitivity_analysis
 
 from GPErks.constants import (
     DEFAULT_GSA_CONF_LEVEL,
     DEFAULT_GSA_N,
     DEFAULT_GSA_N_BOOTSTRAP,
     DEFAULT_GSA_N_DRAWS,
-    DEFAULT_GSA_SKIP_VALUES,
     DEFAULT_GSA_THRESHOLD,
-    DEFAULT_GSA_Z,
 )
 from GPErks.gp.data.dataset import Dataset
-from GPErks.plot.gsa import boxplot, donut, fancy_donut, heatmap, network
-from GPErks.plot.options import PlotOptions
-from GPErks.plot.plottable import Plottable
+from GPErks.plot.gsa import barplot, boxplot, donut, heatmap
 from GPErks.train.emulator import GPEmulator
 from GPErks.utils.array import get_minmax
 
 
-class SobolGSA(Plottable):
+class SobolGSA:
     """
-    Sobol global sensitivity analysis using Saltelli method and
+    Sobol' global sensitivity analysis using Saltelli method and
     integrating emulator uncertainty.
     """
 
@@ -36,13 +30,10 @@ class SobolGSA(Plottable):
         n: int = DEFAULT_GSA_N,
         seed: Optional[int] = None,
     ):
-        super(SobolGSA, self).__init__()
         self.n = n
         self.seed = seed
-
         self.d = dataset.input_size
-        self.index_i = dataset.x_labels
-        self.index_ij = [list(c) for c in combinations(self.index_i, 2)]
+        self.xlabels = dataset.x_labels
         self.ylabel = dataset.y_label
         self.minmax = (
             get_minmax(dataset.X_train)
@@ -55,127 +46,103 @@ class SobolGSA(Plottable):
             )
         )
 
-        self.ST = np.zeros((0, self.d), dtype=float)
-        self.S1 = np.zeros((0, self.d), dtype=float)
-        self.S2 = np.zeros((0, int(binom(self.d, 2))), dtype=float)
-
-        self.ST_std = np.zeros((0, self.d), dtype=float)
-        self.S1_std = np.zeros((0, self.d), dtype=float)
-        self.S2_std = np.zeros((0, int(binom(self.d, 2))), dtype=float)
-
-        self.current_axis: Optional[np.ndarray] = None
-
-    def assemble_Saltelli_space(self):
-        problem = {
-            "num_vars": self.d,
-            "names": self.index_i,
-            "bounds": self.minmax,
-        }
-        X = saltelli.sample(
-            problem,
-            self.n,
-            calc_second_order=True,
-            skip_values=DEFAULT_GSA_SKIP_VALUES,
+    def estimate_Sobol_indices_with_simulator(
+        self,
+        f: Callable[[np.ndarray], np.ndarray],
+    ):
+        indices = sobol_indices(
+            func=f,
+            n=self.n,
+            dists=[uniform(loc=x[0], scale=x[1] - x[0]) for x in self.minmax],
+            random_state=self.seed,
         )
-        return problem, X
+        self.boot = indices.bootstrap(
+            confidence_level=DEFAULT_GSA_CONF_LEVEL,
+            n_resamples=DEFAULT_GSA_N_BOOTSTRAP,
+        )
+        self.ST = indices.total_order.reshape(1, -1)
+        self.S1 = indices.first_order.reshape(1, -1)
 
     def estimate_Sobol_indices_with_emulator(
         self,
         emulator: GPEmulator,
         n_draws: int = DEFAULT_GSA_N_DRAWS,
     ):
-        problem, X = self.assemble_Saltelli_space()
-        Y = emulator.sample(X, n_draws)
-        self._estimate_Sobol_indices_from_evaluations(problem, Y)
-
-    def estimate_Sobol_indices_with_simulator(
-        self,
-        f: Callable[[np.ndarray], np.ndarray],
-    ):
-        problem, X = self.assemble_Saltelli_space()
-        Y = np.squeeze(f(X)).reshape(1, -1)
-        self._estimate_Sobol_indices_from_evaluations(problem, Y)
-
-    def _estimate_Sobol_indices_from_evaluations(self, problem, Y):
-        for y in Y:
-            S = sobol.analyze(
-                problem,
-                y,
-                calc_second_order=True,
-                num_resamples=DEFAULT_GSA_N_BOOTSTRAP,
-                conf_level=DEFAULT_GSA_CONF_LEVEL,
-                parallel=False,
-                n_processors=0,
-                seed=self.seed,
-            )
-            T_Si, first_Si, (_, second_Si) = sobol.Si_to_pandas_dict(S)
-
-            self.ST = np.vstack((self.ST, T_Si["ST"].reshape(1, -1)))
-            self.S1 = np.vstack((self.S1, first_Si["S1"].reshape(1, -1)))
-            self.S2 = np.vstack((self.S2, np.array(second_Si["S2"]).reshape(1, -1)))
-
-            self.ST_std = np.vstack(
-                (self.ST_std, T_Si["ST_conf"].reshape(1, -1) / DEFAULT_GSA_Z)
-            )
-            self.S1_std = np.vstack(
-                (
-                    self.S1_std,
-                    first_Si["S1_conf"].reshape(1, -1) / DEFAULT_GSA_Z,
-                )
-            )
-            self.S2_std = np.vstack(
-                (
-                    self.S2_std,
-                    (np.array(second_Si["S2_conf"]).reshape(1, -1) / DEFAULT_GSA_Z),
-                )
-            )
+        A, B = _sensitivity_analysis.sample_A_B(
+            n=self.n,
+            dists=[uniform(loc=x[0], scale=x[1] - x[0]) for x in self.minmax],
+            random_state=self.seed,
+        )
+        AB = _sensitivity_analysis.sample_AB(A=A, B=B)
+        d, d, n = AB.shape
+        AB = np.moveaxis(AB, 0, -1).reshape(d, n * d)
+        f_all = emulator.sample(np.hstack((A, B, AB)).T, n_draws)
+        f_A, f_B, f_AB = f_all[:, :n], f_all[:, n : 2 * n], f_all[:, 2 * n :]
+        f_AB = np.moveaxis(f_AB.reshape((-1, n, d)), -1, 0)
+        indices = sobol_indices(
+            func={"f_A": f_A, "f_B": f_B, "f_AB": f_AB},
+            n=self.n,
+            random_state=self.seed,
+        )
+        self.ST = indices.total_order
+        self.S1 = indices.first_order
 
     def correct_Sobol_indices(self, threshold: float = DEFAULT_GSA_THRESHOLD):
-        for S in [self.ST, self.S1, self.S2]:
+        for S in [self.ST, self.S1]:
             Q1 = np.percentile(S, q=25, axis=0)
             l = np.where(Q1 < threshold)[0]
             S[:, l] = np.zeros((S.shape[0], len(l)), dtype=float)
 
+    def assemble_dataframe(self):
+        value = np.concatenate((self.ST.T.ravel(), self.S1.T.ravel()))
+        param = np.repeat(self.xlabels, self.S1.shape[0])
+        index = np.repeat(["ST", "S1"], len(param))
+        param = np.concatenate((param, param))
+        self.df = pd.DataFrame.from_dict(
+            dict(Parameter=param, Index=index, Value=value)
+        )
+
     def summary(self):
+        self.assemble_dataframe()
+        df_pivot = pd.pivot_table(
+            self.df,
+            values="Value",
+            index="Parameter",
+            columns="Index",
+            aggfunc="median",
+        )
         df_STi = pd.DataFrame(
-            data=np.round(np.median(self.ST, axis=0), 6).reshape(-1, 1),
-            index=self.index_i,
+            data=np.round(df_pivot["ST"], 6).values.reshape(-1, 1),
+            index=df_pivot.index,
             columns=["STi"],
         )
         df_Si = pd.DataFrame(
-            data=np.round(np.median(self.S1, axis=0), 6).reshape(-1, 1),
-            index=self.index_i,
+            data=np.round(df_pivot["S1"], 6).values.reshape(-1, 1),
+            index=df_pivot.index,
             columns=["Si"],
-        )
-        df_Sij = pd.DataFrame(
-            data=np.round(np.median(self.S2, axis=0), 6).reshape(-1, 1),
-            index=["(" + elem[0] + ", " + elem[1] + ")" for elem in self.index_ij],
-            columns=["Sij"],
         )
         print(df_STi)
         print(df_Si)
-        print(df_Sij)
 
-    def plot(self, plot_options: PlotOptions = PlotOptions()):
-        self.plot_boxplot()
+    def plot(
+        self,
+        axis: Optional[matplotlib.axes._axes.Axes] = None,
+        type: str = "box",
+        colors: str = "tab10",
+    ):
+        if axis is None:
+            raise ValueError("A matplotlib axis must be specified!")
 
-    def plot_boxplot(self):
-        self.current_axis = boxplot(
-            self.ST, self.S1, self.S2, self.index_i, self.index_ij, self.ylabel
-        )
-
-    def plot_donut(self, colors=None):
-        self.current_axis = donut(self.ST, self.S1, self.index_i, self.ylabel,colors)
-
-    def plot_fancy_donut(self):
-        self.current_axis = fancy_donut(
-            self.ST, self.S1, self.S2, self.index_i, self.ylabel
-        )
-
-    def plot_heatmap(self):
-        self.current_axis = heatmap(self.ST, self.S1, self.index_i, self.ylabel)
-
-    def plot_network(self):
-        self.current_axis = network(
-            self.ST, self.S1, self.S2, self.index_i, self.index_ij, self.ylabel
-        )
+        match type:
+            case "bar":
+                axis = barplot(axis, self.df, colors)
+            case "box":
+                axis = boxplot(axis, self.df, colors)
+            case "donut":
+                axis = donut(axis, self.df, colors)
+            case "heat":
+                axis = heatmap(axis, self.df, colors)
+            case _:
+                raise ValueError(
+                    "Plot 'type' must be either 'bar', 'box', 'donut', or 'heat'!"
+                )

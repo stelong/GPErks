@@ -125,7 +125,7 @@ class Inference:
             t0 = (0,) + t0
             t1 = (0,) + t1
 
-            y_grid = f(X_grid)
+            y_grid = f(X_grid.T)
             y_grid = y_grid.reshape(grid_dim, grid_dim)
             err = np.abs(
                 np.ones((grid_dim, grid_dim), dtype=float) - y_pred_mean / y_grid

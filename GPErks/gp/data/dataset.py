@@ -234,17 +234,17 @@ class Dataset(Plottable):
         sampler = Sampler(design, d, seed)
 
         X_train = sampler.sample(n_train_samples, l_bounds, u_bounds)
-        y_train = np.squeeze(f(X_train))
+        y_train = np.squeeze(f(X_train.T))
 
         if n_val_samples is not None:
             X_val = sampler.sample(n_val_samples, l_bounds, u_bounds)
-            y_val = np.squeeze(f(X_val))
+            y_val = np.squeeze(f(X_val.T))
         else:
             X_val, y_val = None, None
 
         if n_test_samples is not None:
             X_test = sampler.sample(n_test_samples, l_bounds, u_bounds)
-            y_test = np.squeeze(f(X_test))
+            y_test = np.squeeze(f(X_test.T))
         else:
             X_test, y_test = None, None
 

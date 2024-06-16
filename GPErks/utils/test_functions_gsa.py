@@ -12,9 +12,9 @@ def Ishigami(x, a=7.0, b=0.1):
     =========================================================================
     """
     return (
-        np.sin(x[:, 0])
-        + a * np.power(np.sin(x[:, 1]), 2)
-        + b * np.power(x[:, 2], 4) * np.sin(x[:, 0])
+        np.sin(x[0])
+        + a * np.power(np.sin(x[1]), 2)
+        + b * np.power(x[2], 4) * np.sin(x[0])
     )
 
 
@@ -79,7 +79,7 @@ def SobolGstar(x, a, delta, alpha):
     G = 1
     for i in range(D):
         num = (1 + alpha[i]) * np.power(
-            np.abs(2 * (x[:, i] + delta[i] - np.floor(x[:, i] + delta[i])) - 1),
+            np.abs(2 * (x[i] + delta[i] - np.floor(x[i] + delta[i])) - 1),
             alpha[i],
         ) + a[i]
         den = 1 + a[i]
