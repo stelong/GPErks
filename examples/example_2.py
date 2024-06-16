@@ -79,25 +79,25 @@ def main():
     # bonus function: inference on 2-dimensional grid (only works for R^2->R functions)
     inference.interpolate_2Dgrid(currin_exp)  # can also call with no argument
 
-    # perk n.2: diagnostics
-    from GPErks.perks.diagnostics import Diagnostics
-    diagnostics = Diagnostics(emulator)
-    diagnostics.summary()
-    diagnostics.plot(errors_type="correlated")
-    diagnostics.plot(errors_type="uncorrelated")
-    diagnostics.plot(errors_type="pivoted")
+    # # perk n.2: diagnostics
+    # from GPErks.perks.diagnostics import Diagnostics
+    # diagnostics = Diagnostics(emulator)
+    # diagnostics.summary()
+    # diagnostics.plot(errors_type="correlated")
+    # diagnostics.plot(errors_type="uncorrelated")
+    # diagnostics.plot(errors_type="pivoted")
 
-    # diagnostics' calculation is based on posterior predicted covariance matrix;
-    # this can be derived by setting flag to True:
-    y_mean, y_std, y_covar = emulator.predict(dataset.X_test, with_covar=True)
-    print(y_covar.shape)
+    # # diagnostics' calculation is based on posterior predicted covariance matrix;
+    # # this can be derived by setting flag to True:
+    # y_mean, y_std, y_covar = emulator.predict(dataset.X_test, with_covar=True)
+    # print(y_covar.shape)
 
-    import matplotlib.pyplot as plt
-    fig, axis = plt.subplots(1, 1)
-    h = axis.imshow(y_covar)
-    fig.colorbar(h, ax=axis)
-    fig.tight_layout()
-    plt.show()
+    # import matplotlib.pyplot as plt
+    # fig, axis = plt.subplots(1, 1)
+    # h = axis.imshow(y_covar)
+    # fig.colorbar(h, ax=axis)
+    # fig.tight_layout()
+    # plt.show()
 
 
 if __name__ == '__main__':

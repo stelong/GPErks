@@ -1,87 +1,93 @@
 #!/usr/bin/env python3
 #
-# 8. Showcasing new functionalities: automatic emulator hyperparameters' fitting
-# + LinearMean module with higher than first degree polynomials + mean module fit inspection
+# 8. GPE auto-training + GSA using external dataset (from publication) loaded from json file
 #
-def main():
-    # import main libraries
-    import torch
+import os
+import torch
 
-    # enforce reproducibility
-    from GPErks.utils.random import set_seed
-    from GPErks.constants import DEFAULT_RANDOM_SEED
+from gpytorch.likelihoods import GaussianLikelihood
+from gpytorch.means import LinearMean
+from gpytorch.kernels import MaternKernel, ScaleKernel
+
+from GPErks.constants import DEFAULT_RANDOM_SEED
+from GPErks.gp.data.dataset import Dataset
+from GPErks.gp.experiment import GPExperiment
+from GPErks.gp.mean import LinearMean
+from GPErks.serialization.path import posix_path
+from GPErks.train.emulator import GPEmulator
+from GPErks.utils.random import set_seed
+from GPErks.perks.gsa import SobolGSA
+
+
+def main():
     seed = DEFAULT_RANDOM_SEED
     set_seed(seed)
 
-    # function to learn (2D -> 1D)
-    from GPErks.utils.test_functions import currin_exp
-    d = 2
+    # This new method loads your dataset into a dictionary where keys = features, values = Dataset objects
+    # (each Dataset is built to create the experiment that will emulate the corresponding scalar feature (key))
+    datasets = Dataset.build_from_file(posix_path(os.getcwd(), "examples", "data", "datasets", "Stefano_16p.json"))
+    features = list(datasets.keys())
+    print(features)  # available features to be emulated
 
-    # build dataset
-    from GPErks.gp.data.dataset import Dataset
-    dataset = Dataset.build_from_function(
-        currin_exp,
-        d,
-        n_train_samples=20,
-        n_test_samples=25,
-        design="lhs",
-        seed=seed,
-    )
+    # # Note: if you want to create a .json file containing your dataset, you can do so like this:
+    # X = np.loadtxt(data_dir / "X.txt", dtype=float)
+    # Y = np.loadtxt(data_dir / "Y.txt", dtype=float)
+    # xlabels = read_labels_from_file(data_dir / "xlabels.txt")
+    # ylabels = read_labels_from_file(data_dir / "ylabels.txt")
+    # data_dct = {
+    #     "X_train": X.tolist(),
+    #     "Y_train": Y.tolist(),
+    #     # "X_val": X_val.tolist(), # (if available, otherwise can omit this dct key)
+    #     # "Y_val": Y_val.tolist(), # (if available, otherwise can omit this dct key)
+    #     # "X_test": X_test.tolist(), # (if available, otherwise can omit this dct key)
+    #     # "Y_test": Y_test.tolist(), # (if available, otherwise can omit this dct key)
+    #     "x_labels": xlabels,  # (if available, otherwise can omit this dct key)
+    #     "y_labels": ylabels,  # (if available, otherwise can omit this dct key)
+    #     # "l_bounds": a list here (if available, otherwise can omit this dct key)
+    #     # "u_bounds": a list here (if available, otherwise can omit this dct key)
+    #     "info": "A short description about the dataset"
+    # }
+    # with open(Path(os.getcwd())/"datasetname.json", "w") as f:
+    #     json.dump(data_dct, f, indent=4)
+    #
+    # # Also note that there is already a utility function that does this for you:
+    # # from GPErks.utils.jsonfiles import create_json_dataset_from_arrays
 
-    # choose likelihood
-    from gpytorch.likelihoods import GaussianLikelihood
+    feature = "EDV"  # we will emulate just one feature as an example
+    print(f"\nEmulating target feature: {feature}")
+
+    # GPE auto-training
+    dataset = datasets[feature]
     likelihood = GaussianLikelihood()
-
-    # choose mean function
-    # note: can now choose higher than first degree polynomials!
-    # However, most of the time we can get away with degree=1, I have coded this
-    # because apparently it is not available anywhere and some people asked to have
-    # this functionality implemented so here you go!
-    from GPErks.gp.mean import LinearMean
-    mean = LinearMean(degree=2, input_size=dataset.input_size, bias=True)
-
-    # choose covariance function
-    from gpytorch.kernels import MaternKernel, ScaleKernel
-    covar = ScaleKernel(MaternKernel(ard_num_dims=dataset.input_size))
-
-    # choose metrics
-    from torchmetrics import MeanSquaredError, R2Score
-    from GPErks.utils.metrics import IndependentStandardError
-    metrics = [MeanSquaredError(), R2Score(), IndependentStandardError()]
-
-    # define experiment + device
-    from GPErks.gp.experiment import GPExperiment
+    mean = LinearMean(degree=1, input_size=dataset.input_size, bias=True)
+    covariance = ScaleKernel(MaternKernel(ard_num_dims=dataset.input_size))
     experiment = GPExperiment(
         dataset,
         likelihood,
         mean,
-        covar,
-        metrics=metrics,
+        covariance,
         seed=seed
     )
     device = "cuda" if torch.cuda.is_available() else "cpu"
-
-    # emulator training
-    # note: can now fit the hyperparameters automatically!
-    # However, for small training datasets I would still recommend training the
-    # old-fashioned way; I know that properly using an early stopping criterion to
-    # manually control training is not simple, but it is more reliable than the
-    # automatic training presented here in the case when we have only a few points
-    from GPErks.train.emulator import GPEmulator
     emulator = GPEmulator(experiment, device)
     emulator.train_auto()
     emulator.hyperparameters()
 
-    # inference on stored test set
-    from GPErks.perks.inference import Inference
-    inference = Inference(emulator)
-    inference.summary()  # LinearMean with d=2 is not necessarely accurate, try d=1
-    inference.plot()
+    # GPE-based GSA
+    gsa = SobolGSA(dataset, n=1024, seed=seed)
+    gsa.estimate_Sobol_indices_with_emulator(emulator, n_draws=1000)
+    gsa.correct_Sobol_indices(threshold=1e-2)
+    gsa.summary()
 
-    # note: can now inspect the linear mean module fit!
-    from GPErks.plot.mean import inspect_mean_module
-    inspect_mean_module(emulator)
+    # plotting estimated Sobol' indices
+    import matplotlib.pyplot as plt
+    plt.style.use("seaborn-v0_8")
+    fig, axis = plt.subplots(1, 1)
+    gsa.plot(axis=axis, type="bar", colors="tab10")
+    axis.set_title(f"{feature} global sensitivity indices", fontweight="bold")
+    fig.tight_layout()
+    plt.show()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
