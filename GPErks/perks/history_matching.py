@@ -1,4 +1,3 @@
-import diversipy as dp
 import matplotlib.gridspec as grsp
 import matplotlib.pyplot as plt
 import numpy as np
@@ -7,7 +6,7 @@ from scipy.stats import iqr
 
 from GPErks.log.logger import get_logger
 from GPErks.utils.array import get_minmax
-from GPErks.utils.indices import diff, whereq_whernot
+from GPErks.utils.indices import diff, part_and_select, whereq_whernot
 from GPErks.utils.jsonfiles import load_json, save_json
 
 log = get_logger()
@@ -118,9 +117,7 @@ class Wave:
                 + "less than W.NIMP.shape[0] - 1."
             )
         else:
-            X = dp.subset.psa_select(
-                self.NIMP, n_points, selection_target="random_uniform"
-            )
+            _, X = part_and_select(self.NIMP, n_points)
             _, nl = whereq_whernot(self.NIMP, X)
         return X, self.NIMP[nl]
 
@@ -193,9 +190,7 @@ class Wave:
         log.info("\nDone.")
 
         nimp = len(self.nimp_idx)
-        NIMP_aug = dp.subset.psa_select(
-            X[nimp:], n_total_points - nimp, selection_target="random_uniform"
-        )
+        _, NIMP_aug = part_and_select(X[nimp:], n_total_points - nimp)
         I, PV = self.compute_impl(NIMP_aug)
         self.NIMP = np.vstack((X[:nimp], NIMP_aug))
         self.I = np.concatenate((self.I, I))
