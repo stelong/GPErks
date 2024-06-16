@@ -1,14 +1,10 @@
-botorch==0.8.5
-distinctipy
-diversipy
-gpytorch==1.10
+botorch
+gpytorch
 matplotlib
-networkx
 numpy
 pandas
-SALib>=1.4.5
 scikit-learn
 scipy
 seaborn
-torch>=1.12,<2.0
+torch
 torchmetrics
