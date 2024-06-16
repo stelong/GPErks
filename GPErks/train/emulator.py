@@ -197,7 +197,7 @@ class GPEmulator(Trainable):
 
         return best_model, best_train_stats
 
-    def train_auto(self, snap_dir : str = DEFAULT_TRAIN_SNAPSHOT_DIR ):
+    def train_auto(self, snap_dir: str = DEFAULT_TRAIN_SNAPSHOT_DIR):
         self.model.to(self.device)
         self.criterion = gpytorch.mlls.ExactMarginalLogLikelihood(
             self.model.likelihood, self.model

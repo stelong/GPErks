@@ -3,7 +3,7 @@ from typing import Callable, Optional
 import matplotlib
 import numpy as np
 import pandas as pd
-from scipy.stats import sobol_indices, uniform, _sensitivity_analysis
+from scipy.stats import _sensitivity_analysis, sobol_indices, uniform
 
 from GPErks.constants import (
     DEFAULT_GSA_CONF_LEVEL,

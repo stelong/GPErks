@@ -5,15 +5,19 @@ import seaborn as sns
 
 def barplot(axis, df, colors):
     sns.barplot(
-        data=df, x="Parameter", y="Value", hue="Index", errorbar="sd", palette=colors, ax=axis
+        data=df,
+        x="Parameter",
+        y="Value",
+        hue="Index",
+        errorbar="sd",
+        palette=colors,
+        ax=axis,
     )
     axis.set_ylim(0, 1)
 
 
 def boxplot(axis, df, colors):
-    sns.boxplot(
-        data=df, x="Parameter", y="Value", hue="Index", palette=colors, ax=axis
-    )
+    sns.boxplot(data=df, x="Parameter", y="Value", hue="Index", palette=colors, ax=axis)
     axis.set_ylim(0, 1)
 
 
