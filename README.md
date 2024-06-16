@@ -20,7 +20,7 @@ A Python library to (bene)fit Gaussian Process Emulators.
 
 ### Prerequisites
 
-* [Python3](https://www.python.org/) (>=3.8)
+* [Python3](https://www.python.org/) (>=3.10)
 * [virtualenv](https://pypi.org/project/virtualenv/) (optional)
 
 ### Installing
@@ -32,30 +32,35 @@ cd GPErks/
 ```
 2. (optional) Create a Python3 virtual environment:
 ```
-python3 -m venv venv
-source venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
 pip install --upgrade pip setuptools wheel
 ```
 3. Install PyTorch package first in order to satisfy your custom installation requirements (e.g., a CPU-only installation or a CUDA installation with a specific version that matches your machine NVIDIA drivers):
 
 (CPU-only)
 ```
-pip install torch --extra-index-url https://download.pytorch.org/whl/cpu
+pip install torch --index-url https://download.pytorch.org/whl/cpu
 ```
-(CUDA 11.6)
+(CUDA 11.8)
 ```
-pip install torch --extra-index-url https://download.pytorch.org/whl/cu116
+pip install torch --index-url https://download.pytorch.org/whl/cu118
 ```
 Note: please check PyTorch [website](https://pytorch.org/get-started/locally/) to customize your installation.
 
-4. Install GPErks library:
+4. Install GPErks:
 ```
 pip install .
 ```
 
+5. (optional) Install Jupyter Notebook to be able to run the example notebooks:
+```
+pip install notebook
+```
+
 ### Usage
 
-Full documentation under construction. For the moment, please refer to the example [notebooks](https://github.com/stelong/GPErks/tree/master/notebooks) and [tutorial](https://youtu.be/e4kYIIrcAHA). The available notebooks are also provided as plain Python [scripts](https://github.com/stelong/GPErks/tree/master/examples).
+The full documentation is under construction. For the moment, please refer to the example [notebooks](https://github.com/stelong/GPErks/tree/master/notebooks) and [tutorial](https://youtu.be/e4kYIIrcAHA) while noting that this is based on the old GPErks v0.1.0 API (it will provide a good overview on all package functionalities). The available notebooks are also available as plain Python [scripts](https://github.com/stelong/GPErks/tree/master/examples).
 
 ---
 ## Contributing
@@ -66,7 +71,7 @@ Full documentation under construction. For the moment, please refer to the examp
 ## License
 
 This project is licensed under the MIT license.
-Please refer to the [LICENSE](LICENSE) file for details.
+Please refer to the [LICENSE](LICENSE) file for more details.
 
 ---
 *This README.md complies with [this project template](
