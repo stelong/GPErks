@@ -128,6 +128,7 @@ class Wave:
         self,
         n_total_points,
         scaling=0.1,
+        n_max=2000
     ):
         X = np.copy(self.NIMP)
         lbounds = self.Itrain[:, 0]
@@ -158,18 +159,19 @@ class Wave:
             )
 
             temp = np.random.normal(loc=X, scale=scale)
+            count2 = 0
             while True:
+                count2 +=1
                 l = []
-                for i in range(temp.shape[0]):
-                    d1 = temp[i, :] - lbounds
-                    d2 = ubounds - temp[i, :]
-                    if (
-                        np.sum(np.sign(d1)) != temp.shape[1]
-                        or np.sum(np.sign(d2)) != temp.shape[1]
-                    ):
-                        l.append(i)
-                if l:
-                    temp[l, :] = np.random.normal(loc=X[l, :], scale=scale)
+                d1 = temp - lbounds.reshape((1,-1))
+                d2 = ubounds.reshape((1,-1)) - temp
+                flag = np.logical_or(np.sum(np.sign(d1), axis=1) != temp.shape[1], np.sum(np.sign(d2), axis=1) != temp.shape[1])
+                if count2 > n_max:
+                    temp = temp[~flag,:]
+                    break
+                if np.sum(flag) > 0:
+                    temp[flag, :] = np.random.normal(loc=X[flag, :], scale=scale)
+                    continue
                 else:
                     break
 
@@ -229,7 +231,7 @@ class Wave:
         W.imp_idx = self.imp_idx.copy()
         return W
 
-    def plot_wave(self, xlabels=None, display="impl", filepath=None):
+    def plot_wave(self, xlabels=None, display="impl", filepath=None, figsize=None):
         X = self.reconstruct_tests()
         input_dim = X.shape[1]
 
@@ -268,7 +270,10 @@ class Wave:
 
         height = 9.36111
         width = 5.91667
-        fig = plt.figure(figsize=(2 * width, 1.2 * 2 * height / 3))
+        if figsize is None:
+            fig = plt.figure(figsize=(2 * width, 1.2 * 2 * height / 3))
+        else:
+            fig = plt.figure(figsize=figsize)
         gs = grsp.GridSpec(
             input_dim - 1,
             input_dim,
