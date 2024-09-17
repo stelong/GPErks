@@ -2,29 +2,27 @@
 #
 # 11. Bayesian History Matching technique (advanced use)
 #
+import json
 import os
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-import json
-
-from GPErks.constants import DEFAULT_TMP_OUTFILE_DIR
-from GPErks.perks.history_matching import Wave
-from GPErks.serialization.path import posix_path
-from GPErks.utils.array import get_minmax
-from GPErks.utils.plotting import interp_col, get_col
-from GPErks.utils.sampling import Sampler
 from gpytorch.kernels import MaternKernel, ScaleKernel
 from gpytorch.likelihoods import GaussianLikelihood
 from torchmetrics import MeanSquaredError, R2Score
 
-from GPErks.constants import DEFAULT_RANDOM_SEED
+from GPErks.constants import DEFAULT_RANDOM_SEED, DEFAULT_TMP_OUTFILE_DIR
 from GPErks.gp.data.dataset import Dataset
 from GPErks.gp.experiment import GPExperiment
 from GPErks.gp.mean import LinearMean
+from GPErks.perks.history_matching import Wave
+from GPErks.serialization.path import posix_path
 from GPErks.train.emulator import GPEmulator
+from GPErks.utils.array import get_minmax
+from GPErks.utils.plotting import get_col, interp_col
 from GPErks.utils.random import set_seed
+from GPErks.utils.sampling import Sampler
 
 
 def main():

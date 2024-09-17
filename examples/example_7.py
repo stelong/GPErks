@@ -4,12 +4,14 @@
 #
 def main():
     # import main libraries
-    import numpy as np
     from functools import partial
+
+    import numpy as np
+
+    from GPErks.constants import DEFAULT_RANDOM_SEED
 
     # enforce reproducibility
     from GPErks.utils.random import set_seed
-    from GPErks.constants import DEFAULT_RANDOM_SEED
     seed = DEFAULT_RANDOM_SEED
     set_seed(seed)
 
@@ -83,9 +85,10 @@ def main():
     # let's estimate Sobol' indices using an emulator of the SobolGstar function
     
     # define experiment
-    from gpytorch.likelihoods import GaussianLikelihood
     from gpytorch.kernels import MaternKernel, ScaleKernel
+    from gpytorch.likelihoods import GaussianLikelihood
     from torchmetrics import MeanSquaredError, R2Score
+
     from GPErks.gp.experiment import GPExperiment
     from GPErks.gp.mean import LinearMean
     likelihood = GaussianLikelihood()
@@ -104,8 +107,9 @@ def main():
 
     # train emulator
     import torch
-    from GPErks.train.emulator import GPEmulator
+
     from GPErks.train.early_stop import GLEarlyStoppingCriterion
+    from GPErks.train.emulator import GPEmulator
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     emulator = GPEmulator(experiment, device)
     # emulator.train_auto()
