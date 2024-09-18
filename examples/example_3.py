@@ -5,12 +5,14 @@
 def main():
     # import main libraries
     import os
-    import torch
     from pathlib import Path
+
+    import torch
+
+    from GPErks.constants import DEFAULT_RANDOM_SEED
 
     # enforce reproducibility
     from GPErks.utils.random import set_seed
-    from GPErks.constants import DEFAULT_RANDOM_SEED
     seed = DEFAULT_RANDOM_SEED
     set_seed(seed)  # reproducible sampling
 

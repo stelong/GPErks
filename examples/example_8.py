@@ -3,20 +3,20 @@
 # 8. GPE auto-training + GSA using external dataset (from publication) loaded from json file
 #
 import os
-import torch
 
+import torch
+from gpytorch.kernels import MaternKernel, ScaleKernel
 from gpytorch.likelihoods import GaussianLikelihood
 from gpytorch.means import LinearMean
-from gpytorch.kernels import MaternKernel, ScaleKernel
 
 from GPErks.constants import DEFAULT_RANDOM_SEED
 from GPErks.gp.data.dataset import Dataset
 from GPErks.gp.experiment import GPExperiment
 from GPErks.gp.mean import LinearMean
+from GPErks.perks.gsa import SobolGSA
 from GPErks.serialization.path import posix_path
 from GPErks.train.emulator import GPEmulator
 from GPErks.utils.random import set_seed
-from GPErks.perks.gsa import SobolGSA
 
 
 def main():

@@ -7,9 +7,10 @@ def main():
     import numpy as np
     import torch
 
+    from GPErks.constants import DEFAULT_RANDOM_SEED
+
     # enforce reproducibility
     from GPErks.utils.random import set_seed
-    from GPErks.constants import DEFAULT_RANDOM_SEED
     seed = DEFAULT_RANDOM_SEED
     set_seed(seed)  # reproducible sampling
 
