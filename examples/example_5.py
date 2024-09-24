@@ -5,13 +5,15 @@
 def main():
     # import main libraries
     import os
+    from pathlib import Path
+
     import numpy as np
     import torch
-    from pathlib import Path
+
+    from GPErks.constants import DEFAULT_RANDOM_SEED
 
     # enforce reproducibility
     from GPErks.utils.random import set_seed
-    from GPErks.constants import DEFAULT_RANDOM_SEED
     seed = DEFAULT_RANDOM_SEED
     set_seed(seed)
 
@@ -47,9 +49,10 @@ def main():
     dataset.summary()
 
     # define experiment
-    from gpytorch.likelihoods import GaussianLikelihood
     from gpytorch.kernels import MaternKernel, ScaleKernel
+    from gpytorch.likelihoods import GaussianLikelihood
     from torchmetrics import MeanSquaredError, R2Score
+
     from GPErks.gp.experiment import GPExperiment
     from GPErks.gp.mean import LinearMean
 
@@ -122,13 +125,15 @@ if __name__ == '__main__':
 def main():
     # import main libraries
     import os
+    from pathlib import Path
+
     import numpy as np
     import torch
-    from pathlib import Path
+
+    from GPErks.constants import DEFAULT_RANDOM_SEED
 
     # enforce reproducibility
     from GPErks.utils.random import set_seed
-    from GPErks.constants import DEFAULT_RANDOM_SEED
     seed = DEFAULT_RANDOM_SEED
     set_seed(seed)
 
@@ -159,9 +164,10 @@ def main():
     )
 
     # define experiment
-    from gpytorch.likelihoods import GaussianLikelihood
     from gpytorch.kernels import MaternKernel, ScaleKernel
+    from gpytorch.likelihoods import GaussianLikelihood
     from torchmetrics import MeanSquaredError, R2Score
+
     from GPErks.gp.experiment import GPExperiment
     from GPErks.gp.mean import LinearMean
 
@@ -218,8 +224,8 @@ def main():
     print(best_epochs)
 
     # train emulator on all the available points
-    from GPErks.train.emulator import GPEmulator
     from GPErks.train.early_stop import NoEarlyStoppingCriterion
+    from GPErks.train.emulator import GPEmulator
 
     # build a new dataset now including a testing set
     del dataset

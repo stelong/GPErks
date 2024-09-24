@@ -124,12 +124,7 @@ class Wave:
     # Note: the Wave object instance internal structure will be compromised after
     # calling this method: we recommend calling self.copy() and/or self.save()
     # beforehand!
-    def augment_nimp(
-        self,
-        n_total_points,
-        scaling=0.1,
-        n_max=2000
-    ):
+    def augment_nimp(self, n_total_points, scaling=0.1, n_max=2000):
         X = np.copy(self.NIMP)
         lbounds = self.Itrain[:, 0]
         ubounds = self.Itrain[:, 1]
@@ -161,13 +156,15 @@ class Wave:
             temp = np.random.normal(loc=X, scale=scale)
             count2 = 0
             while True:
-                count2 +=1
-                l = []
-                d1 = temp - lbounds.reshape((1,-1))
-                d2 = ubounds.reshape((1,-1)) - temp
-                flag = np.logical_or(np.sum(np.sign(d1), axis=1) != temp.shape[1], np.sum(np.sign(d2), axis=1) != temp.shape[1])
+                count2 += 1
+                d1 = temp - lbounds.reshape((1, -1))
+                d2 = ubounds.reshape((1, -1)) - temp
+                flag = np.logical_or(
+                    np.sum(np.sign(d1), axis=1) != temp.shape[1],
+                    np.sum(np.sign(d2), axis=1) != temp.shape[1],
+                )
                 if count2 > n_max:
-                    temp = temp[~flag,:]
+                    temp = temp[~flag, :]
                     break
                 if np.sum(flag) > 0:
                     temp[flag, :] = np.random.normal(loc=X[flag, :], scale=scale)

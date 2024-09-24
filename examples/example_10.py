@@ -4,13 +4,14 @@
 #
 def main():
     # import main libraries
-    import numpy as np
     import matplotlib.pyplot as plt
+    import numpy as np
     import torch
-    
+
+    from GPErks.constants import DEFAULT_RANDOM_SEED
+
     # enforce reproducibility
     from GPErks.utils.random import set_seed
-    from GPErks.constants import DEFAULT_RANDOM_SEED
     seed = DEFAULT_RANDOM_SEED
     set_seed(seed)
 
@@ -64,6 +65,7 @@ def main():
     # choose likelihood, mean function and covariance function
     from gpytorch.kernels import MaternKernel, ScaleKernel
     from gpytorch.likelihoods import GaussianLikelihood
+
     from GPErks.gp.mean import LinearMean
     likelihood = GaussianLikelihood()
     mean = LinearMean(degree=2, input_size=dataset.input_size, bias=True)
