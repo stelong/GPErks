@@ -34,6 +34,8 @@ from GPErks.train.trainable import Trainable
 from GPErks.utils.concurrency import execute_task_in_parallel
 from GPErks.utils.metrics import get_metric_name
 
+from collections import OrderedDict
+
 log = get_logger()
 
 
@@ -109,14 +111,16 @@ class KFoldCrossValidation(Trainable):
         split_idx_dct = {}
 
         for split, (
-            best_model,
+            best_model_temp,
             best_train_stats,
             best_test_scores,
             idx,
         ) in execute_task_in_parallel(
             self._train_split, splits, self.max_workers
         ).items():
-            best_model_dct[split] = best_model
+            best_model_dct[split] = best_model_dct[split] = OrderedDict()
+            for key, values in best_model_temp.items(): 
+                best_model_dct[key] = torch.tensor(values)
             best_train_stats_dct[split] = best_train_stats
             best_test_scores_dct[split] = best_test_scores
             split_idx_dct[split] = idx
@@ -259,9 +263,11 @@ class KFoldCrossValidation(Trainable):
 
         inference = Inference(emulator)
         inference.summary(printtoconsole=False)
+        
+        best_model_trans = {key: val.cpu().detach().numpy() for key, val in best_model.items()}
 
         return (
-            best_model,
+            best_model_trans,
             best_train_stats,
             inference.scores_dct,
             [idx_train, idx_leftout],
