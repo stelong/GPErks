@@ -5,6 +5,7 @@ build/
 dist/
 tmp/
 venv/
+.venv/
 */__pycache__/
 **/__pycache__/
 GPErks.egg-info/
