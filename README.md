@@ -30,23 +30,19 @@ A Python library to (bene)fit Gaussian Process Emulators.
 git clone https://github.com/stelong/GPErks.git
 cd GPErks/
 ```
+
 2. (optional) Create a Python3 virtual environment:
 ```
 python3 -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip setuptools wheel
 ```
-3. Install PyTorch package first in order to satisfy your custom installation requirements (e.g., a CPU-only installation or a CUDA installation with a specific version that matches your machine NVIDIA drivers):
 
-(CPU-only)
-```
-pip install torch --index-url https://download.pytorch.org/whl/cpu
-```
-(CUDA 11.8)
+3. (optional) Install the PyTorch package first in order to satisfy your installation requirements. This is especially relevant for CUDA installations, where the specific version needs to match your machine's NVIDIA driver version. For example, for CUDA 11.8:
 ```
 pip install torch --index-url https://download.pytorch.org/whl/cu118
 ```
-Note: please check PyTorch [website](https://pytorch.org/get-started/locally/) to customize your installation.
+Note: for CPU-only installations, you can skip step (3). For CUDA installations, please check the PyTorch [website](https://pytorch.org/get-started/locally/) to choose the correct version.
 
 4. Install GPErks:
 ```
@@ -60,7 +56,7 @@ pip install notebook
 
 ### Usage
 
-The full documentation is under construction. For the moment, please refer to the example [notebooks](https://github.com/stelong/GPErks/tree/master/notebooks) and [tutorial](https://youtu.be/e4kYIIrcAHA) while noting that this is based on the old GPErks v0.1.0 API (it will provide a good overview on all package functionalities). The available notebooks are also available as plain Python [scripts](https://github.com/stelong/GPErks/tree/master/examples).
+The full documentation is under construction. For the moment, please refer to the example [notebooks](https://github.com/stelong/GPErks/tree/master/notebooks) and [tutorial](https://youtu.be/e4kYIIrcAHA) while noting that this is based on the old GPErks v0.1.0 API (it will still provide a good overview on all package functionalities). The notebooks are also available as plain Python [scripts](https://github.com/stelong/GPErks/tree/master/examples).
 
 ---
 ## Contributing

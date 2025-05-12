@@ -189,7 +189,7 @@ class SimpleEarlyStoppingCriterion(EarlyStoppingCriterion):
         super().__init__(max_epochs)
         self.patience: int = patience
         self.counter: int = 0
-        self.Eva_opt: float = numpy.infty
+        self.Eva_opt: float = numpy.inf
         self.current_best_state_dict: Dict[Any, Any] = {}
 
     def enable(
@@ -204,7 +204,7 @@ class SimpleEarlyStoppingCriterion(EarlyStoppingCriterion):
 
     def _reset(self):
         self.counter: int = 0
-        self.Eva_opt: float = numpy.infty
+        self.Eva_opt: float = numpy.inf
 
     def _should_stop(self) -> Tuple[bool, float]:
         if self.train_stats.val_loss[-1] < self.Eva_opt:
@@ -245,7 +245,7 @@ class GLEarlyStoppingCriterion(EarlyStoppingCriterion):
         self.alpha: float = alpha
         self.patience: int = patience
         self.counter: int = 0
-        self.Eva_opt: float = numpy.infty
+        self.Eva_opt: float = numpy.inf
         self.GL: List = []
         self.current_best_state_dict: Dict[Any, Any] = {}
 
@@ -261,7 +261,7 @@ class GLEarlyStoppingCriterion(EarlyStoppingCriterion):
 
     def _reset(self):
         self.counter: int = 0
-        self.Eva_opt: float = numpy.infty
+        self.Eva_opt: float = numpy.inf
         self.GL: List = []
 
     def _should_stop(self) -> Tuple[bool, float]:
@@ -390,7 +390,7 @@ class PQEarlyStoppingCriterion(EarlyStoppingCriterion):
         self.alpha: float = alpha
         self.patience: int = patience
         self.counter: int = 0
-        self.Eva_opt: float = numpy.infty
+        self.Eva_opt: float = numpy.inf
         self.GL: List = []
         self.strip_length: int = strip_length
         self.strip_counter: int = 0
@@ -411,7 +411,7 @@ class PQEarlyStoppingCriterion(EarlyStoppingCriterion):
 
     def _reset(self):
         self.counter: int = 0
-        self.Eva_opt: float = numpy.infty
+        self.Eva_opt: float = numpy.inf
         self.GL: List = []
         self.strip_counter: int = 0
         self.computation_enabled: bool = False

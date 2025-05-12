@@ -54,7 +54,7 @@ class SobolGSA:
             func=f,
             n=self.n,
             dists=[uniform(loc=x[0], scale=x[1] - x[0]) for x in self.minmax],
-            random_state=self.seed,
+            rng=self.seed,
         )
         self.boot = indices.bootstrap(
             confidence_level=DEFAULT_GSA_CONF_LEVEL,
@@ -71,7 +71,7 @@ class SobolGSA:
         A, B = _sensitivity_analysis.sample_A_B(
             n=self.n,
             dists=[uniform(loc=x[0], scale=x[1] - x[0]) for x in self.minmax],
-            random_state=self.seed,
+            rng=self.seed,
         )
         AB = _sensitivity_analysis.sample_AB(A=A, B=B)
         d, d, n = AB.shape
@@ -82,7 +82,7 @@ class SobolGSA:
         indices = sobol_indices(
             func={"f_A": f_A, "f_B": f_B, "f_AB": f_AB},
             n=self.n,
-            random_state=self.seed,
+            rng=self.seed,
         )
         self.ST = indices.total_order
         self.S1 = indices.first_order
