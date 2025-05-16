@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 #
 # 8. GPE auto-training + GSA using external dataset (from publication) loaded from json file
 #
@@ -25,7 +24,9 @@ def main():
 
     # This new method loads your dataset into a dictionary where keys = features, values = Dataset objects
     # (each Dataset is built to create the experiment that will emulate the corresponding scalar feature (key))
-    datasets = Dataset.build_from_file(posix_path(os.getcwd(), "examples", "data", "datasets", "Stefano_16p.json"))
+    datasets = Dataset.build_from_file(
+        posix_path(os.getcwd(), "examples", "data", "datasets", "Stefano_16p.json")
+    )
     features = list(datasets.keys())
     print(features)  # available features to be emulated
 
@@ -61,13 +62,7 @@ def main():
     likelihood = GaussianLikelihood()
     mean = LinearMean(degree=1, input_size=dataset.input_size, bias=True)
     covariance = ScaleKernel(MaternKernel(ard_num_dims=dataset.input_size))
-    experiment = GPExperiment(
-        dataset,
-        likelihood,
-        mean,
-        covariance,
-        seed=seed
-    )
+    experiment = GPExperiment(dataset, likelihood, mean, covariance, seed=seed)
     device = "cuda" if torch.cuda.is_available() else "cpu"
     emulator = GPEmulator(experiment, device)
     emulator.train_auto()
@@ -81,6 +76,7 @@ def main():
 
     # plotting estimated Sobol' indices
     import matplotlib.pyplot as plt
+
     plt.style.use("seaborn-v0_8")
     fig, axis = plt.subplots(1, 1)
     gsa.plot(axis=axis, type="bar", colors="tab10")

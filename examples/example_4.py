@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 #
 # 4. Training stats (losses monitoring, early stopping)
 #
@@ -14,37 +13,36 @@ def main():
 
     # enforce reproducibility
     from GPErks.utils.random import set_seed
+
     seed = DEFAULT_RANDOM_SEED
     set_seed(seed)
 
     # load externally generated dataset
     from GPErks.serialization.path import posix_path
+
     data_dir = Path(posix_path(os.getcwd(), "examples", "data", "example_4"))
     x = np.loadtxt(data_dir / "X.txt", dtype=float)
     y = np.loadtxt(data_dir / "y.txt", dtype=float)
 
     # split original dataset in training, validation and testing sets
     from sklearn.model_selection import train_test_split
-    x_, x_test, y_, y_test = train_test_split(
-        x,
-        y,
-        test_size=0.2,
-        random_state=seed
-    )
+
+    x_, x_test, y_, y_test = train_test_split(x, y, test_size=0.2, random_state=seed)
     x_train, x_val, y_train, y_val = train_test_split(
-        x_,
-        y_,
-        test_size=0.2,
-        random_state=seed
+        x_, y_, test_size=0.2, random_state=seed
     )
 
     # load input parameters and output feature names
     from GPErks.serialization.labels import read_labels_from_file
+
     x_labels = read_labels_from_file(data_dir / "xlabels.txt")
-    y_label = read_labels_from_file(data_dir / "ylabel.txt")[0]  # there is only one element in the list
+    y_label = read_labels_from_file(data_dir / "ylabel.txt")[
+        0
+    ]  # there is only one element in the list
 
     # build dataset
     from GPErks.gp.data.dataset import Dataset
+
     dataset = Dataset(
         x_train,
         y_train,
@@ -55,7 +53,7 @@ def main():
         x_labels=x_labels,
         y_label=y_label,
         name="CanopyReflectance",
-        descr="A reflectance model for the homogeneous plant canopy and its inversion (doi.org/10.1016/0034-4257(89)90015-1)"
+        descr="A reflectance model for the homogeneous plant canopy and its inversion (doi.org/10.1016/0034-4257(89)90015-1)",
     )
     dataset.summary()
     dataset.plot()
@@ -86,6 +84,7 @@ def main():
 
     # train model
     from GPErks.train.emulator import GPEmulator
+
     device = "cuda" if torch.cuda.is_available() else "cpu"
     optimizer = torch.optim.Adam(experiment.model.parameters(), lr=0.1)
 
@@ -98,6 +97,7 @@ def main():
 
     # usual inference on test set
     from GPErks.perks.inference import Inference
+
     inference = Inference(emulator)
     inference.summary()
 
@@ -111,12 +111,10 @@ def main():
 
     # we can run the training to a different, fixed number of epochs
     from GPErks.train.early_stop import NoEarlyStoppingCriterion
+
     max_epochs = 50
     esc = NoEarlyStoppingCriterion(max_epochs)
-    _, best_train_stats = emulator.train(
-        optimizer,
-        early_stopping_criterion=esc
-    )
+    _, best_train_stats = emulator.train(optimizer, early_stopping_criterion=esc)
     inference = Inference(emulator)
     inference.summary()
     print(best_train_stats.best_epoch == max_epochs)
@@ -129,23 +127,21 @@ def main():
         PQEarlyStoppingCriterion,
         UPEarlyStoppingCriterion,
     )
+
     max_epochs = 500
-    esc = GLEarlyStoppingCriterion(
-            max_epochs, alpha=0.1, patience=8
-    )
+    esc = GLEarlyStoppingCriterion(max_epochs, alpha=0.1, patience=8)
     # esc = PQEarlyStoppingCriterion(
     #     max_epochs, alpha=1, patience=8, strip_length=5
     # )
     # esc = UPEarlyStoppingCriterion(
     #     max_epochs, strip_length=5, successive_strips=4
     # )
-    _, best_train_stats = emulator.train(
-        optimizer,
-        early_stopping_criterion=esc
-    )
+    _, best_train_stats = emulator.train(optimizer, early_stopping_criterion=esc)
     inference = Inference(emulator)
     inference.summary()
-    print(best_train_stats.best_epoch == max_epochs)  # False: early stopping did its job
+    print(
+        best_train_stats.best_epoch == max_epochs
+    )  # False: early stopping did its job
     best_train_stats.plot(with_early_stopping_criterion=True)
     # criterion is no more a flat line but follows a specific trend; stopping took place when this crossed
     # the value of 0.1 (alpha parameter) for more than 8 epochs (patience parameter)
@@ -154,19 +150,15 @@ def main():
     # in case we don't have a validation set, we can still come up with some criterion that stops the training
     # according to convergence of training loss to a plateau
     from GPErks.train.early_stop import PkEarlyStoppingCriterion
-    esc = PkEarlyStoppingCriterion(
-        max_epochs, alpha=0.01, patience=8, strip_length=20
-    )
+
+    esc = PkEarlyStoppingCriterion(max_epochs, alpha=0.01, patience=8, strip_length=20)
     # to make this work, we need to hide the fact that we created a dataset providing a validation set;
     # let's pretend we don't have a validation set using this trick
     emulator.scaled_data.with_val = False
     # (we could have achieved the same result by creating a new dataset with no validation set,
     # a new experiment and a new emulator object)
 
-    _, best_train_stats = emulator.train(
-        optimizer,
-        early_stopping_criterion=esc
-    )
+    _, best_train_stats = emulator.train(optimizer, early_stopping_criterion=esc)
     inference = Inference(emulator)
     inference.summary()
     print(best_train_stats.best_epoch == max_epochs)
@@ -175,5 +167,5 @@ def main():
     # however, we advise not to rely solely on training loss and to always use a validation set when training
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
