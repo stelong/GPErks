@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 #
 # 10. Principles of the Bayesian History Matching technique
 #
@@ -12,12 +11,14 @@ def main():
 
     # enforce reproducibility
     from GPErks.utils.random import set_seed
+
     seed = DEFAULT_RANDOM_SEED
     set_seed(seed)
 
     # define deterministic function
     def f(x):  # elliptic paraboloid: y = x1^2/a^2 + x2^2/b^2, with a=b=1
         return np.sum(np.power(x, 2), axis=0)
+
     d = 2  # input dimension (f:2D->1D)
 
     # generate synthetic datum to match by visually exploring the parameter space
@@ -49,6 +50,7 @@ def main():
 
     # build dataset
     from GPErks.gp.data.dataset import Dataset
+
     dataset = Dataset.build_from_function(
         f,
         d,
@@ -59,7 +61,10 @@ def main():
         seed=seed,
         x_labels=xlabels,
         l_bounds=[-5, -5],
-        u_bounds=[5, 5],  # note: we take a larger parameter range for the training dataset
+        u_bounds=[
+            5,
+            5,
+        ],  # note: we take a larger parameter range for the training dataset
     )
 
     # choose likelihood, mean function and covariance function
@@ -67,16 +72,19 @@ def main():
     from gpytorch.likelihoods import GaussianLikelihood
 
     from GPErks.gp.mean import LinearMean
+
     likelihood = GaussianLikelihood()
     mean = LinearMean(degree=2, input_size=dataset.input_size, bias=True)
     covar = ScaleKernel(MaternKernel(ard_num_dims=dataset.input_size))
 
     # choose metrics
     from torchmetrics import MeanSquaredError, R2Score
+
     metrics = [MeanSquaredError(), R2Score()]
 
     # define experiment + device
     from GPErks.gp.experiment import GPExperiment
+
     experiment = GPExperiment(
         dataset,
         likelihood,
@@ -89,11 +97,13 @@ def main():
 
     # train emulator
     from GPErks.train.emulator import GPEmulator
+
     emulator = GPEmulator(experiment, device)
     emulator.train_auto()
 
     # check accuracy
     from GPErks.perks.inference import Inference
+
     inference = Inference(emulator)
     inference.summary()
     inference.plot()
@@ -102,6 +112,7 @@ def main():
     # Note: to have an almost perfect emulator, we kind of cheated when selecting degree=2 for the mean function.
     # In fact, we knew already that the underlying, deterministic function was an ellipsoid
     from GPErks.plot.mean import inspect_mean_module
+
     inspect_mean_module(emulator)
 
     # run the first wave (iteration) of history matching
@@ -109,11 +120,15 @@ def main():
     maxno = 1  # the first highest implausibility value (worse emulator prediction) deems a point to be implausible
     # Note: maxno is not relevant in this case since we only have 1 emulator to match one experimental datum
     from GPErks.utils.array import get_minmax
-    minmax = get_minmax(emulator.experiment.dataset.X_train)  # training dataset min-max parameter ranges
+
+    minmax = get_minmax(
+        emulator.experiment.dataset.X_train
+    )  # training dataset min-max parameter ranges
 
     # perk n.5: Bayesian History Matching technique;
     # let's define a wave object
     from GPErks.perks.history_matching import Wave
+
     w = Wave(
         emulator=[emulator],
         Itrain=minmax,
@@ -125,7 +140,10 @@ def main():
 
     # create a huge, 100k points parameter space to be explored all at once using the trained emulator
     from GPErks.utils.sampling import Sampler
-    sampler = Sampler(design="lhs", dim=d, seed=seed)  # available designs: 'srs', 'lhs', 'sobol'
+
+    sampler = Sampler(
+        design="lhs", dim=d, seed=seed
+    )  # available designs: 'srs', 'lhs', 'sobol'
     n_samples = 100000
     x = sampler.sample(
         n_samples,

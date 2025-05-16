@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 #
 # 6. K-fold cross-validation (Part 2 - advanced training)
 #
@@ -14,34 +13,35 @@ def main():
 
     # enforce reproducibility
     from GPErks.utils.random import set_seed
+
     seed = DEFAULT_RANDOM_SEED
     set_seed(seed)
 
     # load dataset
     from GPErks.serialization.labels import read_labels_from_file
+
     data_dir = Path(os.getcwd()) / "examples" / "data" / "example_4"
-    x_ = np.loadtxt(data_dir / "X.txt", dtype=float)[:50]  # suppose that we only have a very small amount of data points
+    x_ = np.loadtxt(data_dir / "X.txt", dtype=float)[
+        :50
+    ]  # suppose that we only have a very small amount of data points
     y_ = np.loadtxt(data_dir / "y.txt", dtype=float)[:50]
     xlabels = read_labels_from_file(data_dir / "xlabels.txt")
     ylabel = read_labels_from_file(data_dir / "ylabel.txt")[0]
 
     # split dataset in training and testing sets
     from sklearn.model_selection import train_test_split
+
     x, x_test, y, y_test = train_test_split(
         x_,
         y_,
         test_size=0.5,  # training dataset is very small! (on purpose)
-        random_state=seed
+        random_state=seed,
     )
 
     # build dataset with no validation and no testing sets
     from GPErks.gp.data.dataset import Dataset
-    dataset = Dataset(
-        x,
-        y,
-        x_labels=xlabels,
-        y_label=ylabel
-    )
+
+    dataset = Dataset(x, y, x_labels=xlabels, y_label=ylabel)
 
     # define experiment
     from gpytorch.kernels import MaternKernel, ScaleKernel
@@ -64,7 +64,7 @@ def main():
         n_restarts=3,
         metrics=metrics,
         seed=seed,
-        learn_noise=True
+        learn_noise=True,
     )
 
     # K-fold cross-validation training
@@ -80,9 +80,7 @@ def main():
     optimizer = torch.optim.Adam(experiment.model.parameters(), lr=0.1)
     esc = GLEarlyStoppingCriterion(max_epochs=1000, alpha=0.1, patience=8)
     _, best_train_stats_dct = kfcv.train(
-        optimizer,
-        early_stopping_criterion=esc,
-        leftout_is_val=True
+        optimizer, early_stopping_criterion=esc, leftout_is_val=True
     )
     # using this new flag 'leftout_is_val=True', we can utilize the respective leftout
     # set of each split to stop the training using a validation loss-based early
@@ -97,7 +95,7 @@ def main():
     best_epochs = []
     for _, bts in best_train_stats_dct.items():
         bts.plot(with_early_stopping_criterion=True)
-        best_epochs.append( bts.best_epoch )
+        best_epochs.append(bts.best_epoch)
 
     # nevertheless, what we were really interested in was getting the stopping epoch
     # reached at each split of the cross-validation
@@ -110,12 +108,7 @@ def main():
     # build a new dataset now including a testing set
     del dataset
     dataset = Dataset(
-        x,
-        y,
-        X_test=x_test,
-        y_test=y_test,
-        x_labels=xlabels,
-        y_label=ylabel
+        x, y, X_test=x_test, y_test=y_test, x_labels=xlabels, y_label=ylabel
     )
 
     likelihood = GaussianLikelihood()
@@ -138,26 +131,25 @@ def main():
 
     # making use of knowledge coming from the performed CV,
     # we run the training for an exact number of epochs
-    max_epochs = int( np.mean(best_epochs) )  
+    max_epochs = int(np.mean(best_epochs))
     esc = NoEarlyStoppingCriterion(max_epochs)
 
-    _, best_train_stats = emulator.train(
-        optimizer,
-        early_stopping_criterion=esc
-    )
+    _, best_train_stats = emulator.train(optimizer, early_stopping_criterion=esc)
 
     best_train_stats.plot(with_early_stopping_criterion=True)
 
     # note: we now support also ISE2 as a metric!
     from GPErks.utils.metrics import IndependentStandardError
+
     emulator.experiment.metrics = [IndependentStandardError(), R2Score()]
 
     # we are achieving a very high R2Score using only 25 points and without a validation set, magic!
     from GPErks.perks.inference import Inference
+
     inference = Inference(emulator)
     inference.summary()
     inference.plot()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

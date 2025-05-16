@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 #
 # 3. I/O handling (reproducible experiments, snapshotting)
 #
@@ -13,15 +12,18 @@ def main():
 
     # enforce reproducibility
     from GPErks.utils.random import set_seed
+
     seed = DEFAULT_RANDOM_SEED
     set_seed(seed)  # reproducible sampling
 
     # function to learn (2D input)
     from GPErks.utils.test_functions import currin_exp
+
     d = 2  # currin_exp input is 2D
 
     # build dataset
     from GPErks.gp.data.dataset import Dataset
+
     dataset = Dataset.build_from_function(
         currin_exp,
         d,
@@ -33,22 +35,27 @@ def main():
 
     # choose likelihood
     from gpytorch.likelihoods import GaussianLikelihood
+
     likelihood = GaussianLikelihood()
 
     # choose mean function
     from GPErks.gp.mean import LinearMean
+
     mean_function = LinearMean(degree=1, input_size=dataset.input_size, bias=True)
 
     # choose kernel
     from gpytorch.kernels import MaternKernel, ScaleKernel
+
     kernel = ScaleKernel(MaternKernel(nu=2.5, ard_num_dims=dataset.input_size))
 
     # choose metrics
     from torchmetrics import MeanSquaredError, R2Score
+
     metrics = [MeanSquaredError(), R2Score()]
 
     # define experiment
     from GPErks.gp.experiment import GPExperiment
+
     experiment = GPExperiment(
         dataset,
         likelihood,
@@ -62,6 +69,7 @@ def main():
     # dump experiment to config file;
     # this will allow reproducing the exact, same experimental setup in future contexts
     from GPErks.serialization.path import posix_path
+
     config_file = posix_path(os.getcwd(), "snapshot", "example_3.ini")
     experiment.save_to_config_file(config_file)
 
@@ -74,7 +82,10 @@ def main():
         EveryEpochSnapshottingCriterion,
         EveryNEpochsSnapshottingCriterion,
     )
-    snapshot_dir = posix_path(os.getcwd(), "snapshot", "example_3")  # provide folder where to save model instance(s)
+
+    snapshot_dir = posix_path(
+        os.getcwd(), "snapshot", "example_3"
+    )  # provide folder where to save model instance(s)
     train_restart_template = "restart_{restart}"  # provide template for sub-folder name
     train_epoch_template = "epoch_{epoch}.pth"  # provide template for file name
 
@@ -86,6 +97,7 @@ def main():
 
     # train model
     from GPErks.train.emulator import GPEmulator
+
     emulator = GPEmulator(experiment, device)
     emulator.train(optimizer, snapshotting_criterion=snpc)
 
@@ -94,15 +106,17 @@ def main():
 
     # inference on stored test set
     from GPErks.perks.inference import Inference
+
     inference = Inference(emulator)
     inference.summary()
 
     # loading experiment from config file
     del experiment  # let's delete the original experiment before being able to re-create it from file
     from GPErks.gp.experiment import load_experiment_from_config_file
+
     experiment = load_experiment_from_config_file(
         config_file,
-        dataset  # data is not saved in config file to save memory, so we still need to pass the dataset used!
+        dataset,  # data is not saved in config file to save memory, so we still need to pass the dataset used!
     )
 
     # loading emulator from best model file
@@ -124,6 +138,6 @@ def main():
     inference = Inference(emulator)
     inference.summary()
 
-    
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

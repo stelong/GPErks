@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 #
 # 11. Bayesian History Matching technique (advanced use)
 #
@@ -39,7 +38,9 @@ def main():
     exp_var = [val["var"] for val in expdata.values()]
 
     # Load dataset
-    datasets = Dataset.build_from_file(posix_path(os.getcwd(), "examples", "data", "datasets", "Stefano_8p_sham.json"))
+    datasets = Dataset.build_from_file(
+        posix_path(os.getcwd(), "examples", "data", "datasets", "Stefano_8p_sham.json")
+    )
     active_features = list(expdata.keys())
 
     # Train list of univariate emulators (one for each feature to match)
@@ -53,12 +54,7 @@ def main():
         metrics = [MeanSquaredError(), R2Score()]
 
         experiment = GPExperiment(
-            dataset,
-            likelihood,
-            mean,
-            covar,
-            metrics=metrics,
-            seed=seed
+            dataset, likelihood, mean, covar, metrics=metrics, seed=seed
         )
 
         emulator = GPEmulator(experiment, device)
@@ -99,8 +95,12 @@ def main():
     # and of implausible points starting from the initial samples in X
     w.find_regions(X)
     w.print_stats()  # show statistics about the two obtained spaces
-    w.plot_wave(xlabels=xlabels, display="impl", filepath=Path(data_dir)/"impl.png")  # plot the current wave of history matching (impl. measure plot)
-    w.plot_wave(xlabels=xlabels, display="var", filepath=Path(data_dir)/"var.png")  # we can also check the accuracy of the GPEs for the current wave
+    w.plot_wave(
+        xlabels=xlabels, display="impl", filepath=Path(data_dir) / "impl.png"
+    )  # plot the current wave of history matching (impl. measure plot)
+    w.plot_wave(
+        xlabels=xlabels, display="var", filepath=Path(data_dir) / "var.png"
+    )  # we can also check the accuracy of the GPEs for the current wave
     # note: if we omit the filepath=<path_to_file> flag, plots will be simply displayed and not saved
 
     # How to continue on the next wave in 5 steps
@@ -118,10 +118,14 @@ def main():
     # for the next wave
     n_tests = 10000  # number of TEST points we want for the next wave
     n_simuls = 128  # number of current NIMP points we want to simulate to augment training dataset for the next wave
-    n_avail_nimps = len(w0.nimp_idx)  # we currently have available only this number of NIMP points
+    n_avail_nimps = len(
+        w0.nimp_idx
+    )  # we currently have available only this number of NIMP points
     if n_tests + n_simuls > n_avail_nimps:  # if they are not enough
         n_total_points = n_tests + n_simuls
-        w.augment_nimp(n_total_points)  # use 'cloud technique' to generate new NIMP points starting from existing ones
+        w.augment_nimp(
+            n_total_points
+        )  # use 'cloud technique' to generate new NIMP points starting from existing ones
 
     # Get the requested datasets
     X_simul, X_test = w.get_nimps(n_simuls)
@@ -149,15 +153,35 @@ def main():
 
     # We will inspect only 2 dimensions of the full 8D parameter space to keep it simple
     param = [4, 5]  # select 2 dimensions
-    subset_idx = list(np.random.randint(0, X_test.shape[0], size=10*X_simul.shape[0]))  # select an example portion
+    subset_idx = list(
+        np.random.randint(0, X_test.shape[0], size=10 * X_simul.shape[0])
+    )  # select an example portion
 
     colors = interp_col(get_col("blue"), 4)  # getting some blue colour variants
 
     # Plotting current wave NIMP + next wave TEST + next wave SIMUL
     fig, axis = plt.subplots(1, 1)
-    axis.scatter(X_nimp[:, param[0]], X_nimp[:, param[1]], fc=colors[1], ec=colors[1], label=f"X_nimp of wave {waveno}")
-    axis.scatter(X_test[subset_idx, param[0]], X_test[subset_idx, param[1]], fc=colors[-1], ec=colors[-1], label=f"X_test for wave {waveno+1}")
-    axis.scatter(X_simul[:, param[0]], X_simul[:, param[1]], fc='r', ec='r', label=f"X_simul for wave {waveno+1}")
+    axis.scatter(
+        X_nimp[:, param[0]],
+        X_nimp[:, param[1]],
+        fc=colors[1],
+        ec=colors[1],
+        label=f"X_nimp of wave {waveno}",
+    )
+    axis.scatter(
+        X_test[subset_idx, param[0]],
+        X_test[subset_idx, param[1]],
+        fc=colors[-1],
+        ec=colors[-1],
+        label=f"X_test for wave {waveno+1}",
+    )
+    axis.scatter(
+        X_simul[:, param[0]],
+        X_simul[:, param[1]],
+        fc="r",
+        ec="r",
+        label=f"X_simul for wave {waveno+1}",
+    )
     axis.set_xlabel(xlabels[param[0]], fontsize=12)
     axis.set_ylabel(xlabels[param[1]], fontsize=12)
     axis.legend()
@@ -190,7 +214,9 @@ def main():
     # The original test set is not stored as an attribute to save space. However, this information can still be
     # retrieved from the stored attributes as:
     X_test = w.reconstruct_tests()
-    print((np.equal(X_test, X)).all())  # the test set of first wave was the LHD we generated initially in this script
+    print(
+        (np.equal(X_test, X)).all()
+    )  # the test set of first wave was the LHD we generated initially in this script
 
 
 if __name__ == "__main__":

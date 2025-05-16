@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 #
 # 2. 2D example (advanced inference, diagnostics)
 #
@@ -10,15 +9,18 @@ def main():
 
     # enforce reproducibility
     from GPErks.utils.random import set_seed
+
     seed = DEFAULT_RANDOM_SEED
     set_seed(seed)  # reproducible sampling
 
     # function to learn (2D input)
     from GPErks.utils.test_functions import currin_exp
+
     d = 2  # currin_exp input is 2D
 
     # build dataset
     from GPErks.gp.data.dataset import Dataset
+
     dataset = Dataset.build_from_function(
         currin_exp,
         d,
@@ -33,14 +35,17 @@ def main():
 
     # choose likelihood
     from gpytorch.likelihoods import GaussianLikelihood
+
     likelihood = GaussianLikelihood()
 
     # choose mean function
     from GPErks.gp.mean import LinearMean
+
     mean_function = LinearMean(degree=1, input_size=dataset.input_size, bias=True)
 
     # choose kernel
     from gpytorch.kernels import MaternKernel, ScaleKernel
+
     kernel = ScaleKernel(MaternKernel(ard_num_dims=dataset.input_size))
 
     # choose metrics
@@ -49,10 +54,12 @@ def main():
     from GPErks.utils.metrics import (
         IndependentStandardError,  # not available from torchmetrics -> we implemented it
     )
+
     metrics = [IndependentStandardError(), R2Score()]
 
     # define experiment
     from GPErks.gp.experiment import GPExperiment
+
     experiment = GPExperiment(
         dataset,
         likelihood,
@@ -69,6 +76,7 @@ def main():
 
     # train model
     from GPErks.train.emulator import GPEmulator
+
     emulator = GPEmulator(experiment, device)
     emulator.train(optimizer)
 
@@ -77,6 +85,7 @@ def main():
 
     # inference on stored test set
     from GPErks.perks.inference import Inference
+
     inference = Inference(emulator)
     inference.summary()
     inference.plot()
@@ -104,5 +113,5 @@ def main():
     # plt.show()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
