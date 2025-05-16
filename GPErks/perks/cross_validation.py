@@ -116,7 +116,9 @@ class KFoldCrossValidation(Trainable):
         ) in execute_task_in_parallel(
             self._train_split, splits, self.max_workers
         ).items():
-            best_model_dct[split] = best_model
+            best_model_dct[split] = {
+                key: torch.tensor(val) for key, val in best_model.items()
+            }
             best_train_stats_dct[split] = best_train_stats
             best_test_scores_dct[split] = best_test_scores
             split_idx_dct[split] = idx
@@ -260,8 +262,12 @@ class KFoldCrossValidation(Trainable):
         inference = Inference(emulator)
         inference.summary(printtoconsole=False)
 
+        best_model_trans = {
+            key: val.cpu().detach().numpy() for key, val in best_model.items()
+        }
+
         return (
-            best_model,
+            best_model_trans,
             best_train_stats,
             inference.scores_dct,
             [idx_train, idx_leftout],
